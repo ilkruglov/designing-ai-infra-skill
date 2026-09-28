@@ -6,17 +6,17 @@
 
 from __future__ import annotations
 
-from .checks import require_int_at_least, require_non_negative
+from .checks import require_non_negative
 
 
 def call_cost(
-    input_tokens: int,
-    output_tokens: int,
+    input_tokens: float,
+    output_tokens: float,
     input_price: float,
     output_price: float,
-    cached_tokens: int = 0,
+    cached_tokens: float = 0,
     cache_read_price: float = 0,
-    cache_write_tokens: int = 0,
+    cache_write_tokens: float = 0,
     cache_write_price: float = 0,
 ) -> float:
     """C = (I_u·p_u + I_w·p_w + I_h·p_h + O·p_o) / 10^6, глава 11.4.2.
@@ -27,6 +27,9 @@ def call_cost(
     нужно сначала разложить, иначе кэшированные токены оплачиваются дважды.
     output_tokens — O, сумма токенов рассуждения и видимого вывода.
     Хранение кэша и вызовы инструментов (C_storage, C_tool) не входят.
+
+    Числа токенов могут быть дробными: оценки главы 11 подставляют средние,
+    например ожидаемые кэшированные токены при доле попаданий h (пример 11-7).
     """
     for name, count in (
         ("input_tokens", input_tokens),
@@ -34,7 +37,10 @@ def call_cost(
         ("cached_tokens", cached_tokens),
         ("cache_write_tokens", cache_write_tokens),
     ):
-        require_int_at_least(name, count, 0)
+        if isinstance(count, bool):
+            # ValueError, а не TypeError: все отказы входа калькуляторы сообщают одним типом
+            raise ValueError(f"{name} должен быть числом токенов: {count!r}")  # noqa: TRY004
+        require_non_negative(name, count)
     for name, price in (
         ("input_price", input_price),
         ("output_price", output_price),

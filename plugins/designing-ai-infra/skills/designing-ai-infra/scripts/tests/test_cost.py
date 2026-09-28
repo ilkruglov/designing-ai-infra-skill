@@ -69,28 +69,46 @@ class CostTest(unittest.TestCase):
                 ):
                     cost.call_cost(**{**base, name: value})
 
-    def test_call_cost_rejects_fractional_tokens(self) -> None:
-        # число токенов в usage целое; дробь означает перепутанные единицы
+    def test_expected_tokens_at_partial_cache_hit_rate(self) -> None:
+        # chapter11.md:532-538: доля попаданий B в кэш h; при промахе 19 000 токенов
+        # префикса оплачиваются как обычный вход, поэтому ожидаемые числа токенов
+        # вызова дробные в общем случае. «Приравняв среднюю стоимость B к средней
+        # стоимости A, получим $h\approx79.5\%$» (A — 0.0161); «Если доля попаданий
+        # снижается до 50%, стоимость успешной задачи B возрастает примерно до 0,0264»;
+        # chapter11.md:530: вероятность успеха B 0.98 (формула C_B(h) делит на 0.98)
+        def expected_b(hit_rate: float) -> float:
+            call = cost.call_cost(
+                1_000 + 19_000 * (1 - hit_rate),
+                300,
+                2,
+                10,
+                cached_tokens=19_000 * hit_rate,
+                cache_read_price=0.2,
+            )
+            return cost.cost_per_accepted_task(call, 0.98)
+
+        self.assertEqual(round(expected_b(0.795), 4), 0.0161)
+        self.assertEqual(round(expected_b(0.5), 4), 0.0264)
+        self.assertAlmostEqual(cost.call_cost(0.5, 0.25, 2, 10), 3.5e-6)
+
+    def test_call_cost_rejects_boolean_tokens(self) -> None:
+        # True — не среднее число токенов, а перепутанный аргумент
         for name in (
             "input_tokens",
             "output_tokens",
             "cached_tokens",
             "cache_write_tokens",
         ):
-            for value in (1.5, 2.0, True):
-                with (
-                    self.subTest(name=name, value=value),
-                    self.assertRaises(ValueError),
-                ):
-                    cost.call_cost(
-                        **{
-                            "input_tokens": 1,
-                            "output_tokens": 1,
-                            "input_price": 1,
-                            "output_price": 1,
-                            name: value,
-                        }
-                    )
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                cost.call_cost(
+                    **{
+                        "input_tokens": 1,
+                        "output_tokens": 1,
+                        "input_price": 1,
+                        "output_price": 1,
+                        name: True,
+                    }
+                )
 
     def test_cost_per_accepted_task_rejects_invalid_inputs(self) -> None:
         # вероятность успеха вне (0, 1] дала бы бесконечную или заниженную цену
