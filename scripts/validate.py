@@ -12,7 +12,7 @@ from urllib.parse import unquote, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from build_source_lock import UPSTREAM_COMMIT
+from build_source_lock import TRANSLATION_COMMIT, UPSTREAM_COMMIT
 from source_anchors import (
     HEADING,
     LOCAL_SOURCE_ANCHOR,
@@ -104,6 +104,18 @@ AUTHOR_RESULT = re.compile(
 AUTHOR_CLONE = Path(".tmp") / "upcalc"
 AUTHOR_RESULTS_CLONE = AUTHOR_CLONE / "calculations" / "results"
 CJK = re.compile(r"[\u3000-\u9fff]")
+# Полный sha коммита и короткая ссылка на оригинал в тексте документов
+FULL_COMMIT = re.compile(r"\b[0-9a-f]{40}\b")
+UPSTREAM_REFERENCE = re.compile(r"bojieli/ai-infra-book@(?P<sha>[0-9a-f]{7,40})\b")
+# Документы, которые называют пины; источник истины — константы
+# scripts/build_source_lock.py
+PIN_DOCUMENTS = (
+    SKILL_DIRECTORY / "SKILL.md",
+    SKILL_DIRECTORY / "references" / "source-map.md",
+    Path("README.md"),
+    Path("NOTICE"),
+    PLUGIN_DIRECTORY / "NOTICE",
+)
 NUMBERS_PATH = SKILL_DIRECTORY / "references" / "numbers.md"
 TABLE_SEPARATOR = re.compile(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$")
 REFERENCE_PATH = re.compile(r"references/[A-Za-z0-9._/-]+\.md")
@@ -899,12 +911,14 @@ def validate_source_lock(root: Path, lock: dict, errors: list[str]) -> None:
 
 
 def validate_chapter_quotes(root: Path, errors: list[str]) -> None:
-    chapters_root = root / CHAPTERS_DIRECTORY
-    if not chapters_root.is_dir():
-        return
+    """Дословные цитаты книги в SKILL.md и references/**, кроме самой книги.
 
+    Конспект главы обязан цитировать книгу; в остальных документах цитата
+    необязательна, но каждая проверяется так же.
+    """
+    chapters_root = root / CHAPTERS_DIRECTORY
     line_cache: dict[Path, list[str]] = {}
-    for chapter_path in sorted(chapters_root.glob("*.md")):
+    for chapter_path in iter_skill_documents(root):
         relative_path = chapter_path.relative_to(root)
         text = chapter_path.read_text(encoding="utf-8")
 
@@ -912,7 +926,7 @@ def validate_chapter_quotes(root: Path, errors: list[str]) -> None:
         # выглядит как подтверждённая ссылка на книгу.
         started = len(CHAPTER_QUOTE_MARKER.findall(text))
         parsed = len(CHAPTER_QUOTE.findall(text))
-        if started == 0:
+        if started == 0 and chapter_path.parent == chapters_root:
             errors.append(
                 f"chapter summary without verified quotes: {relative_path}; "
                 "a summary that retells the book must cite it"
@@ -1303,6 +1317,7 @@ def validate_data_integrity(root: Path, errors: list[str]) -> None:
                 errors.append(
                     f"SOURCE.json path does not resolve: {source} {key}={value}"
                 )
+        _check_bundled_sources(root, source, base, payload, errors)
         expected = _dotted(payload, "data.hardware_json.sha256")
         if not isinstance(expected, str):
             errors.append(f"SOURCE.json lacks data.hardware_json.sha256: {source}")
@@ -1320,6 +1335,99 @@ def validate_data_integrity(root: Path, errors: list[str]) -> None:
         for number, line in enumerate(lines, 1):
             if CJK.search(line):
                 errors.append(f"CJK artifact: {document.relative_to(root)}:{number}")
+
+
+def _check_bundled_sources(
+    root: Path, source: Path, base: Path, payload: dict, errors: list[str]
+) -> None:
+    """Текст книги побайтно совпадает с записанными sha256 файлов.
+
+    Lock хеширует только строки-якоря; README, SKILL.md и NOTICE обещают
+    побайтную копию перевода, поэтому правка любой другой строки книги тоже
+    должна быть ошибкой.
+    """
+    directory = _dotted(payload, "bundled_sources.directory")
+    files = _dotted(payload, "bundled_sources.files")
+    recorded = _dotted(payload, "bundled_sources.sha256")
+    if not isinstance(directory, str) or not isinstance(files, list):
+        return  # отсутствие каталога сообщено выше
+    if not isinstance(recorded, dict):
+        errors.append(f"SOURCE.json lacks bundled_sources.sha256: {source}")
+        return
+    extra = sorted(set(recorded) - set(files))
+    if extra:
+        errors.append(
+            f"SOURCE.json bundled_sources.sha256 lists files outside "
+            f"bundled_sources.files: {source} {', '.join(extra)}"
+        )
+    for name in files:
+        expected = recorded.get(name)
+        if not isinstance(expected, str):
+            errors.append(
+                f"SOURCE.json lacks bundled_sources.sha256 for {name}: {source}"
+            )
+            continue
+        path = base / directory / str(name)
+        if not path.is_file():
+            errors.append(f"bundled source missing: {source} {name}")
+            continue
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != expected:
+            errors.append(
+                f"bundled source sha256 mismatch with {source}: {name} "
+                f"recorded {expected}, actual {actual}"
+            )
+
+
+def validate_pins(root: Path, lock: dict, errors: list[str]) -> None:
+    """Пины оригинала и перевода совпадают везде, где записаны.
+
+    Источник истины — константы scripts/build_source_lock.py: они же попадают
+    в lock. SOURCE.json, lock и документы, которые называют пины, с ними
+    сверяются, чтобы смена пина не осталась записанной только в одном месте.
+    """
+    pins = {"upstream": UPSTREAM_COMMIT, "translation": TRANSLATION_COMMIT}
+    for source in (Path("SOURCE.json"), PLUGIN_DIRECTORY / "SOURCE.json"):
+        try:
+            payload = json.loads((root / source).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue  # отсутствие и неверный JSON уже сообщены общими проверками
+        for kind, pin in pins.items():
+            value = _dotted(payload, f"{kind}.commit")
+            if value != pin:
+                errors.append(
+                    f"pin mismatch: {source.as_posix()} {kind}.commit = {value!r}, "
+                    f"expected {pin} (scripts/build_source_lock.py)"
+                )
+    book = lock.get("book") if isinstance(lock, dict) else None
+    if isinstance(book, dict):
+        for kind, pin in pins.items():
+            value = book.get(f"{kind}_commit")
+            if value != pin:
+                errors.append(
+                    f"pin mismatch: {LOCK_RELATIVE_PATH.as_posix()} "
+                    f"book.{kind}_commit = {value!r}, expected {pin} "
+                    "(scripts/build_source_lock.py)"
+                )
+    for relative in PIN_DOCUMENTS:
+        path = root / relative
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for match in FULL_COMMIT.finditer(text):
+            if match.group(0) not in pins.values():
+                errors.append(
+                    f"pin mismatch: {relative.as_posix()} names commit "
+                    f"{match.group(0)}, which is neither the upstream pin "
+                    f"{UPSTREAM_COMMIT} nor the translation pin {TRANSLATION_COMMIT}"
+                )
+        for match in UPSTREAM_REFERENCE.finditer(text):
+            if not UPSTREAM_COMMIT.startswith(match.group("sha")):
+                errors.append(
+                    f"pin mismatch: {relative.as_posix()} names "
+                    f"bojieli/ai-infra-book@{match.group('sha')}, expected a prefix "
+                    f"of {UPSTREAM_COMMIT}"
+                )
 
 
 def _dotted(payload: object, key: str) -> object:
@@ -1397,6 +1505,7 @@ def validate_repository(root: Path) -> list[str]:
     validate_numbers_anchors(root, errors)
     validate_calculator_coverage(root, errors)
     validate_data_integrity(root, errors)
+    validate_pins(root, lock, errors)
     validate_skill_routing(root, errors)
     validate_benchmark_coverage(root, errors)
 

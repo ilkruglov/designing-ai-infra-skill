@@ -710,6 +710,47 @@ class ChapterQuoteTests(unittest.TestCase):
         self.assertEqual(1, len(errors), result.stdout)
         self.assertIn("quote not found in anchor section", errors[0])
 
+    def test_rejects_absent_quote_outside_chapter_summaries(self) -> None:
+        # SKILL.md и все references/**, кроме текста книги, проверяются так же, как
+        # конспекты глав: цитата с якорем должна быть дословной в секции якоря
+        for relative in (
+            SKILL_DIRECTORY / "SKILL.md",
+            SKILL_DIRECTORY / "references" / "cheatsheet.md",
+            SKILL_DIRECTORY / "references" / "playbooks" / "size-inference.md",
+        ):
+            with self.subTest(document=relative.as_posix()):
+                with repository_copy() as copied_root:
+                    path = copied_root / relative
+                    path.write_text(
+                        path.read_text(encoding="utf-8")
+                        + "\n> «этой фразы нет ни в одной секции книги» — "
+                        "`references/source-book/chapter1.md:11`\n",
+                        encoding="utf-8",
+                    )
+                    rebuild_lock(copied_root)
+
+                    result = run_validator(copied_root)
+
+                errors = error_lines(result)
+                self.assertEqual(1, len(errors), result.stdout)
+                self.assertIn("quote not found in anchor section", errors[0])
+                self.assertIn(relative.as_posix(), errors[0])
+
+    def test_rejects_unparsed_quote_outside_chapter_summaries(self) -> None:
+        with repository_copy() as copied_root:
+            path = copied_root / SKILL_DIRECTORY / "references" / "cheatsheet.md"
+            path.write_text(
+                path.read_text(encoding="utf-8") + "\n> «цитата без якоря на книгу»\n",
+                encoding="utf-8",
+            )
+
+            result = run_validator(copied_root)
+
+        errors = error_lines(result)
+        self.assertEqual(1, len(errors), result.stdout)
+        self.assertIn("unparsed", errors[0])
+        self.assertIn("cheatsheet.md", errors[0])
+
     def test_rejects_chapter_summary_without_quotes(self) -> None:
         with repository_copy() as copied_root:
             path = (
@@ -1347,6 +1388,42 @@ class DataIntegrityTests(unittest.TestCase):
             result.stdout,
         )
 
+    def test_rejects_book_text_changed_outside_anchors(self) -> None:
+        # README, SKILL.md и NOTICE обещают побайтную копию перевода; строка
+        # chapter1.md:176 — не якорь, и lock её не хеширует
+        with repository_copy() as copied_root:
+            path = copied_root / SKILL_DIRECTORY / "references" / "source-book"
+            path = path / "chapter1.md"
+            lines = path.read_text(encoding="utf-8").split("\n")
+            self.assertIn("80 GB", lines[175])
+            lines[175] = lines[175].replace("80 GB", "40 GB", 1)
+            path.write_text("\n".join(lines), encoding="utf-8")
+
+            result = run_validator(copied_root)
+
+        errors = error_lines(result)
+        self.assertEqual(2, len(errors), result.stdout)
+        for source in (Path("SOURCE.json"), PLUGIN_DIRECTORY / "SOURCE.json"):
+            self.assertIn(
+                f"bundled source sha256 mismatch with {source}: chapter1.md",
+                result.stdout,
+            )
+
+    def test_rejects_source_record_without_book_hash(self) -> None:
+        def drop_hash(payload: dict) -> None:
+            del payload["bundled_sources"]["sha256"]["chapter1.md"]
+
+        with repository_copy() as copied_root:
+            self.edit_source(copied_root, Path("SOURCE.json"), drop_hash)
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            "SOURCE.json lacks bundled_sources.sha256 for chapter1.md: SOURCE.json",
+            result.stdout,
+        )
+
     def test_rejects_cjk_artifact_in_skill_document(self) -> None:
         with repository_copy() as copied_root:
             path = copied_root / SKILL_DIRECTORY / "SKILL.md"
@@ -1374,6 +1451,59 @@ class DataIntegrityTests(unittest.TestCase):
             f"CJK artifact: {SKILL_DIRECTORY / 'references' / 'chapters' / 'x.md'}:3",
             result.stdout,
         )
+
+
+class PinTests(unittest.TestCase):
+    """Пины оригинала и перевода записаны в нескольких местах; источник истины —
+    константы scripts/build_source_lock.py, остальные записи с ними сверяются."""
+
+    UPSTREAM = "56ecb425b07ea6d16e891cba87bf7db416927d09"
+    TRANSLATION = "c791c07c8370155474d84b635d41d142f54f4fc9"
+    OTHER = "0123456789abcdef0123456789abcdef01234567"
+
+    def mutate(self, relative: Path, old: str, new: str) -> list[str]:
+        with repository_copy() as copied_root:
+            path = copied_root / relative
+            text = path.read_text(encoding="utf-8")
+            self.assertIn(old, text)
+            path.write_text(text.replace(old, new, 1), encoding="utf-8")
+            result = run_validator(copied_root)
+        return error_lines(result)
+
+    def test_rejects_pin_mismatch(self) -> None:
+        cases = (
+            (PLUGIN_DIRECTORY / "SOURCE.json", self.TRANSLATION),
+            (Path("SOURCE.json"), self.UPSTREAM),
+            (SKILL_DIRECTORY / "references" / "source-map.lock.json", self.UPSTREAM),
+            (SKILL_DIRECTORY / "SKILL.md", self.TRANSLATION),
+            (SKILL_DIRECTORY / "references" / "source-map.md", self.UPSTREAM),
+            (Path("README.md"), self.TRANSLATION),
+        )
+        for relative, pin in cases:
+            with self.subTest(document=relative.as_posix()):
+                errors = self.mutate(relative, pin, self.OTHER)
+                self.assertEqual(1, len(errors), errors)
+                self.assertIn("pin mismatch", errors[0])
+                self.assertIn(relative.as_posix(), errors[0])
+
+    def test_rejects_short_upstream_pin_mismatch(self) -> None:
+        errors = self.mutate(
+            SKILL_DIRECTORY / "SKILL.md",
+            "ai-infra-book@56ecb425",
+            "ai-infra-book@deadbeef",
+        )
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("pin mismatch", errors[0])
+        self.assertIn("deadbeef", errors[0])
+
+    def test_pins_are_the_lock_builder_constants(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        try:
+            import build_source_lock
+        finally:
+            sys.path.pop(0)
+        self.assertEqual(build_source_lock.UPSTREAM_COMMIT, self.UPSTREAM)
+        self.assertEqual(build_source_lock.TRANSLATION_COMMIT, self.TRANSLATION)
 
 
 class NumbersAnchorTests(unittest.TestCase):

@@ -8,7 +8,7 @@
 | Оригинал и калькуляторы автора | `https://github.com/bojieli/ai-infra-book` | `56ecb425b07ea6d16e891cba87bf7db416927d09` |
 | Снимок ускорителей `data/hardware.json` | `calculations/configs/hardware.json` оригинала на том же пине | sha256 `9c4639ec65ca3b808923a7f332114f800c7930635b6fdac08f49686cddbf0ba2` |
 
-Пины и хеш записаны в `SOURCE.json`. Лицензия всех источников — Apache-2.0.
+Пины, sha256 снимка и каждого файла книги записаны в `SOURCE.json`; валидатор их сверяет. Лицензия всех источников — Apache-2.0.
 
 Ссылка вида `references/source-book/chapterN.md:LINE` указывает на строку-заголовок раздела. Все якоря зафиксированы в `references/source-map.lock.json` вместе с sha256 строки: если текст книги сдвинется, расхождение найдёт валидатор, а не читатель.
 

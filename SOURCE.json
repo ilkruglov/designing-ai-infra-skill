@@ -15,7 +15,22 @@
   },
   "bundled_sources": {
     "directory": "plugins/designing-ai-infra/skills/designing-ai-infra/references/source-book",
-    "files": ["preface.md", "chapter1.md", "chapter2.md", "chapter3.md", "chapter4.md", "chapter5.md", "chapter6.md", "chapter7.md", "chapter8.md", "chapter9.md", "chapter10.md", "chapter11.md", "chapter12.md"]
+    "files": ["preface.md", "chapter1.md", "chapter2.md", "chapter3.md", "chapter4.md", "chapter5.md", "chapter6.md", "chapter7.md", "chapter8.md", "chapter9.md", "chapter10.md", "chapter11.md", "chapter12.md"],
+    "sha256": {
+      "preface.md": "dcc29b95190629170626769459e6a4d2482a69181f7e311f9a91e5320d15d759",
+      "chapter1.md": "ec0d9242328e17920d0af9bdf9e2478ac095a3d60ac828708ae1219f1c189bcc",
+      "chapter2.md": "af6b1469fb03fe74a05b77e31139b0d616d6874b255c673cd3cfd0a48c0e0fc0",
+      "chapter3.md": "4fecfc8699044d9a5967827b8f249100daa8c3f766d3d780e59bb9c934df2b87",
+      "chapter4.md": "e4db4deb1ea510a1da442080f11dff4a5a8fcd6c7e362676d8ff6db654579794",
+      "chapter5.md": "16a4ee8e93ca33106dfb6e35255a031e823dbcd631b4f6af0a84de62891a5cd7",
+      "chapter6.md": "d8f252431433d0b79bbdeae080a678cf12ba2a98616ccbe241dd30caa8efcb63",
+      "chapter7.md": "078b8369cb71854927e692fbcc461c1eb081306274fa2cf72f5063cf3080ee14",
+      "chapter8.md": "86f65a3aef97c3ddf9b516a8e82bee784a7bd0345503ec98c32266f5e9055906",
+      "chapter9.md": "06a4bbb05130a92756bbc105938df6e09052685a41ed84c885e6aeb3c9586935",
+      "chapter10.md": "c50ced35168431a2aa9b5f388d8e2496e69a50f76e0f2046fda45668720a753a",
+      "chapter11.md": "6ef70920b274dfea8a5769618a23dc357d3dc6a29e480d01ec0897f2d1217dfc",
+      "chapter12.md": "ad77c3f5bc8d3f489eacdeff3c112f628aac0a20e42770e8dff086427c6f0958"
+    }
   },
   "data": {
     "hardware_json": {
