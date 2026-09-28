@@ -396,7 +396,7 @@ python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --weights 1638
 python3 scripts/calc.py queueing --class long_in=8192:256 --class long_out=1024:2048 \
   --rate long_in=2 --rate long_out=2
 python3 scripts/calc.py queueing --class long_in=8192:256 --class long_out=1024:2048 \
-  --rate long_in=0.4 --rate long_out=3.6 --decode-capacity 5592.68
+  --rate long_in=0.4 --rate long_out=3.6 --decode-capacity 5592.68 --capacity-upper-bound
 python3 scripts/calc.py queueing --arrival-rate 2 --time-in-system 10
 ```
 
@@ -406,12 +406,12 @@ python3 scripts/calc.py queueing --arrival-rate 2 --time-in-system 10
 
 **input_tokens_per_second**: 6963.2 tok/s
 **decode_steps_per_second**: 7471.2 step/s
-**decode_utilization**: 1.33589
+**decode_utilization** (нижняя граница): 1.33589
 
 **in_system**: 20
 ```
 
-Загрузка второй минуты ≈ 1,34 > 1 — очередь растёт; закон Литтла при 2 задачах/с и 10 с — 20 задач, одновременно ждущих инструмент (упражнение 3-2), × 1 GiB = 20 GiB состояния.
+Загрузка второй минуты не меньше ≈ 1,34 > 1 — очередь растёт; мощность 5592,68 шага/с — удвоенная верхняя граница из `serving`, поэтому `--capacity-upper-bound` помечает загрузку нижней границей; закон Литтла при 2 задачах/с и 10 с — 20 задач, одновременно ждущих инструмент (упражнение 3-2), × 1 GiB = 20 GiB состояния.
 
 FLOPs обучения и сверка с 6ND (раздел 3.4.3):
 
@@ -426,14 +426,18 @@ python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8
 **zero3_state_bytes_per_gpu**: 16 381 470 720 B
 ```
 
-431,368 и 402,591 TFLOPs — как в книге. ZeRO-строки считают 16 байт на параметр (градиенты BF16, глава 10); 18 байт главы 3.4.1 — через модуль `training`:
+431,368 и 402,591 TFLOPs — как в книге. ZeRO-строки считают 16 байт на параметр (градиенты BF16, глава 10); 18 байт главы 3.4.1 — градиенты FP32 в `training-state`:
 
 ```bash
-python3 -c "import sys; sys.path.insert(0, 'scripts'); from infra_calc import training; print(training.state_bytes(8190735360, 18))"
+python3 scripts/calc.py training-state --config scripts/tests/fixtures/configs/qwen3-8b.json --dp 1 --stage 0 \
+  --grad-bytes 4
 ```
 
 ```text
-147433236480
+**weight_state_bytes_per_device**: 16 381 470 720 B
+**gradient_state_bytes_per_device**: 32 762 941 440 B
+**optimizer_state_bytes_per_device**: 98 288 824 320 B
+**training_state_bytes_per_device**: 147 433 236 480 B
 ```
 
 Срок обучения (условия — из главы: H100, MFU 40 %, 36T токенов Qwen3; 2048 ускорителей — масштаб примеров раздела 3.6.2):
@@ -445,7 +449,7 @@ python3 scripts/calc.py training --device h100-sxm --config scripts/tests/fixtur
 
 ```text
 **training_seconds**: 2.17787e+06 s
-- входные данные: total_flops=1.7652e+24 FLOP, total_tokens=3.6e+13 tok, devices=2 048, mfu=0.4, ...
+- входные данные: total_flops=1.7652e+24 FLOP, total_tokens=3.6e+13 tok, devices=2 048, mfu=0.4, device=h100-sxm, precision=BF16, accumulator=FP32, sparsity=dense, peak=9.894e+14 FLOP/s
 ```
 
 ≈ 25,2 дня. `total_flops` 1,7652·10²⁴ выше табличных 1,728·10²⁴ на ≈ 2,2 %, и вся разница — из-за числа параметров: калькулятор берёт 8,19B из `config.json`, таблица — округлённые 8B (6ND для 8,19B дало бы ≈ 1,769·10²⁴, +2,4 %). Поэлементный счёт на длине 4096 даже немного ниже 6ND: `training --tokens 4096` без срока даёт `training_flops_per_sequence` 200 840 589 606 912 против `six_nd_flops_per_sequence` 201 295 512 207 360 — на такой длине внимание не перекрывает лишний учёт эмбеддингов в 6ND (на 8192, наоборот, +7,15 %).

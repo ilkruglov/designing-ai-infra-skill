@@ -530,7 +530,7 @@ python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8
 **zero2_state_bytes_per_gpu**: 30 715 257 600 B
 **zero3_state_bytes_per_gpu**: 16 381 470 720 B
 **training_seconds**: 1.66015e+06 s
-- входные данные: total_flops=5.26572e+21 FLOP, total_tokens=1e+11 tok, devices=48, mfu=0.4, device=rtx4090, ... peak=1.652e+14 FLOP/s
+- входные данные: total_flops=5.26572e+21 FLOP, total_tokens=1e+11 tok, devices=48, mfu=0.4, device=rtx4090, precision=BF16, accumulator=FP32, sparsity=dense, peak=1.652e+14 FLOP/s
 ```
 
 4,31·10¹⁴ на последовательность и 5,27·10²¹ всего — как в 10.1.3; ZeRO при d = 8 — 122,05 / 41,96 / 28,61 / 15,26 GiB (таблица 10.2.1). `training_seconds` — только вычисления (≈ 19,2 дня; книга даёт 19,4 с шагом 52,8 s, где добавлены 0,58 s коммуникаций и входа). ZeRO-3 на всю группу и 32 карты:
@@ -566,18 +566,17 @@ python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8
 
 ≈ 30,8 дня (> 30), ≈ 25,7 и ≈ 77 дней.
 
-Период checkpoint (Meta: 1024 ускорителя, прерывание раз в 7,9 часа; 114 670 295 040 байт при 7 GB/s; r = 120 s) и утилизация конвейера:
+Период checkpoint (Meta: 1024 ускорителя, прерывание раз в 7,9 часа; 114 670 295 040 байт при 7 GB/s; r = 120 s):
 
 ```bash
 python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 1024 \
-  --device-mtbf 29122560 --recovery 120 --stages 4 --microbatches 8
+  --device-mtbf 29122560 --recovery 120
 ```
 
 ```text
 **first_order_optimal_interval_seconds**: 965.287 s
 **poisson_optimal_interval_seconds**: 954.397 s
 **first_order_loss_at_interval**: 0.0381606
-**pipeline_utilization**: 0.727273
 ```
 
 `--device-mtbf` = 7,9 × 3600 × 1024 s (≈ 337 дней). Интервалы 300 / 900 / 1800 s для 1024 ускорителей:
@@ -597,7 +596,7 @@ python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwi
 **first_order_loss_at_interval**: 0.0449658
 ```
 
-Таблица 6,4 / 3,8 / 4,5 %. Сквозной пример (32 и 48 карт при 1800 s, 48 при 600 s) и утилизация при 16 micro-batch:
+Таблица 6,4 / 3,8 / 4,5 %. Сквозной пример (32 и 48 карт при 1800 s, 48 при 600 s):
 
 ```bash
 python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 32 \
@@ -605,7 +604,7 @@ python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwi
 python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 48 \
   --device-mtbf 29122560 --recovery 120 --interval 1800
 python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 48 \
-  --device-mtbf 29122560 --recovery 120 --interval 600 --stages 4 --microbatches 16
+  --device-mtbf 29122560 --recovery 120 --interval 600
 ```
 
 ```text
@@ -613,16 +612,15 @@ python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwi
 **first_order_optimal_interval_seconds**: 4458.47 s
 **first_order_loss_at_interval**: 0.010782
 **first_order_loss_at_interval**: 0.0279947
-**pipeline_utilization**: 0.842105
 ```
 
 1,02 %, 1,08 %, 2,80 %, оптимум для 48 — ≈ 4458 s (второй и третий вызов печатают его же).
 
-Всплески потерь раз в семь дней отдельного входа не имеют; их можно сложить с аппаратной частотой в эквивалентный MTBF устройства `48/(48/29 122 560 + 1/604 800) ≈ 14 538 203` s — это обходной приём, верный, пока оба потока событий действуют на всё задание и складываются как в `λ_hw + λ_spike`. Число 14 538 203 годится только с `--devices 48`; при другом N эквивалентный MTBF пересчитывается как `N/(N/29 122 560 + 1/604 800)`:
+Всплески потерь раз в семь дней вызывают откат всего задания: их частота прибавляется к аппаратной один раз, а не на каждое устройство, как в `λ_hw + λ_spike` (10.4.5). Это задаёт `--common-job-mtbf` — секунды между такими событиями:
 
 ```bash
 python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 48 \
-  --device-mtbf 14538203 --recovery 120 --interval 600
+  --device-mtbf 29122560 --recovery 120 --interval 600 --common-job-mtbf 604800
 ```
 
 ```text
@@ -634,7 +632,7 @@ python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwi
 
 ```bash
 python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 48 \
-  --device-mtbf 14538203 --recovery 120 --interval 1800
+  --device-mtbf 29122560 --recovery 120 --interval 1800 --common-job-mtbf 604800
 ```
 
 ```text
@@ -643,17 +641,25 @@ python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwi
 
 ≈ 1,25 %.
 
-Шаг fill–drain без передач (CLI его не выводит — функция модуля):
+Конвейер из четырёх стадий: восемь micro-batch с прямым проходом 10 ms и обратным 20 ms, затем 16 micro-batch и чередующийся 1F1B с двумя блоками слоёв на карту:
 
 ```bash
-python3 -c "import sys; sys.path.insert(0, 'scripts'); from infra_calc import training as t; print(t.fill_drain_seconds(4, 8, 0.010, 0.020))"
+python3 scripts/calc.py pipeline --stages 4 --microbatches 8 --forward-seconds 0.010 --backward-seconds 0.020
+python3 scripts/calc.py pipeline --stages 4 --microbatches 16
+python3 scripts/calc.py pipeline --stages 4 --microbatches 8 --virtual-stages 2
 ```
 
 ```text
-0.32999999999999996
+**pipeline_bubble_ratio**: 0.375
+**pipeline_utilization** (верхняя граница): 0.727273
+**pipeline_step_seconds** (нижняя граница): 0.33 s
+**pipeline_bubble_seconds** (нижняя граница): 0.09 s
+**pipeline_bubble_ratio**: 0.1875
+**pipeline_utilization** (верхняя граница): 0.842105
+**pipeline_bubble_ratio**: 0.1875
 ```
 
-330 ms; 337 ms книги добавляют три передачи в каждую сторону и обновление, 1F1B и расширенные расписания — только событийная модель.
+8/11 ≈ 72,7 % и 330 ms, как в 10.3.2; 337 ms книги добавляют три передачи в каждую сторону и обновление, поэтому утилизация — верхняя граница, а шаг — нижняя. 16 micro-batch — 84,2 %. Чередующийся 1F1B при v = 2 уменьшает долю пузыря с 37,5 до 18,75 % (18,8 % в книге); время расписаний с передачами (1F1B — 347 ms, чередующийся — 298 ms) и пик активаций — только событийная модель.
 
 Буфер градиента эксперта (72 MiB, кольцо на 4 участника, 25 GB/s). `ring` берёт α за каждый из `2(n − 1)` раундов, а книга — один запуск ≈ 0,02 ms на вызов; чтобы воспроизвести книгу, α делится на шесть раундов:
 

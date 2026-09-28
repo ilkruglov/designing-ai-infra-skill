@@ -530,19 +530,20 @@ python3 scripts/calc.py units --mbps 400000
 
 `--mbps 200000` — `2.5e+10 B/s` (ConnectX-7 в примере переноса V4.1).
 
-Накладные расходы восстановления — модель первого порядка `c/τ + λτ/2 + λr` команды `checkpoint` совпадает с `ε ≈ C/I + λ(I/2 + R)`; `--device-mtbf` — 7,9 ч × 1024 в секундах, C = 10 s задано как 640 GB при 64 GB/s:
+Накладные расходы восстановления — модель первого порядка `c/τ + λτ/2 + λr` команды `checkpoint` совпадает с `ε ≈ C/I + λ(I/2 + R)`; `--device-mtbf` — 7,9 ч × 1024 в секундах, C = 10 s задано как 640 GB при 64 GB/s. Затем утилизация конвейера `U_pipe` для четырёх стадий и восьми micro-batch:
 
 ```bash
 python3 scripts/calc.py checkpoint --checkpoint-bytes 640e9 --save-bandwidth 64e9 --devices 1024 \
-  --device-mtbf 29122560 --recovery 188 --interval 600 --stages 4 --microbatches 8
+  --device-mtbf 29122560 --recovery 188 --interval 600
+python3 scripts/calc.py pipeline --stages 4 --microbatches 8
 ```
 
 ```text
 **first_order_loss_at_interval**: 0.0338256
-**pipeline_utilization**: 0.727273
+**pipeline_utilization** (верхняя граница): 0.727273
 ```
 
-3,4 % для узла 128 карт; `--recovery 316` — `0.0383263` (3,8 %). `pipeline_utilization` — `U_pipe` для четырёх стадий и восьми micro-batch (73 %), `--microbatches 27` — `0.9`. Поля оптимального интервала относятся к главе 10.
+3,4 % для узла 128 карт; `--recovery 316` — `0.0383263` (3,8 %). `U_pipe` — 73 % (верхняя граница: передачи между стадиями не учтены), `--microbatches 27` — `0.9`. Поля оптимального интервала относятся к главе 10.
 
 Для разреза `V_C/B_C`, Clos, `B_eff = min(B_path, Nm/T, m/δ)`, состояния соединений, очереди `Q_free/(λ − B)`, incast, ECMP и `T_grad` целиком команд нет — формулы главы считаются вручную.
 
