@@ -135,6 +135,9 @@ GENERATION_KEYS = {
     "tokenizer_class",
 }
 BENIGN_KEYS = RUNTIME_KEYS | GENERATION_KEYS
+# Значения по умолчанию из GENERATION_KEYS, которые, будучи включёнными, меняют
+# архитектуру: кодировщик, перекрёстное внимание, удалённые головы.
+ARCHITECTURAL_WHEN_SET = {"is_encoder_decoder", "add_cross_attention", "pruned_heads"}
 
 
 class UnsupportedArchitecture(ValueError):
@@ -227,7 +230,12 @@ def _parse_text(cfg: dict[str, Any]) -> ModelSpec:
         raise UnsupportedArchitecture(
             "не указан", ["model_type"], hint, detail="model_type не указан в config"
         )
-    unknown = sorted(set(cfg) - KNOWN_KEYS - BENIGN_KEYS)
+    unknown = sorted(
+        key
+        for key, value in cfg.items()
+        if key not in KNOWN_KEYS
+        and (key not in BENIGN_KEYS or (key in ARCHITECTURAL_WHEN_SET and value))
+    )
     if not unknown:
         raise UnsupportedArchitecture(
             model_type,

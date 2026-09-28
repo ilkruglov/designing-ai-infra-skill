@@ -98,6 +98,31 @@ class ParseSpecTest(unittest.TestCase):
             model.parse_spec(config)
         self.assertEqual(caught.exception.fields, ["query_pre_attn_scalar"])
 
+    def test_architectural_generation_defaults_are_listed_when_set(self) -> None:
+        # is_encoder_decoder, add_cross_attention и pruned_heads — значения PretrainedConfig
+        # по умолчанию, но, когда они включены, меняют архитектуру (кодировщик,
+        # перекрёстное внимание, удалённые головы) и попадают в перечень полей
+        base = {"model_type": "gemma2", "hidden_size": 4096}
+        quiet = base | {
+            "is_encoder_decoder": False,
+            "add_cross_attention": False,
+            "pruned_heads": {},
+        }
+        with self.assertRaises(model.UnsupportedArchitecture) as caught:
+            model.parse_spec(quiet)
+        self.assertEqual(caught.exception.fields, ["model_type"])
+        loud = base | {
+            "is_encoder_decoder": True,
+            "add_cross_attention": True,
+            "pruned_heads": {"0": [1]},
+        }
+        with self.assertRaises(model.UnsupportedArchitecture) as caught:
+            model.parse_spec(loud)
+        self.assertEqual(
+            caught.exception.fields,
+            ["add_cross_attention", "is_encoder_decoder", "pruned_heads"],
+        )
+
     def test_unknown_model_type_with_familiar_fields_says_so(self) -> None:
         # все поля знакомы, незнаком только model_type: перечень не пустой «—»
         config = model.load_config(CONFIGS / "qwen3-8b.json") | {"model_type": "qwen9"}
