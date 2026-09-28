@@ -90,6 +90,351 @@
       "line_text": "### 1.1.3 Обработка одного запроса на генерацию",
       "kind": "heading"
     },
+    "chapter10.md:116": {
+      "line_sha256": "821f0cc7fe1c4f91b782ee114c53316e6d45be18fcd8a476e8573ad5e157e155",
+      "line_text": "### 10.1.3 Требования к вычислениям, MFU и нижняя граница ресурсов",
+      "kind": "heading"
+    },
+    "chapter10.md:151": {
+      "line_sha256": "f10f61dc9ba9ef3b1c66ee73e30b8179ae705056f7d0d3950cd6af18c5e87b31",
+      "line_text": "### 10.2.1 Параллелизм данных и шардирование состояния в ZeRO/FSDP",
+      "kind": "heading"
+    },
+    "chapter10.md:205": {
+      "line_sha256": "966bfd3032eaf2cfc9e5b569d98b3674542d1cfc545a2b0e5c6ff7d517fe6517",
+      "line_text": "### 10.2.2 Сохранение активаций и выборочное повторное вычисление",
+      "kind": "heading"
+    },
+    "chapter10.md:21": {
+      "line_sha256": "6251371f89e6e054c6cbeb271dd45ea085552ea84a74a94e4266eec69612fa9d",
+      "line_text": "### 10.1.1 Задача обучения, обучаемые параметры и критерий завершения",
+      "kind": "heading"
+    },
+    "chapter10.md:237": {
+      "line_sha256": "6304539d035e29c562af55870b134af339196410e24065751f4cd81d208bd0c0",
+      "line_text": "### 10.2.3 Выгрузка между CPU и GPU и время использования буферов",
+      "kind": "heading"
+    },
+    "chapter10.md:275": {
+      "line_sha256": "b724dde7d598d35094739e9b277826a52490f7d3bcbd2d9e3dbf62274944e0c0",
+      "line_text": "### 10.2.4 Распределение состояния по GPU и топология соединений в комбинированных схемах параллелизма",
+      "kind": "heading"
+    },
+    "chapter10.md:3": {
+      "line_sha256": "54379ee93aae3ab13db7e4bb14a6cb80d3060bed17418dd3cfbd7b6a2e18fb47",
+      "line_text": "# Глава 10. Системы обучения",
+      "kind": "heading"
+    },
+    "chapter10.md:301": {
+      "line_sha256": "a8d4162c2a9d3553dc923405d66b0079a7212152464e81253b758f97dec1a366",
+      "line_text": "### 10.3.1 Micro-batch, накопление градиентов и обновление параметров",
+      "kind": "heading"
+    },
+    "chapter10.md:322": {
+      "line_sha256": "dd8b712ba3f4d913e87ea091f3e889835cc024906f4ddbc336aa77df58641dfa",
+      "line_text": "### 10.3.2 Конвейерное планирование, пузыри и жизненный цикл активаций",
+      "kind": "heading"
+    },
+    "chapter10.md:408": {
+      "line_sha256": "32aaf373779c140655229c0acc0cb4539960491a9b8f01006a88e8e1e07c5590",
+      "line_text": "### 10.3.3 Зависимости обратного прохода, группировка градиентов в буферы и перекрытие коммуникаций",
+      "kind": "heading"
+    },
+    "chapter10.md:438": {
+      "line_sha256": "bb9dc9db2cf39092fefabe23f17d73d4b39ccf05ccf0064d0d9a8924e4e2cec4",
+      "line_text": "### 10.3.4 Изменения планирования для MoE и длинного контекста",
+      "kind": "heading"
+    },
+    "chapter10.md:491": {
+      "line_sha256": "36e43759652a4ab0d6b14f970c4f94b0bb2d4718464019b2ce08f34429672509",
+      "line_text": "### 10.4.1 Чтение, упаковка и предварительная загрузка данных",
+      "kind": "heading"
+    },
+    "chapter10.md:507": {
+      "line_sha256": "c154927f5136f853497bdb4e991699065fb41652f1eee778976158613a993a31",
+      "line_text": "### 10.4.2 Восстанавливаемое состояние и преобразование раскладки",
+      "kind": "heading"
+    },
+    "chapter10.md:527": {
+      "line_sha256": "88b3bba5224356b0da068107c30f4764bc1f6ec6f9be6f5277c7d60f9d7b2523",
+      "line_text": "### 10.4.3 Синхронное и асинхронное сохранение, конкуренция за пропускную способность",
+      "kind": "heading"
+    },
+    "chapter10.md:553": {
+      "line_sha256": "64e22c8a7ee617369e3dfb9e8ab7b3fdde18c2dfabc05c0d84ba3ac43debe0c0",
+      "line_text": "### 10.4.4 Масштаб сбоев, период сохранения и эффективный прогресс обучения",
+      "kind": "heading"
+    },
+    "chapter10.md:59": {
+      "line_sha256": "1e6ef4757706445f6f02997342b2ac51113c9a77112a63a415e2f9fa8b368d01",
+      "line_text": "### 10.1.2 Параметры, градиенты, оптимизатор и активации",
+      "kind": "heading"
+    },
+    "chapter10.md:600": {
+      "line_sha256": "05ec734f98b90abbc251c187ee981930cf0cac58ca122078dcc36f90f61dd40e",
+      "line_text": "### 10.4.5 Отстающие и медленные узлы",
+      "kind": "heading"
+    },
+    "chapter10.md:629": {
+      "line_sha256": "03aabd6eed5be084000ebf92b09ff3c7ba72937e9cc89ffad94c9c2dcf149d1e",
+      "line_text": "### 10.5.1 Одна итерация генерации ответов, проверки и обновления параметров",
+      "kind": "heading"
+    },
+    "chapter10.md:645": {
+      "line_sha256": "e47fd1231ca6e85523aad9924d06bac1a51aabc4f059f21004e2b7cbf8f31408",
+      "line_text": "### 10.5.2 Распределение ресурсов между этапами и синхронизация весов",
+      "kind": "heading"
+    },
+    "chapter10.md:685": {
+      "line_sha256": "f3e7b3ac1f497c92f688108d03283f4cdf8f7b2a113ca28bde0d38fce1a9b620",
+      "line_text": "### 10.5.3 Асинхронное обучение, версии стратегии и восстановление длинных траекторий",
+      "kind": "heading"
+    },
+    "chapter10.md:739": {
+      "line_sha256": "729ba22fc5488976ff6561ce1fbc4dadc2a87ae6e2575ce3bc9577dbcf29dc3e",
+      "line_text": "### 10.5.4 Повторное воспроизведение экспертной маршрутизации и согласованность обучения и инференса",
+      "kind": "heading"
+    },
+    "chapter10.md:765": {
+      "line_sha256": "9d686a25d6289b701eaedc29ad5e56005cd75b9dc158848e522683629ddc5395",
+      "line_text": "### 10.6.1 Сводный учёт ёмкости, времени шага, остановок и восстановления",
+      "kind": "heading"
+    },
+    "chapter10.md:798": {
+      "line_sha256": "aff25ac78076dd8963a1cbd0279de0471e5c4f0db8ba75d5b88365babe8c869a",
+      "line_text": "### 10.6.2 Область применимости кластера из 4090",
+      "kind": "heading"
+    },
+    "chapter10.md:814": {
+      "line_sha256": "7883b91be7f3abaecadda51b55abba1f5241f7ec91c8c1a3df62f51f88112b78",
+      "line_text": "### 10.6.3 Узкие места и выбор после замены оборудования",
+      "kind": "heading"
+    },
+    "chapter10.md:832": {
+      "line_sha256": "1f4185f769d013f6ed402d9f94fe26bded8fd474a597e5ae7463526259cc9e9d",
+      "line_text": "### 10.6.4 Чувствительность к масштабу модели, объёму данных и сроку",
+      "kind": "heading"
+    },
+    "chapter10.md:854": {
+      "line_sha256": "6418caff27bade53cee5eaf6059fef370501fa587a66c3e8e154284a292da34e",
+      "line_text": "## Распространённые заблуждения",
+      "kind": "heading"
+    },
+    "chapter10.md:866": {
+      "line_sha256": "bc5e5edd0489715f070ff6914e0684428c92ce2b3edf919819d543c5bab04d8f",
+      "line_text": "## Упражнения и эксперименты",
+      "kind": "heading"
+    },
+    "chapter11.md:101": {
+      "line_sha256": "2b0d183cd3e76c16f25045473df0ed700e1d2953c622d715134926720e415bc3",
+      "line_text": "### 11.1.3 Условия завершения задачи и состояние, которое необходимо сохранять",
+      "kind": "heading"
+    },
+    "chapter11.md:121": {
+      "line_sha256": "e7d0b41f30196f61dbb8eb517efb556bd6293adfeefdca67a8e4ebf3ff4f6b48",
+      "line_text": "### 11.2.1 Путь выполнения инструментов и границы изоляции",
+      "kind": "heading"
+    },
+    "chapter11.md:159": {
+      "line_sha256": "f5293d955a8144026b34c7e5c79c231da44f676e16f5ed7dbe2c11a3b6bcbfa0",
+      "line_text": "### 11.2.2 Распределение ресурсов и создание среды",
+      "kind": "heading"
+    },
+    "chapter11.md:203": {
+      "line_sha256": "9cf7f0d541fcc800f5e66fffc91e00e70b869ec1f3d1a72d529791337e00b566",
+      "line_text": "### 11.2.3 Приостановка, возобновление и воссоздание среды",
+      "kind": "heading"
+    },
+    "chapter11.md:235": {
+      "line_sha256": "3c1d5a9f0fff82c08f067d4aa913ee865b55f63b5ff7feedf17306cada42ed21",
+      "line_text": "### 11.2.4 Постоянное сохранение, создание по требованию и предварительная подготовка",
+      "kind": "heading"
+    },
+    "chapter11.md:294": {
+      "line_sha256": "5564b3b658679e213c66043e58b8f937d8d5323136477dfdf2579ffff8e5a3e4",
+      "line_text": "### 11.3.1 Гетерогенные ресурсы, групповое выделение и ограничения размещения",
+      "kind": "heading"
+    },
+    "chapter11.md:3": {
+      "line_sha256": "5f6105bd8e73bed705f58e00c71a12e0f462db526f733392063140f1666ef739",
+      "line_text": "# Глава 11. Планирование ресурсов и среда выполнения",
+      "kind": "heading"
+    },
+    "chapter11.md:322": {
+      "line_sha256": "42325e68a261147eedbea0e3eed8cde2910d129bfe5d54a56a095d6d4d6fc01e",
+      "line_text": "### 11.3.2 Очереди, приоритеты и стоимость вытеснения",
+      "kind": "heading"
+    },
+    "chapter11.md:33": {
+      "line_sha256": "7a901a395146d8b140f4d39d51429977d23d5f71e62030050400c0dd417317f0",
+      "line_text": "### 11.1.1 Выполнение одной задачи по работе с кодом и ожидание",
+      "kind": "heading"
+    },
+    "chapter11.md:370": {
+      "line_sha256": "5cea1a607606208bed870b04863e72e8aa2118d376fb6312c9d70845b355cf43",
+      "line_text": "### 11.3.3 Динамическое соотношение ресурсов для генерации и обучения RL",
+      "kind": "heading"
+    },
+    "chapter11.md:428": {
+      "line_sha256": "1593c8f4844f9e5756ccc599b074bac917909037eb64639c2b258488732e13d1",
+      "line_text": "### 11.3.4 Пакет верификации, длинный хвост и освобождение ресурсов",
+      "kind": "heading"
+    },
+    "chapter11.md:462": {
+      "line_sha256": "954bace6b3f41358c1fc1f128478df994656a3c67e2a317601230a15ff44f053",
+      "line_text": "### 11.4.1 Качество выполнения задач и бюджет рассуждения",
+      "kind": "heading"
+    },
+    "chapter11.md:488": {
+      "line_sha256": "cb9ae71270fab9553c08880f83c5a947a95f548084e47d92ad2f13cb078618ad",
+      "line_text": "### 11.4.2 Путь обслуживания, кэширование префиксов и фактическое потребление",
+      "kind": "heading"
+    },
+    "chapter11.md:515": {
+      "line_sha256": "da0e54b657683dd24cc1846361441ba62bbca7a30c1078ba4d866b11d0eda130",
+      "line_text": "### 11.4.3 Очереди, ограничение частоты запросов и маршрутизация моделей",
+      "kind": "heading"
+    },
+    "chapter11.md:552": {
+      "line_sha256": "850930ec8efdab563248c64ba0c8a2b69f778e6d58f9208a79c09874f75d9b5e",
+      "line_text": "### 11.4.4 Сравнение стоимости собственного сервиса, API с оплатой по фактическому потреблению и подписки",
+      "kind": "heading"
+    },
+    "chapter11.md:582": {
+      "line_sha256": "1797d21d0de82f4639e41b53345b6a5b3e0885d6ecff33abdbb04febe68761f2",
+      "line_text": "### 11.5.1 Восстановление после сбоя инструмента и выбор модели",
+      "kind": "heading"
+    },
+    "chapter11.md:62": {
+      "line_sha256": "be55feba3c2fa63236f4a297e3e49559de4e0ece3a527c5dcff15adafcba7257",
+      "line_text": "### 11.1.2 Объём вычислений CPU, время существования среды и параллельная ёмкость",
+      "kind": "heading"
+    },
+    "chapter11.md:625": {
+      "line_sha256": "cabdc75b964fd48510108fcbc80c4535a19d5bf1fb925a632ceaff1bd294afb8",
+      "line_text": "### 11.5.2 Полная стоимость успешной задачи",
+      "kind": "heading"
+    },
+    "chapter11.md:679": {
+      "line_sha256": "b04ffd4833b7ecde260a983b63b9060f262375caee2a7f7ad7613fc403f7c621",
+      "line_text": "### 11.5.3 Выбор масштабирования CPU, GPU, памяти и квот службы",
+      "kind": "heading"
+    },
+    "chapter11.md:722": {
+      "line_sha256": "bc5e5edd0489715f070ff6914e0684428c92ce2b3edf919819d543c5bab04d8f",
+      "line_text": "## Упражнения и эксперименты",
+      "kind": "heading"
+    },
+    "chapter12.md:114": {
+      "line_sha256": "5368cb391b29b12788cf5b636355091521eae7d06b902adf0c4557c1aff65877",
+      "line_text": "### 12.1.3 Computer Use: выполнение задач через интерфейс",
+      "kind": "heading"
+    },
+    "chapter12.md:13": {
+      "line_sha256": "fa5d79e9d7f373443d013f33bed2ddee093f2d52d4497309129309bfb3da184f",
+      "line_text": "### 12.1.1 Ретуширование изображений",
+      "kind": "heading"
+    },
+    "chapter12.md:140": {
+      "line_sha256": "765c1dd4d9a02494aa060bf64658272dc164c77b8c194e5d45b117684fe59969",
+      "line_text": "### 12.1.4 Предварительное сравнение локального устройства, близлежащего устройства и облака",
+      "kind": "heading"
+    },
+    "chapter12.md:156": {
+      "line_sha256": "2636a43b4ef435eba82a99b06e1547d04b33ad1451274f350fe9e11906d80e48",
+      "line_text": "### 12.1.5 Вычислительные ресурсы конечного устройства и локальное развёртывание",
+      "kind": "heading"
+    },
+    "chapter12.md:206": {
+      "line_sha256": "f39329ca6718670f50639a9af7fd8e5772d4888374eee1aff79878a0af329ba4",
+      "line_text": "### 12.2.1 Вызов полной модели и поэтапное выполнение",
+      "kind": "heading"
+    },
+    "chapter12.md:216": {
+      "line_sha256": "a9d03c13a18b46f9f3088a3b9079013349954d78bb1722acc6c84031a044c855",
+      "line_text": "### 12.2.2 Объём передачи и вычислительные затраты при кодировании на конечном устройстве",
+      "kind": "heading"
+    },
+    "chapter12.md:259": {
+      "line_sha256": "29aafd38ee23837d96b91cbb9b60cf9f91ceb707a9579df6aae9d73d9be67ea2",
+      "line_text": "### 12.2.3 Подготовка, повторное использование и восстановление при миграции сеанса",
+      "kind": "heading"
+    },
+    "chapter12.md:291": {
+      "line_sha256": "fe3ce918a1347a67af184f5faf6e22430b3b3ef45dae43d1dd549747888fe6c0",
+      "line_text": "### 12.2.4 Граница коммуникации при внутреннем разделении модели",
+      "kind": "heading"
+    },
+    "chapter12.md:3": {
+      "line_sha256": "c478aea5be0fedcb73acd1e7ff07e492dd90e40ac1ce2cf42df7a68e28d5b80d",
+      "line_text": "# Глава 12. Совместная работа устройств, периферии и облака",
+      "kind": "heading"
+    },
+    "chapter12.md:319": {
+      "line_sha256": "61ab373e8cb2a8af92dea29662d98be0a1182f05f6aaa10696e29327fda89b31",
+      "line_text": "### 12.3.1 Установление и повторное использование соединения",
+      "kind": "heading"
+    },
+    "chapter12.md:329": {
+      "line_sha256": "c4833fd46a37a1b8b0a9ef851b3e5acf52ce15c95b3cd64dc69d831c24b10119",
+      "line_text": "### 12.3.2 Окно, обратная связь и эффективная пропускная способность",
+      "kind": "heading"
+    },
+    "chapter12.md:359": {
+      "line_sha256": "d82aebe241f5341c7b01065fd841ee18077ba1c3b5de689b61c7fc139467f011",
+      "line_text": "### 12.3.3 Всегда ли потеря пакетов означает перегрузку",
+      "kind": "heading"
+    },
+    "chapter12.md:387": {
+      "line_sha256": "4dcd7a2591184d85513538eb729b67872c90afcda740946c81ed4834e0269414",
+      "line_text": "### 12.3.4 Многопоточная передача и приоритеты",
+      "kind": "heading"
+    },
+    "chapter12.md:407": {
+      "line_sha256": "b3e4fedf62b9bba07df5c66cd25e2d16fd91fe5798efc0349afd03fc272d3e6e",
+      "line_text": "### 12.3.5 Пример: как Queqiao ускоряет межрегиональные голосовые сервисы",
+      "kind": "heading"
+    },
+    "chapter12.md:462": {
+      "line_sha256": "c1093c78d3860a3908744ec08efb5d5b924dd6167efc3dc4a54a561da32f4988",
+      "line_text": "### 12.4.1 Общий радиоканал и конкуренция восходящего и нисходящего трафика",
+      "kind": "heading"
+    },
+    "chapter12.md:486": {
+      "line_sha256": "8f2f1f47ffb2ce754e468029466e2ba235be1a81acece1e7a41ef086eb02bae4",
+      "line_text": "### 12.4.2 Сроки обслуживания, устаревшие данные и отмена",
+      "kind": "heading"
+    },
+    "chapter12.md:500": {
+      "line_sha256": "b39266185143b0163ff08f1a1d534f4395bd26d21b01d9c561bf90db60083554",
+      "line_text": "### 12.4.3 Выбор двух путей, распределение трафика и переключение при отказе",
+      "kind": "heading"
+    },
+    "chapter12.md:556": {
+      "line_sha256": "7924e77f724cd4eb2223b6759b016015a23e65e93cf04af9787d4dd9a918ec4c",
+      "line_text": "### 12.5.2 Совместное сравнение срока, стоимости и восстановления",
+      "kind": "heading"
+    },
+    "chapter12.md:630": {
+      "line_sha256": "e4cd36e02fad443c07435880fe458db87ad912e155fe577a957d6e473bb97c62",
+      "line_text": "### 12.5.3 Когда необходимо сменить вариант развёртывания",
+      "kind": "heading"
+    },
+    "chapter12.md:648": {
+      "line_sha256": "cb18d04cd0aec1d70bc8d9ff5f1b9250e45db8141dcaaf349e30bd62ffb7a1d0",
+      "line_text": "### 12.5.4 Адаптация системы после изменения ресурсных условий",
+      "kind": "heading"
+    },
+    "chapter12.md:662": {
+      "line_sha256": "d8c793817618f6324d751bb9a33f25dab83dbebba5bc8e97d2fe7a0d5bab8e4e",
+      "line_text": "## Упражнения",
+      "kind": "heading"
+    },
+    "chapter12.md:70": {
+      "line_sha256": "b20a190b84ed8836e7067c9aed745aff23d788279b338d0dff9f8172a41096ee",
+      "line_text": "### 12.1.2 Речь в реальном времени",
+      "kind": "heading"
+    },
     "chapter2.md:106": {
       "line_sha256": "35a72561555a5cb89fdc42f407a192f796990ea69b8ce279a6608a0b316b63de",
       "line_text": "### 2.1.3 Вычисление внимания и позиционное кодирование",

@@ -20,3 +20,6 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
 - [ch07-datacenter-network.md](references/chapters/ch07-datacenter-network.md)
 - [ch08-inference-optimization.md](references/chapters/ch08-inference-optimization.md)
 - [ch09-distributed-inference.md](references/chapters/ch09-distributed-inference.md)
+- [ch10-training-systems.md](references/chapters/ch10-training-systems.md)
+- [ch11-resource-scheduling.md](references/chapters/ch11-resource-scheduling.md)
+- [ch12-edge-cloud.md](references/chapters/ch12-edge-cloud.md)
