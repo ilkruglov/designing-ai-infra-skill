@@ -62,6 +62,7 @@ A_CH6_UNION = f"{BOOK}/chapter6.md:391"
 A_CH6_RING = f"{BOOK}/chapter6.md:473"
 A_CH7_TIME = f"{BOOK}/chapter7.md:938"
 A_CH8_MEM = f"{BOOK}/chapter8.md:52"
+A_CH8_SHARED = f"{BOOK}/chapter8.md:268"
 A_CH8_SPEC = f"{BOOK}/chapter8.md:536"
 A_CH8_QUEUE = f"{BOOK}/chapter8.md:598"
 A_CH10_ZERO = f"{BOOK}/chapter10.md:151"
@@ -148,6 +149,7 @@ INPUT_UNITS: dict[str, str] = {
     **dict.fromkeys(DIMENSIONLESS | LABELS, ""),
     "context": "tok",
     "memory_context": "tok",
+    "shared_prefix": "tok",
     "fixed_state": "B",
     "tokens": "tok",
     "total_tokens": "tok",
@@ -1172,6 +1174,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
         at_least=(
             ("--context", 1),
             ("--memory-context", 1),
+            ("--shared-prefix-tokens", 1),
             ("--batch", 1),
             ("--tp", 1),
         ),
@@ -1198,7 +1201,19 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             f"--memory-context ({memory_context}) короче --context ({context}): "
             "--context — длина для шага (обычно длина входа), --memory-context — "
             "длина к концу генерации для бюджета памяти (вход + выход − 1), она не "
-            "может быть меньше"
+            "может быть меньше; общий префикс задаёт --shared-prefix-tokens"
+        )
+    prefix = args.shared_prefix_tokens or 0
+    if prefix > context:
+        raise ValueError(
+            f"--shared-prefix-tokens ({prefix}) длиннее --context ({context}): общий "
+            "префикс — начало входа запроса и не может быть длиннее его"
+        )
+    if prefix and prefix == memory_context:
+        raise ValueError(
+            f"--shared-prefix-tokens ({prefix}) равен --memory-context: у запроса нет "
+            "собственных токенов, а без них число запросов по памяти не определено; "
+            "--memory-context — полная длина запроса к концу генерации"
         )
     kv_card = args.kv_per_token / kv_div
     state_card = state_total / state_div
@@ -1266,10 +1281,32 @@ def _serving(args: argparse.Namespace) -> list[Result]:
         "weights": args.weights,
         "kv_per_token": args.kv_per_token,
         "memory_context": memory_context,
+        **({"shared_prefix": prefix} if prefix else {}),
         "reserve": args.reserve,
         **state,
         **parallel,
     }
+    if prefix:
+        own = memory_context - prefix
+        memory_formula = (
+            f"floor((C − {w_term} − reserve − {kv_term} × shared_prefix) / "
+            f"({kv_term} × (memory_context − shared_prefix){s_term}))"
+        )
+        prefix_notes: tuple[str, ...] = (
+            (
+                f"общий префикс shared_prefix = {prefix} ток. хранится в пуле один раз "
+                f"({format_number(round(kv_card * prefix))} B на карту), на запрос — "
+                f"memory_context − shared_prefix = {own} собственных ток.; один раз "
+                "хранятся заполненные блоки префикса, неполный хвостовой блок каждый "
+                "запрос копирует при записи (8.3.2) — задавайте префикс кратным блоку KV"
+            ),
+        )
+    else:
+        own = memory_context
+        memory_formula = (
+            f"floor((C − {w_term} − reserve) / ({kv_term} × memory_context{s_term}))"
+        )
+        prefix_notes = ()
     if memory is None:
         capacity = _result(
             "max_concurrent_requests",
@@ -1295,6 +1332,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             ),
             "верхняя граница: активации, фрагментация и буферы сверх --reserve не учтены",
             lengths,
+            *prefix_notes,
             *tp_notes,
             *state_notes,
         )
@@ -1303,13 +1341,14 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             serving.max_concurrent_requests(
                 memory.value,
                 weights_card,
-                kv_card * memory_context + state_card,
+                kv_card * own + state_card,
                 args.reserve,
+                shared_bytes=kv_card * prefix,
             ),
             "",
-            f"floor((C − {w_term} − reserve) / ({kv_term} × memory_context{s_term}))",
+            memory_formula,
             memory.inputs | memory_inputs,
-            A_CH8_MEM,
+            A_CH8_SHARED if prefix else A_CH8_MEM,
             bound="upper",
             notes=memory_notes,
         )
@@ -1340,6 +1379,12 @@ def _serving(args: argparse.Namespace) -> list[Result]:
     kv_read = "R_KV/d_KV" if kv_div > 1 else "R_KV"
     kv_read = f"({kv_read}{s_term})" if state_total else kv_read
     step_notes = [*rate_notes, lengths, *tp_notes]
+    if prefix:
+        step_notes.append(
+            "общий префикс шаг не сокращает: каждый запрос читает KV всего context, "
+            "включая префикс (допущение: ядро внимания не читает общий префикс один "
+            "раз на batch)"
+        )
     if tp > 1:
         step_notes.append(
             "AllReduce между картами не учтён (allreduce, ring): граница остаётся нижней"
@@ -2721,6 +2766,13 @@ def _parser() -> argparse.ArgumentParser:
         type=int,
         help="длина контекста для бюджета памяти, токенов: к концу генерации (вход + "
         "выход − 1, до блока KV); по умолчанию равна --context",
+    )
+    p.add_argument(
+        "--shared-prefix-tokens",
+        type=int,
+        help="общий префикс запросов, токенов (начало входа, в блоках KV): его KV "
+        "хранится в пуле один раз, на запрос — --memory-context минус префикс; шаг "
+        "по-прежнему при --context",
     )
     p.add_argument("--batch", type=int, default=1, help="запросов в шаге decode")
     p.add_argument(

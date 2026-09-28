@@ -426,7 +426,17 @@ python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --memory 12884
 **max_concurrent_requests** (верхняя граница): 37
 ```
 
-Длинный запрос (`--context 8192 --memory-context 8448`) — 10; без `--memory-context` при длине входа 2048 — 42, как в 8.1.2 до учёта выхода. Общий префикс — `--memory 11978932224` (12 GiB минус 864 MiB) и 2304 неразделяемых токена на запрос (`--context 2304`: вызов только ради ёмкости) — 35.
+Длинный запрос (`--context 8192 --memory-context 8448`) — 10; без `--memory-context` при длине входа 2048 — 42, как в 8.1.2 до учёта выхода. Общий префикс 6144 токена хранится один раз, на запрос — 8448 − 6144 = 2304 собственных токена (8.3.2):
+
+```bash
+python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --memory 12884901888 --weights 0 \
+  --weight-read 15136811008 --decode-flops 19968032768 --kv-per-token 147456 --context 8192 --memory-context 8448 \
+  --shared-prefix-tokens 6144
+```
+
+```text
+**max_concurrent_requests** (верхняя граница): 35
+```
 
 Нижняя граница раунда decode (строка «при 1792 GB/s» таблицы 8.6.3):
 

@@ -5,6 +5,7 @@ from infra_calc import serving
 
 ANCHORS = (
     "references/source-book/chapter8.md:52",
+    "references/source-book/chapter8.md:268",
     "references/source-book/chapter1.md:189",
     "references/source-book/chapter1.md:263",
     "references/source-book/chapter1.md:450",
@@ -22,6 +23,35 @@ class ServingTest(unittest.TestCase):
         self.assertEqual(serving.max_concurrent_requests(12 * GIB, 0, 1188 * MIB), 10)
         # chapter8.md:78: без резерва на генерацию «в 12 GiB поместятся 42» (288 MiB)
         self.assertEqual(serving.max_concurrent_requests(12 * GIB, 0, 288 * MIB), 42)
+
+    def test_shared_prefix_is_stored_once(self) -> None:
+        # chapter8.md:292: «16 длинных запросов совместно используют первые 6144 входных
+        # токена, KV которых занимает в общей сложности 864 MiB. Собственная часть
+        # каждого запроса содержит 8192−6144+255=2303 токена ... 2304 токена, то есть
+        # 324 MiB»; chapter8.md:298: «$b$ однотипных длинных запросов занимают
+        # $864+324b$ MiB, поэтому предел ёмкости увеличивается с 10 независимых запросов
+        # до 35 запросов с совместным использованием»
+        self.assertEqual(
+            serving.max_concurrent_requests(
+                12 * GIB, 0, 324 * MIB, shared_bytes=864 * MIB
+            ),
+            35,
+        )
+        self.assertEqual(serving.max_concurrent_requests(12 * GIB, 0, 1188 * MIB), 10)
+        # chapter8.md:295: M_KV = 864 + 16 × 324 = 6048 MiB для 16 запросов
+        self.assertEqual(864 + 16 * 324, 6048)
+        # общий префикс сам не помещается — ноль запросов, а не отрицательное число
+        self.assertEqual(
+            serving.max_concurrent_requests(
+                800 * MIB, 0, 324 * MIB, shared_bytes=864 * MIB
+            ),
+            0,
+        )
+        for bad in (-1.0, math.nan):
+            with self.subTest(shared=bad), self.assertRaises(ValueError):
+                serving.max_concurrent_requests(
+                    12 * GIB, 0, 324 * MIB, shared_bytes=bad
+                )
 
     def test_weights_do_not_fit(self) -> None:
         # chapter1.md:201: «Весам объёмом 141.11 GB недостаточно номинальных 80 GB

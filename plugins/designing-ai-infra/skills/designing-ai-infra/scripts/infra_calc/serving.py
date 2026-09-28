@@ -13,13 +13,21 @@ def max_concurrent_requests(
     weight_bytes: float,
     kv_bytes_per_request: float,
     reserve_bytes: float = 0,
+    *,
+    shared_bytes: float = 0,
 ) -> int:
-    """Сколько запросов помещается по памяти; 0, если веса и резерв не помещаются."""
+    """Сколько запросов помещается по памяти; 0, если веса и резерв не помещаются.
+
+    shared_bytes — KV общего префикса: хранится в пуле один раз, а
+    kv_bytes_per_request — только собственная часть запроса (глава 8.3.2:
+    864 + 324b MiB).
+    """
     require_non_negative("memory_bytes", memory_bytes)
     require_non_negative("weight_bytes", weight_bytes)
     require_non_negative("reserve_bytes", reserve_bytes)
+    require_non_negative("shared_bytes", shared_bytes)
     require_positive("kv_bytes_per_request", kv_bytes_per_request)
-    free = memory_bytes - weight_bytes - reserve_bytes
+    free = memory_bytes - weight_bytes - reserve_bytes - shared_bytes
     if free <= 0:
         return 0
     return math.floor(free / kv_bytes_per_request)

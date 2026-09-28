@@ -25,6 +25,7 @@ ANCHORS = (
     "references/source-book/chapter6.md:473",
     "references/source-book/chapter6.md:705",
     "references/source-book/chapter8.md:52",
+    "references/source-book/chapter8.md:268",
     "references/source-book/chapter8.md:536",
     "references/source-book/chapter8.md:598",
     "references/source-book/chapter10.md:151",
@@ -982,6 +983,64 @@ class ServingSplitTest(unittest.TestCase):
         self.assertEqual(step["inputs"]["context"], 2048)
         self.assertEqual(step["value"], short["tpot_lower_bound_seconds"]["value"])
 
+    LONG = (
+        "serving", "--device", "rtx-pro6000-blackwell-ws", "--memory", "12884901888",
+        "--weights", "0", "--weight-read", "15136811008", "--decode-flops", "19968032768",
+        "--kv-per-token", "147456", "--context", "8192", "--memory-context", "8448",
+    )  # fmt: skip
+
+    def test_shared_prefix_book(self) -> None:
+        # chapter8.md:292-298: общий префикс 6144 токена (864 MiB) хранится один раз,
+        # на запрос — 8448 − 6144 = 2304 собственных токена (324 MiB); «предел ёмкости
+        # увеличивается с 10 независимых запросов до 35»; вывод вручную:
+        # ⌊(12 GiB − 6144 × 147 456) / (2304 × 147 456)⌋ = ⌊11 978 932 224 / 339 738 624⌋ = 35
+        independent = values(*self.LONG)
+        self.assertEqual(independent["max_concurrent_requests"]["value"], 10)
+        shared = values(*self.LONG, "--shared-prefix-tokens", "6144")
+        capacity = shared["max_concurrent_requests"]
+        self.assertEqual(capacity["value"], 35)
+        self.assertEqual(capacity["inputs"]["shared_prefix"], 6144)
+        self.assertEqual(capacity["input_units"]["shared_prefix"], "tok")
+        self.assertEqual(capacity["anchor"], "references/source-book/chapter8.md:268")
+        self.assertIn("shared_prefix", capacity["formula"])
+        self.assertIn("один раз", " ".join(capacity["notes"]))
+        # шаг читает весь контекст запроса: граница TPOT — при --context, как без префикса
+        step = shared["tpot_lower_bound_seconds"]
+        self.assertEqual(step["inputs"]["context"], 8192)
+        self.assertEqual(
+            step["value"], independent["tpot_lower_bound_seconds"]["value"]
+        )
+
+    def test_shared_prefix_limits(self) -> None:
+        # префикс — часть входа: не длиннее --context; --memory-context по-прежнему
+        # полная длина запроса и не короче --context, с префиксом и без
+        message = fails(*self.LONG, "--shared-prefix-tokens", "8193")
+        self.assertIn("--shared-prefix-tokens", message)
+        self.assertIn("--context", message)
+        message = fails(
+            *self.RTX_12GIB, "--memory-context", "2304", "--context", "8192",
+            "--shared-prefix-tokens", "6144",
+        )  # fmt: skip
+        self.assertIn("--memory-context", message)
+        message = fails(*self.LONG, "--shared-prefix-tokens", "0")
+        self.assertIn("--shared-prefix-tokens", message)
+        # весь запрос — префикс: собственных токенов нет, ёмкость не определена
+        message = fails(*self.RTX_12GIB, "--shared-prefix-tokens", "2048")
+        self.assertIn("собственных", message)
+
+    def test_shared_prefix_with_tp_is_per_card(self) -> None:
+        # арифметическое тождество: при TP2 у Qwen3-8B (8 голов KV) KV на карту — 73 728 B,
+        # префикс на карту — 6144 × 73 728; ⌊(12 GiB − 6144·73 728) / (2304·73 728)⌋ = 73
+        v = values(
+            "serving", "--peak-tflops", "1", "--bandwidth", "1e12", "--memory", "12884901888",
+            "--config", QWEN3_8B, "--tp", "2", "--weights", "0", "--weight-read", "0",
+            "--decode-flops", "0", "--kv-per-token", "147456", "--context", "8192",
+            "--memory-context", "8448", "--shared-prefix-tokens", "6144",
+        )  # fmt: skip
+        expected = (12884901888 - 6144 * 73728) // (2304 * 73728)
+        self.assertEqual(v["max_concurrent_requests"]["value"], expected)
+        self.assertEqual(expected, 73)
+
     def test_without_memory_only_time_bounds(self) -> None:
         # chapter1.md:464: TPOT 8.62 ms и TTFT 58.9 ms на RTX PRO 6000 — без бюджета памяти
         v = values(
@@ -1319,6 +1378,11 @@ COMMANDS = tuple(
             f"serving --device h100-sxm --config {CONFIGS / 'qwen3.6-35b-a3b.json'} --tp 2"
             " --weights 69.32e9 --weight-read 5.89e9 --decode-flops 1e9 --prefill-flops 1e12"
             " --kv-per-token 20480 --context 4096 --memory-context 4608 --price-per-hour 2"
+        ),
+        (
+            "serving --device rtx-pro6000-blackwell-ws --memory 12884901888 --weights 0"
+            " --weight-read 1 --decode-flops 1 --kv-per-token 147456 --context 8192"
+            " --memory-context 8448 --shared-prefix-tokens 6144"
         ),
         (
             "serving --peak-tflops 1 --bandwidth 1e12 --weights 1 --weight-read 1"
