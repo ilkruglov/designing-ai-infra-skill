@@ -1,0 +1,28 @@
+# Бриф на сервис: внутренний ассистент поддержки (чат + ответы по базе знаний)
+model:
+  name: Qwen3-32B
+  config: configs/qwen3-32b.json   # официальный config.json, ревизия 9216db57
+  weights_precision: BF16
+  kv_precision: BF16
+hardware:
+  accelerators: 2 x H100 SXM 80GB, NVLink между ними
+  runtime_reserve_per_gpu: 6 GiB   # активации, CUDA graphs, рабочая область — оценка команды, не измерение
+engine: vLLM, непрерывная пакетная обработка, кэш префиксов выключен
+request_classes:
+  chat:
+    input_tokens: 1500
+    output_tokens: 400
+  rag:
+    input_tokens: 12000   # вопрос + 6 найденных фрагментов, у каждого запроса свои фрагменты
+    output_tokens: 300
+load:
+  daily_average_rps: 1.2
+  windows:
+    - {window: "03:00-07:00", chat_rps: 0.2, rag_rps: 0.05}
+    - {window: "10:00-11:00 (пик)", chat_rps: 4.0, rag_rps: 1.5}
+    - {window: "14:00-17:00", chat_rps: 2.5, rag_rps: 0.8}
+slo:
+  ttft_p95_seconds: 2.0
+  tpot_p95_ms: 50
+  acceptance: ответ проходит проверку цитирования источников
+question: "Хватит ли двух H100 на этот сервис в пике и в каком режиме их включать?"

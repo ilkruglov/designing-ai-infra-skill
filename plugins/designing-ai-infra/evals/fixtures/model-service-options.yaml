@@ -1,0 +1,25 @@
+# Выбор API модели для агента разбора обращений. Цены — условные тарифы из договора на 2026-09, $ за 1M токенов.
+task:
+  calls_per_attempt: 8
+  per_call:
+    input_tokens: 30000          # из них общий растущий префикс (системный промпт, инструменты, история) ~26000
+    output_tokens: 900
+  success_check: "ответ клиенту принят проверяющим и тикет закрыт без эскалации"
+  deadline_s: 120
+services:
+  X:
+    price_input: 2.50
+    price_cached_input_read: 0.25
+    price_output: 10.00
+    prefix_cache: "автоматический, измеренная доля попаданий по токенам 0.87"
+    success_rate_measured: 0.78   # 400 задач, пилот
+    p95_task_time_s: 74
+  Y:
+    price_input: 0.60
+    price_cached_input_read: null  # скидки за кэш нет
+    price_output: 2.40
+    prefix_cache: "нет"
+    success_rate_measured: 0.52   # 400 задач, пилот
+    p95_task_time_s: 96
+retry_policy: "неуспешная задача повторяется целиком на том же сервисе, пока не будет успеха"
+procurement_view: "Y в 4 раза дешевле за токен — переходим на Y"

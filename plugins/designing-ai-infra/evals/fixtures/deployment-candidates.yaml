@@ -1,0 +1,26 @@
+# Решение о схеме развёртывания: сервис аналитики по длинным отчётам
+model: {name: Qwen3-32B, config: configs/qwen3-32b.json, weights: BF16, kv: BF16}
+hardware:
+  gpus: "16 x H100 SXM 80GB = 2 сервера по 8, NVLink внутри сервера, 8 x IB NDR 400 Gbit/s на сервер"
+  unit: "группа TP2 (2 карты) — минимальный экземпляр, всего 8 групп"
+  price_usd_per_gpu_hour: 2.50
+workload:
+  request: {input_tokens: 16000, output_tokens: 1200}
+  windows:
+    - {window: "пик 10:00-12:00", rps: 3.2}
+    - {window: "день", rps: 2.1}
+    - {window: "ночь", rps: 0.4}
+measured_on_one_tp2_group:       # отдельные прогоны каждого этапа, смешанный шаг не мерили
+  prefill_new_tokens_per_s: 12000
+  decode_tokens_per_s_at_batch_48_ctx_17k: 1714
+  decode_step_ms_at_batch_48: 28
+  itl_p99_ms_when_16k_prefill_inserted_without_chunking: 1450
+slo:
+  ttft_p95_s: 3.0
+  itl_p99_ms: 100
+  startup: "после выкладки новой версии весь сервис стартует 120 s; накопленная очередь должна рассосаться за 600 s"
+candidates:
+  A: "8 полных реплик TP2, без блочного prefill"
+  B: "8 полных реплик TP2 с блочным prefill (chunk 2048 токенов)"
+  C: "PD: 5 групп prefill + 3 группы decode, передача KV по NVLink/IB"
+  D: "PD: 4 группы prefill + 4 группы decode"

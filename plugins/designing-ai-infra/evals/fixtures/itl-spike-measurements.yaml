@@ -1,0 +1,24 @@
+# Чат поддержки с приложенными документами: жалобы на «замирания» ответа посреди генерации
+conditions:
+  model: Qwen3-32B, веса BF16, KV BF16
+  hardware: 2 x H100 SXM 80GB, TP2, NVLink
+  engine: vLLM 0.9, CUDA graphs для decode, continuous batching, enable_chunked_prefill=false, prefix_cache=on
+  arrival: открытый цикл, воспроизведение журнала за 2026-09-22 10:00-11:00, 1.1 запроса/s
+  classes: {"обычный": "1500 -> 350 токенов, 85 %", "с документом": "9000-14000 -> 400 токенов, 15 %"}
+  runs: 3 прогона по 60 минут
+metrics_definitions:
+  itl: интервал между соседними выходными токенами одного запроса на клиенте
+  ttft: от поступления на шлюз до первого токена
+results_median_of_runs:
+  itl_p50_ms: 31
+  itl_p99_ms: 480
+  itl_max_ms: 910
+  ttft_p95_s: 1.4
+  running_seqs_mean: 26
+  kv_cache_usage_max: 0.62
+  preemptions: 0
+observations:
+  - "92 % интервалов ITL > 200 ms начинаются в пределах 20 ms от начала prefill запроса «с документом»"
+  - "prefill 12 000 токенов в одиночку (без других запросов) длится 0.82 s"
+  - "в интервалах без prefill документов ITL p99 = 38 ms"
+slo: {itl_p99_ms: 150, ttft_p95_s: 3}

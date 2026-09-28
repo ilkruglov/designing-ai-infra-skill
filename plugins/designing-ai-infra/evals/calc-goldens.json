@@ -1,0 +1,79 @@
+{
+  "suite": "benchmark-v1",
+  "author_code": "bojieli/ai-infra-book@56ecb425b07ea6d16e891cba87bf7db416927d09, calculations/ (разреженный клон в .tmp/upcalc)",
+  "note": "Эталоны посчитаны независимо от калькулятора скилла: кодом автора или вручную; skill_cross_check — последующая сверка с scripts/calc.py скилла.",
+  "goldens": [
+    {
+      "id": 301,
+      "quantity": "max_concurrent_requests_at_end_of_generation",
+      "value": 13,
+      "unit": "requests",
+      "relative_tolerance": 0.01,
+      "derivation": "Код автора: `python3 .tmp/upcalc/calculations/calc.py forward --model qwen3-32b --batch 1 --history 18430 --tokens 1 --format json` → summary.weight_resident_bytes = 65 524 246 528 B, kv_bytes_per_token_per_request = 262 144 B, kv_resident_after_bytes = 4 831 576 064 B (18 431 токен = 16 384 + 2 048 − 1). Ёмкость H200 по условию 141·10^9 B (nominal_capacity 141 GB в calculations/configs/hardware.json), резерв 10 GiB = 10 737 418 240 B. Вручную: (141 000 000 000 − 65 524 246 528 − 10 737 418 240) / 4 831 576 064 = 64 738 335 232 / 4 831 576 064 = 13,399 → вниз 13. При счёте на 18 432 токена (4 831 838 208 B) — 13,398 → 13; при 141 GiB ошибочно вышло бы 15.",
+      "skill_cross_check": "из каталога скилла: python3 scripts/calc.py serving --device h200-sxm --weights 65524246528 --weight-read 63968421888 --decode-flops 102619676672 --kv-per-token 262144 --context 18431 --reserve 10737418240 → max_concurrent_requests 13 (верхняя граница). Совпадает."
+    },
+    {
+      "id": 302,
+      "quantity": "ttft_lower_bound_prefill_16384",
+      "value": 0.5795731,
+      "unit": "s",
+      "relative_tolerance": 0.01,
+      "derivation": "Код автора: `python3 .tmp/upcalc/calculations/calc.py forward --model qwen3-32b --batch 1 --history 0 --tokens 16384 --output-head last --format json` → summary.matrix_flops = 1 304 039 526 236 160 FLOP (линейные слои + причинное внимание + выходной слой для последнего токена), weight_read_once_per_operator_bytes = 64 136 194 048 B. Пик и полоса — функцией автора `infra_calc.hardware.select_peak(device, 'BF16', 'FP32', 'tensor', 'dense')` по записи b200-sxm из calculations/configs/hardware.json: 2250 TFLOP/s, 8·10^12 B/s; формула `hardware.roofline` автора max(F/Π, R/β) = max(0,5795731; 0,0080170) = 0,5795731 s. CLI `calc.py roofline` автора в разреженном клоне не запускается: проверяет исходные PDF спецификаций (references/files/specs — LFS-указатели), поэтому формула применена через импорт функции.",
+      "skill_cross_check": "из каталога скилла: python3 scripts/calc.py model --config ../../evals/fixtures/configs/qwen3-32b.json --context 16384 → prefill_flops 1 304 039 526 236 160; из каталога скилла: python3 scripts/calc.py roofline --device b200-sxm --flops 1304039526236160 --bytes 64136194048 → step_lower_bound_seconds 0.579573. Совпадает."
+    },
+    {
+      "id": 303,
+      "quantity": "decode_step_lower_bound_batch1_ctx32768",
+      "value": 0.0019385344,
+      "unit": "s",
+      "relative_tolerance": 0.01,
+      "derivation": "Код автора: `python3 .tmp/upcalc/calculations/calc.py forward --model qwen3-30b-a3b --batch 1 --history 32767 --tokens 1 --format json` (routing balanced) → matrix_flops = 31 853 117 440 FLOP, weight_read_once_per_operator_bytes = 6 083 739 648 B (внимание, роутер, 8 активных экспертов на слой, выходной слой, строка эмбеддинга), kv_attention_unique_payload_bytes = 3 221 225 472 B (32 768 × 98 304). R = 9 304 965 120 B; для h200-sxm функцией автора select_peak: 989,5 TFLOP/s, 4,8·10^12 B/s; max(F/Π, R/β) = max(3,22·10^-5; 1,9385344·10^-3) = 1,9385344·10^-3 s.",
+      "skill_cross_check": "из каталога скилла: python3 scripts/calc.py model --config ../../evals/fixtures/configs/qwen3-30b-a3b.json --context 32768 → decode_weight_read_bytes 6 083 735 552 (на 4096 B меньше автора: строка эмбеддинга), kv_resident_bytes 3 221 225 472, decode_step_flops 31 853 117 440; serving --device h200-sxm --weights 61064245248 --weight-read 6083735552 --decode-flops 31853117440 --kv-per-token 98304 --context 32768 --batch 1 → tpot_lower_bound_seconds 0.00193853. Совпадает (расхождение 8,5·10^-7 относительных)."
+    },
+    {
+      "id": 304,
+      "quantity": "tp4_ring_allreduce_time_per_decode_step",
+      "value": 0.0050982912,
+      "unit": "s",
+      "relative_tolerance": 0.01,
+      "derivation": "Код автора: `python3 .tmp/upcalc/calculations/calc.py ring-collective --model qwen3-32b --batch 32 --tokens 1 --participants 4 --bandwidth-bytes-per-second 50000000000 --startup-ns 5000 --format json` → message_bytes_per_rank 327 680, chunk_bytes 81 920, all_reduce_rounds 6, all_reduce_modeled_seconds 3,98304·10^-5 (3·10^-5 запуск + 9,8304·10^-6 полоса), dense_tp_all_reduce_calls 128, dense_tp_serial_collective_seconds 0,0050982912.",
+      "skill_cross_check": "из каталога скилла: python3 scripts/calc.py ring --devices 4 --message 327680 --bandwidth 50e9 --alpha 5e-6 → ring_allreduce_seconds 3.98304e-05; × 128 вызовов (2 на слой × 64 слоя, вручную) = 0,0050983 s. Совпадает."
+    },
+    {
+      "id": 305,
+      "quantity": "optimal_checkpoint_interval_first_order",
+      "value": 840.4044921507738,
+      "unit": "s",
+      "relative_tolerance": 0.01,
+      "derivation": "Код автора: `python3 .tmp/upcalc/calculations/calc.py checkpoint-interval --inputs <файл>` с входом {\"model\": \"qwen3-32b\", \"devices\": 2048, \"device_mtbf_seconds\": 63072000, \"save_bandwidth_bytes_per_second\": 40000000000, \"recovery_ns\": 600000000000, \"intervals_seconds\": [300, 600, 900, 1200, 1800]} → parameters 32 762 123 264, checkpoint_payload_bytes 458 669 725 696 (14 B/параметр), c = 11,4667 s, λ = 8/246375 1/s, first_order_optimal_useful_interval_seconds 840,40449 = √(2c/λ); poisson_optimal_useful_interval_seconds 832,78 (−0,9 %, в допуске).",
+      "skill_cross_check": "из каталога скилла: python3 scripts/calc.py checkpoint --checkpoint-bytes 458669725696 --save-bandwidth 40e9 --devices 2048 --device-mtbf 63072000 --recovery 600 → first_order_optimal_interval_seconds 840.404, poisson_optimal_interval_seconds 832.777. Совпадает."
+    },
+    {
+      "id": 306,
+      "quantity": "training_days_elementwise_flops_mfu_0_4",
+      "value": 3.5934596321,
+      "unit": "days",
+      "relative_tolerance": 0.01,
+      "derivation": "Код автора: `python3 .tmp/upcalc/calculations/calc.py training-matrix --model qwen3-32b --tokens 4096 --format json` → training_matrix_flops 838 816 776 585 216 FLOP на последовательность (прямой 279 605 592 195 072 + обратный 559 211 184 390 144; внимание 52 789 443 035 136), six_nd_flops 805 161 941 336 064, matrix_to_six_nd_ratio 1,0418. Вручную: 75·10^6 × 838 816 776 585 216 = 6,29112582·10^22 FLOP; / (512 × 989,4·10^12 × 0,4 = 2,0262912·10^17 FLOP/s) = 310 474,9 s = 3,59346 дня. По 6ND было бы 298 017 s = 3,449 дня.",
+      "skill_cross_check": "из каталога скилла: python3 scripts/calc.py training --config ../../evals/fixtures/configs/qwen3-32b.json --tokens 4096 --total-tokens 307200000000 --devices 512 --device h100-sxm --mfu 0.4 → training_flops_per_sequence 838 816 776 585 216, training_seconds 310475. Совпадает."
+    },
+    {
+      "id": 307,
+      "quantity": "cost_per_successful_task_retry_tree",
+      "value": 0.18713987,
+      "unit": "USD",
+      "relative_tolerance": 0.01,
+      "derivation": "Вручную (команды автора для этого дерева нет). Попытка дешёвой моделью: 10 × (4000 × 1,00 + 16 000 × 0,10 + 800 × 4,00) / 10^6 = 10 × 0,0088 = 0,088 $; дорогой: 10 × (4000 × 3,00 + 16 000 × 0,30 + 800 × 15,00) / 10^6 = 10 × 0,0288 = 0,288 $. Пути: успех с первой попытки p = 0,65, c = 0,088; успех со второй p = 0,35 × 0,40 = 0,14, c = 0,176; третья попытка p = 0,35 × 0,60 = 0,21, c = 0,176 + 0,288 = 0,464 (успех 0,168, неудача 0,042). E[C] = 0,65 × 0,088 + 0,14 × 0,176 + 0,21 × 0,464 = 0,0572 + 0,02464 + 0,09744 = 0,17928 $; P(успех) = 0,65 + 0,14 + 0,168 = 0,958; стоимость успешной задачи = 0,17928 / 0,958 = 0,18714 $ (метод — «Полная стоимость успешной задачи», глава 11).",
+      "skill_cross_check": "из каталога скилла: python3 scripts/calc.py cost --input-tokens 4000 --cached-tokens 16000 --output-tokens 800 --input-price 1 --cache-read-price 0.1 --output-price 4 --calls 10 --success 1 → 0.088 $ за попытку; то же с ценами 3 / 0.3 / 15 → 0.288 $. Дерево повторов калькулятор не считает, свёртка вручную. Стоимость попыток совпадает."
+    },
+    {
+      "id": 308,
+      "quantity": "computer_use_cloud_task_total_time",
+      "value": 26.7096,
+      "unit": "s",
+      "relative_tolerance": 0.01,
+      "derivation": "Вручную (команда автора edge-tiers требует файлов экспериментов вне разреженного клона). Раунд: загрузка 600 000 × 8 / 12·10^6 = 0,4 s; скачивание 4 000 × 8 / 50·10^6 = 0,00064 s; RTT 0,08 s; модель 40 × 0,018 + 0,18 = 0,9 s; действие 0,4 s; итого 1,78064 s. Раунды последовательны: 15 × 1,78064 = 26,7096 s.",
+      "skill_cross_check": "из каталога скилла: python3 scripts/calc.py edge --upload '600 KB' --download '4 KB' --up-mbps 12 --down-mbps 50 --rtt 0.08 --compute 0.9 → serial_seconds 1.38064 (без действия терминала); (1,38064 + 0,4) × 15 = 26,7096 s. Совпадает."
+    }
+  ]
+}

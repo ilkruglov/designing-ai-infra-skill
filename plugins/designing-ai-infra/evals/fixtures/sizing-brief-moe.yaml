@@ -1,0 +1,21 @@
+# Бриф на лист сайзинга: ассистент разработчика в IDE
+model:
+  name: Qwen3-30B-A3B
+  config: configs/qwen3-30b-a3b.json   # ревизия из официального репозитория, скачан 2026-09-20
+  weights: BF16, файл чекпойнта 61.07 GB
+  kv: BF16
+hardware:
+  candidate: H100 SXM 80GB, одна модель на карту, без TP
+  price_usd_per_gpu_hour: 2.90         # текущий договор аренды
+  runtime_reserve_gib: 5               # оценка, ещё не измерено
+request_classes:
+  completion:  {input_tokens: 1200, output_tokens: 64}
+  chat:        {input_tokens: 6000, output_tokens: 800, shared_prefix_tokens: 4000}   # общий системный промпт + описание репозитория
+load_windows:
+  - {window: "09:30-10:30 (пик)", completion_rps: 9.0, chat_rps: 2.0}
+  - {window: "13:00-17:00", completion_rps: 6.0, chat_rps: 1.2}
+  - {window: "ночь", completion_rps: 0.3, chat_rps: 0.05}
+slo:
+  completion: {ttft_p95_ms: 300, full_response_p95_ms: 900}
+  chat: {ttft_p95_s: 2.0, tpot_p95_ms: 40}
+acceptance: "completion принят, если пользователь не отклонил подсказку; chat — если не было повторного запроса за 2 минуты"

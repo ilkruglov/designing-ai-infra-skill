@@ -1,0 +1,7 @@
+# Агент управления рабочим столом, одна задача = 25 раундов «скриншот -> модель -> действие». Медианы по 40 задачам.
+# cloud: VLM на H100 в облачном регионе, офисный канал 8 Mbit/s вверх / 100 Mbit/s вниз, RTT 140 ms
+# local: та же VLM (квантизованная) на RTX 4090 в офисной сети, 1 Gbit/s, RTT 1 ms
+# screenshot_bytes — PNG 2560x1440; action_bytes — ответ модели с действием
+placement,rounds,screenshot_bytes,action_bytes,upload_s,rtt_s,model_s,download_s,terminal_action_s,round_total_s,task_total_s
+cloud,25,1100000,3000,1.10,0.14,0.55,0.0002,0.35,2.14,53.6
+local,25,1100000,3000,0.009,0.001,1.60,0.00002,0.35,1.96,49.1

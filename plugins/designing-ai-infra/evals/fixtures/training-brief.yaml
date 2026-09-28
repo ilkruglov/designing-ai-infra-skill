@@ -1,0 +1,20 @@
+# Бриф на план обучения: доменное продолжение предобучения
+model: {name: Qwen3-32B, config: configs/qwen3-32b.json, parameters: 32762123264}
+data:
+  useful_tokens: 200000000000       # после дедупликации, без токенов-заполнителей
+  sequence_tokens: 8192
+  packing: "упаковка документов в последовательности, заполнителей < 1 %"
+optimizer: "AdamW, BF16 веса и градиенты, FP32 master-веса и два момента"
+global_batch_sequences: 512        # 4 194 304 токена; выбран по аналогии с публичными отчётами, B_noise не измеряли
+deadline:
+  calendar_days: 21
+  reserve_days: 3                  # запуск, оценки, остановки
+hardware:
+  gpus: "до 96 x H100 SXM 80GB (12 серверов по 8), NVLink внутри, 8 x IB NDR 400 Gbit/s на сервер, переподписка 1:1; хотим минимальное число серверов, укладывающееся в срок"
+  device_mtbf_years: 3             # оценка по журналу инцидентов прошлого года
+storage:
+  checkpoint_write_bandwidth_aggregate: 25 GB/s
+  recovery_minutes: 15             # перезапуск задания и загрузка последнего снимка
+framework: Megatron-подобный, поддерживает TP, PP, ZeRO-1/2/3, выборочное повторное вычисление активаций
+reference_mfu: "на похожей 34B модели в прошлом году измерили MFU 0.39 по полному шагу на 64 H100"
+rl: нет

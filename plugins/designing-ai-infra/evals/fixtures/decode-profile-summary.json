@@ -1,0 +1,23 @@
+{
+  "setup": {
+    "model": "Qwen3-1.7B BF16, 28 слоёв, веса 3.44 GB",
+    "hardware": "1 x RTX 5090 32GB, PCIe Gen5, CPU Ryzen 9 7950X",
+    "engine": "собственный сервер на PyTorch 2.8 eager, без CUDA Graph",
+    "workload": "голосовой бот, batch 1-2, контекст до 3000 токенов, выход 60-120 токенов"
+  },
+  "profile_window": "nsys, 200 шагов decode, batch 1, контекст 2048",
+  "per_decode_step": {
+    "wall_ms_median": 7.6,
+    "kernel_launches": 412,
+    "gpu_kernels_executed": 412,
+    "sum_of_kernel_durations_ms": 2.3,
+    "gpu_idle_between_kernels_ms": 5.3,
+    "cpu_python_and_launch_ms": 7.2,
+    "largest_single_kernel_ms": 0.21,
+    "host_to_device_copy_bytes": 16384
+  },
+  "batch_sweep_wall_ms_median": {"batch_1": 7.6, "batch_2": 7.7, "batch_4": 7.8},
+  "context_sweep_wall_ms_median": {"ctx_512": 7.5, "ctx_2048": 7.6, "ctx_3000": 7.7},
+  "team_plan": "Переписать attention и MLP на свои fused Triton-kernel, чтобы ускорить decode в 2 раза.",
+  "question": "Стоит ли писать свои kernel или делать что-то другое?"
+}

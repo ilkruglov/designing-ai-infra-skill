@@ -1,0 +1,22 @@
+# Qwen3-32B BF16 (64 слоя, 64 головы запросов, 8 KV-голов, hidden 5120), интерактивный агент, decode
+servers: "2 x HGX H100 (8 GPU, NVLink 900 GB/s двунаправленно на GPU); между серверами 8 x IB NDR 400 Gbit/s, по одной NIC на GPU"
+engine: "SGLang, CUDA graphs включены"
+runs:
+  - config: TP8 (один сервер)
+    batch: 4
+    context_tokens: 24000
+    tpot_ms_median: 10.4
+    allreduce_per_call_us_median: 11.8
+    allreduce_calls_per_step: 128
+    kv_bytes_per_token_per_gpu: 32768
+    max_concurrent_seqs_at_24k: 85
+  - config: TP16 (два сервера)
+    batch: 4
+    context_tokens: 24000
+    tpot_ms_median: 14.9
+    allreduce_per_call_us_median: 46.5
+    allreduce_calls_per_step: 128
+    kv_bytes_per_token_per_gpu: 32768
+    max_concurrent_seqs_at_24k: 91
+expectation_of_team: "TP16 вдвое уменьшит чтение весов на карту, значит decode станет почти вдвое быстрее"
+question: "Почему TP16 медленнее TP8 и как нам лучше использовать 16 карт?"

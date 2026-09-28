@@ -1,0 +1,21 @@
+# Разнородный кластер под сервис анализа договоров
+model:
+  name: Qwen3-32B
+  config: configs/qwen3-32b.json
+  precision: {weights: BF16, kv: BF16}
+hardware:
+  server_a: {gpus: "6 x H100 SXM 80GB", intra: NVLink}
+  server_b: {gpus: "6 x H20 SXM5 96GB", intra: NVLink}
+  inter_server: "RoCE, 2 x 200 Gbit/s на сервер, других путей между серверами нет"
+workload:
+  request: {input_tokens: 12000, output_tokens: 600}
+  prefix_cache_hit_share: 0.0      # договоры у всех разные
+  arrival_rps_peak_window: 1.6     # 11:00-12:00, остальное время 0.3-0.8
+slo:
+  ttft_p95_s: 5
+  tpot_p95_ms: 60
+  startup_s: 90                    # от старта процессов до приёма запросов, замер прошлого релиза
+  deadline_note: после перезапуска очередь, накопленная за время старта, должна рассосаться за 60 s
+engine_efficiency_assumption: "берите 50 % от пика и полосы, пока нет замера смешанного шага"
+current_setup: "12 независимых реплик по одной карте; на H100 часть запросов падает по нехватке памяти под KV"
+question: "Как разделить эти 12 карт? Делать ли PD и в какую сторону?"

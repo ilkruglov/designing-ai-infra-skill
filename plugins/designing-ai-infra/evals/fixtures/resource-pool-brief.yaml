@@ -1,0 +1,26 @@
+# Бриф на план пула: песочницы для RL-обучения агента исправления кода + онлайн-оценка
+rl_job:
+  policy_model: "14B, rollout на 16 x H100 (vLLM), обучение на 32 x H100"
+  iteration:
+    prompts: 256
+    samples_per_prompt: 8          # 2048 траекторий
+    rounds_per_trajectory: 6       # вызов модели -> инструмент (сборка и тесты)
+    model_call_s_per_round: 7      # в среднем при текущей загрузке rollout
+    tool_s_per_round: 9            # 1 ядро, сборка + тесты
+    sandbox: {vcpu: 1, memory_gib: 3, create_s: 4, image_pull_cold_s: 35, image_cached_share: 0.9}
+    verification_final_s: 40       # полный набор тестов, 2 ядра
+    valid_for_update_share: 0.35   # после отбрасывания групп с одинаковой наградой и сбоев среды
+    weight_publish: "28 GB весов с узла обучения на 4 реплики rollout, исходящий канал узла 200 Gbit/s"
+online_eval:
+  tasks_per_s_peak: 1.5
+  rounds: 3
+  model: "внешний API, 10 s на вызов, лимит 120 одновременных запросов"
+  tool_s_per_round: 3
+  sandbox: {vcpu: 1, memory_gib: 3}
+pool:
+  cpu_nodes: "10 x (96 ядер, 768 GiB доступно)"
+  pricing: {reserved_node_month_usd: 2600, on_demand_node_hour_usd: 6.2}
+constraints:
+  eval_success_check: "тесты репозитория проходят; для RL — вознаграждение из тех же тестов"
+  eval_deadline: "95 % задач онлайн-оценки за 90 s"
+question: "Сколько узлов держать в резерве, как делить пул между RL и оценкой и какой режим сред выбрать?"

@@ -1,0 +1,5 @@
+# Продолжение предобучения плотной модели 14B, последовательности 8192, BF16, ZeRO-1 + TP4 внутри сервера, H100 SXM, IB 400 Gbit/s на GPU
+# steps_to_target — шагов до целевой валидационной потери 2.31; step_s — медиана времени шага; mfu — по полному шагу
+run,gpus,global_batch_sequences,global_batch_tokens,steps_to_target,step_s,mfu,wallclock_to_target_h
+A,256,512,4194304,21800,11.9,0.41,72.1
+B,512,1024,8388608,16100,12.3,0.40,55.0

@@ -1,0 +1,25 @@
+# Агент анализа логов: одна задача = 5 раундов «вызов модели -> инструмент».
+# Замер до и после изменения. Модель Qwen3-32B BF16 на своём кластере H100, TP2.
+# Изменения, включённые одновременно в релизе 2026-09-15: FP8 KV-кэш и спекулятивное декодирование (черновая модель 0.6B, 4 токена).
+measurement:
+  tasks_per_run: 200
+  runs: 1
+  task_time_definition: от постановки задачи в очередь до записи итогового отчёта
+before:
+  task_time_p50_s: 41.8
+  per_task_breakdown_s:        # сумма по 5 раундам, медианы
+    queue_before_model_calls: 3.9
+    prefill: 5.6              # контекст растёт с 6k до 30k токенов к пятому раунду
+    decode: 7.9               # всего ~1100 выходных токенов на задачу
+    tool_execution: 21.4      # запросы к хранилищу логов и grep в песочнице
+    orchestration_overhead: 3.0
+after:
+  task_time_p50_s: 40.1
+  per_task_breakdown_s:
+    queue_before_model_calls: 4.1
+    prefill: 5.5
+    decode: 6.1
+    tool_execution: 21.4
+    orchestration_overhead: 3.0
+  speculative_acceptance_rate_observed: 0.55
+note: "Ожидали ускорения задачи в 1,5-2 раза: на микробенчмарке decode ускорился в 1,9 раза."

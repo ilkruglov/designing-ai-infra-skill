@@ -1,0 +1,26 @@
+# Сервис reranker (энкодер 0.6B), batch 1-8, длина входа 32-4096 токенов, 1 x L4-класса GPU на реплику, 6 реплик
+calls_per_day: 3200000
+distinct_input_lengths_per_day: 1900
+share_of_calls_by_length:
+  "<=256": 0.41
+  "257-512": 0.27
+  "513-1024": 0.18
+  "1025-2048": 0.10
+  "2049-4096": 0.04
+eager:
+  mean_call_ms: 12.0
+torch_compile_dynamic_false:        # специализация под каждую точную длину
+  compile_s_per_new_shape: 38
+  steady_state_call_ms: 10.2
+  note: "кэш программ живёт в процессе; при рестарте реплики (в среднем 3 раза в сутки) компиляция заново"
+torch_compile_dynamic_true:         # одна универсальная программа
+  compile_s_once: 61
+  steady_state_call_ms: 11.0
+buckets_16_padded:                  # 16 корзин длин с дополнением до границы корзины
+  compile_s_per_bucket: 38
+  steady_state_call_ms_before_padding: 10.2
+  mean_padding_overhead: 0.11
+observed_after_enabling_dynamic_false:
+  p50_call_ms: 10.4
+  p99_call_ms: 38120
+  team_reading: "в установившемся режиме на 15 % быстрее, значит compile включаем, а p99 — это шум"

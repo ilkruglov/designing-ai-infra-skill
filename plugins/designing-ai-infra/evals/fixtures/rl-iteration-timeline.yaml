@@ -1,0 +1,19 @@
+# Синхронный GRPO для модели кода 8B. Одна итерация, медианы по 20 итерациям.
+cluster:
+  rollout: 16 x H100 (vLLM, 4 реплики TP4)
+  training: 16 x H100 (FSDP)
+  verification: пул песочниц на CPU, 384 ядра, тесты репозиториев
+iteration:
+  prompts: 512
+  samples_per_prompt: 16
+  generated_trajectories: 8192
+  stages_s:
+    weight_sync_to_rollout: 14     # 16 GB весов, рассылка с одного узла обучения на 4 реплики по одному 100 Gbit/s каналу
+    generation: 96                 # длинный хвост: последние 5 % траекторий занимают 38 s
+    verification: 71               # запуск тестов; 23 % проверок падают по тайм-ауту песочницы
+    training_update: 44
+  total_s: 225
+  verified_trajectories: 6308
+  trajectories_used_for_update: 2130   # остальные отброшены: у всех 16 ответов на промпт одинаковая награда или тайм-аут
+change_under_discussion: "Удвоить rollout до 32 H100 — ожидаем итерацию почти вдвое короче"
+previous_attempt: "На прошлой неделе поднимали rollout с 8 до 16 H100: итерация сократилась с 273 до 225 s"

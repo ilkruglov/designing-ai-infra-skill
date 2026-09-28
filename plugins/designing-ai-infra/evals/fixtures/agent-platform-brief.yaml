@@ -1,0 +1,27 @@
+# Платформа агентов для миграции SQL-схем. Каждая задача — песочница с копией БД.
+arrival:
+  peak_tasks_per_s: 6          # 09:00-12:00
+  average_tasks_per_s: 2.4     # за сутки
+task:
+  prepare_sandbox_s: 5           # создание контейнера и восстановление копии БД, в основном ввод-вывод, ~0.3 ядра
+  rounds: 4
+  per_round:
+    model_call_s: 12             # внешний API, песочница в это время ждёт
+    tool_s: 2                    # миграция и тесты в песочнице, 1 ядро
+  commit_and_teardown_s: 3       # ~0.3 ядра
+  success_check: "все тесты схемы проходят, diff применяется на реплике"
+sandbox:
+  vcpu: 1
+  memory_gib: 4                  # резидентная память держится всё время жизни песочницы
+  snapshot_suspend_s: 1.5        # CRIU-снимок на локальный NVMe
+  resume_s: 1.2
+nodes:
+  count: 3
+  cores_per_node: 64
+  memory_per_node_gb: 512        # по спецификации сервера
+  memory_usable_per_node_gib: 440   # после ОС, агента оркестратора и page cache для образов
+observed_at_peak:
+  cpu_utilization_cluster: 0.32
+  sandboxes_running: 330
+  sandbox_create_failures: "OOM / Insufficient memory, ~18 % попыток"
+team_plan: "Добавить четвёртый узел ради CPU или перейти на узлы с 96 ядрами"
