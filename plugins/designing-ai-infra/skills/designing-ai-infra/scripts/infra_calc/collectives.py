@@ -42,6 +42,40 @@ def tree_allreduce_rounds(devices: int) -> int:
     return 2 * math.ceil(math.log2(devices))
 
 
+def tree_allreduce_seconds(
+    devices: int, message_bytes: float, bandwidth: float, round_latency: float
+) -> float:
+    """T_tree = 2·ceil(log2 n)·(α + M/B), формула (6-10).
+
+    Несегментированное биномиальное дерево: в каждом раунде по критическому пути
+    идёт полный тензор (tree_collective.py автора).
+    """
+    require_non_negative("message_bytes", message_bytes)
+    require_positive("bandwidth", bandwidth)
+    require_non_negative("round_latency", round_latency)
+    rounds = tree_allreduce_rounds(devices)
+    return rounds * (round_latency + message_bytes / bandwidth)
+
+
+def ring_tree_crossover_bytes(
+    devices: int, bandwidth: float, round_latency: float
+) -> float | None:
+    """Объём сообщения, при котором (6-9) и (6-10) равны; ниже него дерево быстрее.
+
+    M_* = αB(L − (n − 1)) / ((n − 1)/n − L), L = ceil(log2 n). При n ≤ 3
+    точка равна нулю: дерево не быстрее кольца; при n = 1 обе операции пусты.
+    """
+    require_int_at_least("devices", devices, 1)
+    require_positive("bandwidth", bandwidth)
+    require_non_negative("round_latency", round_latency)
+    if devices == 1:
+        return None
+    levels = tree_allreduce_rounds(devices) // 2
+    numerator = round_latency * bandwidth * (levels - (devices - 1))
+    # max: при n = 2 и 3 числитель равен нулю, и частное было бы −0.0
+    return max(0.0, numerator / ((devices - 1) / devices - levels))
+
+
 def tp_step_seconds(
     local_seconds_single: float,
     tp: int,

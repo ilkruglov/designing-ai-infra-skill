@@ -8,6 +8,8 @@ ANCHORS = (
     "calculations/results/all-to-all-qwen235-t64-balanced.json#sha256=33ad74d2ac4b1441f7b24750e9ed450116e613463e095836147c3478b6c40743",
     "calculations/results/all-to-all-qwen235-t64-hotspot.json#sha256=4fdd302a8ddb0083b582c54f945aeb9d0e5849b9626e370d7fcf7c6fbe7a1fd3",
     "calculations/results/tree-qwen3-8b-t1-p5.json#sha256=00b2c04343387230c21c26b5faa6bc8f90234c227269957f328d0dfbf682d667",
+    "calculations/results/tree-qwen3-32b-t1-p8-h100.json#sha256=310710bf34b7d88a7ac7bd35335247b12c1b627549fd067ab52ed37691f07448",
+    "calculations/results/tree-qwen3-32b-t8192-p8-h100.json#sha256=eed24bed5ea4d6ca234b9477a15d83b628c37c9e961a3600e7e2a8601d32f64f",
 )
 
 
@@ -68,6 +70,62 @@ class RingTest(unittest.TestCase):
         # tree-qwen3-8b-t1-p5.json: summary.all_reduce_rounds = 6 для пяти участников,
         # то есть 2·ceil(log2 5); формула (6-10) книги записана только для степеней двойки
         self.assertEqual(collectives.tree_allreduce_rounds(5), 6)
+
+    def test_tree_time_book_and_author(self) -> None:
+        # chapter6.md:524, формула (6-10): «Для восьми карт и 10 KiB время составляет около
+        # 5,07 μs»; «80 MiB ... кольцевому алгоритму потребуется около 0,34 ms, а древовидному —
+        # около 1,12 ms»; tree-qwen3-32b-t1-p8-h100.json и tree-qwen3-32b-t8192-p8-h100.json:
+        # all_reduce_modeled_seconds 5.068533333333334e-06 и 0.0011234130666666667
+        small = collectives.tree_allreduce_seconds(8, 10 * 1024, 450e9, 0.822e-6)
+        self.assertEqual(round(small * 1e6, 2), 5.07)
+        self.assertAlmostEqual(small, 5.068533333333334e-06, places=15)
+        large = collectives.tree_allreduce_seconds(8, 80 * 2**20, 450e9, 0.822e-6)
+        self.assertEqual(round(large * 1e3, 2), 1.12)
+        self.assertAlmostEqual(large, 0.0011234130666666667, places=15)
+        ring = collectives.ring_allreduce_seconds(8, 80 * 2**20, 450e9, 0.822e-6)
+        self.assertEqual(round(ring * 1e3, 2), 0.34)
+
+    def test_tree_time_hand_derived(self) -> None:
+        # вывод вручную: пять участников — 2·ceil(log2 5) = 6 раундов по α + M/B;
+        # один участник — ноль раундов
+        self.assertAlmostEqual(
+            collectives.tree_allreduce_seconds(5, 1e6, 1e9, 1e-5), 6 * (1e-5 + 1e-3)
+        )
+        self.assertEqual(collectives.tree_allreduce_seconds(1, 1e6, 1e9, 1e-5), 0)
+
+    def test_crossover_book(self) -> None:
+        # chapter6.md:524: «Если приравнять две формулы, точка пересечения будет находиться
+        # примерно на 680 KiB» (8 карт, 0,822 μs, 450 GB/s)
+        crossover = collectives.ring_tree_crossover_bytes(8, 450e9, 0.822e-6)
+        self.assertEqual(round(crossover / 1024, -1), 680)
+        # выше точки кольцо быстрее, ниже — дерево
+        for message, tree_faster in ((crossover / 2, True), (crossover * 2, False)):
+            tree = collectives.tree_allreduce_seconds(8, message, 450e9, 0.822e-6)
+            ring = collectives.ring_allreduce_seconds(8, message, 450e9, 0.822e-6)
+            self.assertEqual(tree < ring, tree_faster)
+
+    def test_crossover_hand_derived(self) -> None:
+        # вывод вручную: n = 4, L = 2: M_* = αB(L − (n − 1)) / ((n − 1)/n − L) = 0.8·αB;
+        # при n ≤ 3 дерево не быстрее кольца ни при каком M > 0 — точка 0;
+        # при n = 1 обе операции пусты — точки нет
+        self.assertAlmostEqual(
+            collectives.ring_tree_crossover_bytes(4, 1e9, 1e-5), 0.8 * 1e4
+        )
+        self.assertEqual(collectives.ring_tree_crossover_bytes(3, 1e9, 1e-5), 0)
+        self.assertEqual(collectives.ring_tree_crossover_bytes(2, 1e9, 1e-5), 0)
+        self.assertIsNone(collectives.ring_tree_crossover_bytes(1, 1e9, 1e-5))
+
+    def test_tree_rejects_invalid_inputs(self) -> None:
+        for args in (
+            (0, 1e6, 1e9, 1e-5),
+            (8, -1, 1e9, 1e-5),
+            (8, 1e6, 0, 1e-5),
+            (8, 1e6, 1e9, -1e-5),
+        ):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                collectives.tree_allreduce_seconds(*args)
+        with self.assertRaises(ValueError):
+            collectives.ring_tree_crossover_bytes(8, 0, 1e-5)
 
     def test_ring_rejects_invalid_inputs(self) -> None:
         # ноль или дробь карт — деление на ноль или ложное число раундов, нулевая полоса — бесконечное время

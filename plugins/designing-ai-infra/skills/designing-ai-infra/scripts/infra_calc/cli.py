@@ -131,6 +131,7 @@ LABELS = frozenset(
         "dtype",
         "classes",
         "rates",
+        "rounds",
     }
 )
 INPUT_UNITS: dict[str, str] = {
@@ -180,6 +181,7 @@ INPUT_UNITS: dict[str, str] = {
     "rtt": "s",
     "compute": "s",
     "time_in_system": "s",
+    "rounds_seconds": "s",
     "forward_seconds": "s",
     "backward_seconds": "s",
     "common_job_mtbf": "s",
@@ -646,10 +648,88 @@ def _forward_flops(spec: ModelSpec, context: int, base: dict[str, Any]) -> list[
     ]
 
 
+def _roofline_memory_only(
+    args: argparse.Namespace, dev: hardware.Device | None
+) -> list[Result]:
+    if args.peak_tflops is not None:
+        raise ValueError(
+            "--memory-only оценивает только чтение; --peak-tflops с ним не задаётся"
+        )
+    bw = _bandwidth(args, dev)
+    notes = _aggregate_note(dev, _labels(bw), RATES_SUFFIX)
+    skipped = (
+        "вычислительная граница не оценивалась (--memory-only): пик не задан, "
+        "граница шага — только по чтению"
+    )
+    inputs = {"flops": args.flops, "bytes": args.bytes, **bw.inputs}
+    memory = roofline.memory_seconds(args.bytes, bw.value)
+    out = [
+        _result(
+            "step_lower_bound_seconds",
+            memory,
+            "s",
+            "R/β (F/Π не оценивался)",
+            inputs,
+            A_CH1_TIME,
+            bound="lower",
+            notes=(skipped, *notes),
+        ),
+        _result(
+            "compute_seconds",
+            None,
+            "s",
+            "не вычисляется",
+            inputs,
+            A_CH1_TIME,
+            notes=(skipped,),
+        ),
+        _result(
+            "memory_seconds",
+            memory,
+            "s",
+            "R/β",
+            inputs,
+            A_CH1_TIME,
+            bound="lower",
+            notes=notes,
+        ),
+    ]
+    if args.bytes > 0:
+        out.append(
+            _result(
+                "arithmetic_intensity",
+                roofline.arithmetic_intensity(args.flops, args.bytes),
+                "FLOP/B",
+                "F/R",
+                inputs,
+                A_CH1_TIME,
+            )
+        )
+    out.append(
+        _result(
+            "ridge_point",
+            None,
+            "FLOP/B",
+            "не вычисляется",
+            inputs,
+            A_CH1_TIME,
+            notes=(skipped,),
+        )
+    )
+    return out
+
+
 def _roofline(args: argparse.Namespace) -> list[Result]:
     _check(args, non_negative=("--flops", "--bytes"))
     dev = _device(args, "--peak-tflops и --bandwidth")
-    peak = _peak(args, dev)
+    if args.memory_only:
+        return _roofline_memory_only(args, dev)
+    try:
+        peak = _peak(args, dev)
+    except ValueError as error:
+        raise ValueError(
+            f"{error}; только граница по чтению без пика — флаг --memory-only"
+        ) from None
     bw = _bandwidth(args, dev)
     notes = _aggregate_note(dev, _labels(peak, bw), RATES_SUFFIX)
     inputs = {"flops": args.flops, "bytes": args.bytes, **peak.inputs, **bw.inputs}
@@ -1189,30 +1269,323 @@ def _training_state(args: argparse.Namespace) -> list[Result]:
     return out
 
 
+def _rounds(values: Sequence[str] | None) -> list[tuple[float, int]]:
+    rounds: list[tuple[float, int]] = []
+    example = "0.0015:5"
+    for text in values or ():
+        seconds, sep, tokens = text.partition(":")
+        try:
+            if not sep:
+                raise ValueError(text)
+            parsed = (float(seconds), int(tokens))
+        except ValueError:
+            raise ValueError(
+                f"--round ожидает секунды:токены, например {example}: {text!r}"
+            ) from None
+        if not math.isfinite(parsed[0]) or parsed[0] < 0:
+            raise ValueError(
+                f"--round ожидает конечное неотрицательное время раунда: {text!r}"
+            )
+        if parsed[1] < 1:
+            raise ValueError(
+                f"--round ожидает не меньше одного выходного токена за раунд: {text!r}"
+            )
+        rounds.append(parsed)
+    return rounds
+
+
 def _speculative(args: argparse.Namespace) -> list[Result]:
     _check_fraction("--acceptance", args.acceptance, zero_allowed=True)
     _check(args, positive=("--plain-step",), at_least=(("--draft", 0),))
-    tokens = speculative.expected_tokens_per_round(args.acceptance, args.draft)
-    inputs = {"acceptance": args.acceptance, "draft": args.draft}
+    rounds = _rounds(args.rounds)
+    plan = {
+        "--acceptance": args.acceptance,
+        "--draft": args.draft,
+        "--plain-step": args.plain_step,
+    }
+    if not rounds and all(value is None for value in plan.values()):
+        raise ValueError(
+            "укажите --acceptance, --draft и --plain-step (ожидаемые токены за раунд "
+            "и безубыточный раунд) или --round секунды:токены (среднее время на "
+            "токен по измеренным раундам)"
+        )
+    out: list[Result] = []
+    if any(value is not None for value in plan.values()):
+        missing = [flag for flag, value in plan.items() if value is None]
+        if missing:
+            raise ValueError(
+                "для E[N] и безубыточного раунда нужны --acceptance, --draft и "
+                f"--plain-step; не хватает: {', '.join(missing)}"
+            )
+        tokens = speculative.expected_tokens_per_round(args.acceptance, args.draft)
+        inputs = {"acceptance": args.acceptance, "draft": args.draft}
+        out += [
+            _result(
+                "expected_tokens_per_round",
+                tokens,
+                "tok",
+                "Σ a^i, i = 0..k",
+                inputs,
+                A_CH8_SPEC,
+                notes=("позиции черновика принимаются независимо",),
+            ),
+            _result(
+                "breakeven_round_seconds",
+                speculative.breakeven_round_seconds(tokens, args.plain_step),
+                "s",
+                "E[N] × T_plain",
+                inputs | {"plain_step": args.plain_step},
+                A_CH8_SPEC,
+                bound="upper",
+                notes=("раунд длиннее этого времени медленнее обычного decode",),
+            ),
+        ]
+    if rounds:
+        seconds = [t for t, _ in rounds]
+        counts = [n for _, n in rounds]
+        out.append(
+            _result(
+                "mean_time_per_token_seconds",
+                speculative.mean_time_per_token(seconds, counts),
+                "s",
+                "Σ T_r / Σ N_r",
+                {
+                    "rounds": ", ".join(f"{t:g}:{n}" for t, n in rounds),
+                    "rounds_seconds": sum(seconds),
+                    "total_tokens": sum(counts),
+                },
+                A_CH8_SPEC,
+                notes=(
+                    (
+                        "среднее по токенам, а не по раундам: раунд с пятью токенами "
+                        "весит впятеро больше раунда с одним"
+                    ),
+                ),
+            )
+        )
+    return out
+
+
+def _batch_threshold(args: argparse.Namespace) -> list[Result]:
+    _check(
+        args,
+        non_negative=("--weight-read", "--kv-per-token", "--decode-flops"),
+        at_least=(("--context", 1),),
+    )
+    raw = {
+        "--weight-read": args.weight_read,
+        "--kv-per-token": args.kv_per_token,
+        "--decode-flops": args.decode_flops,
+    }
+    context = args.context
+    notes: list[str] = []
+    bound: str | None = None
+    flops_refusal: str | None = None
+    base: dict[str, Any] = {}
+    if args.config is not None:
+        given = [flag for flag, value in raw.items() if value is not None]
+        if given:
+            raise ValueError(
+                "укажите либо --config, либо числа --weight-read, --kv-per-token и "
+                f"--decode-flops; вместе с --config заданы: {', '.join(given)}"
+            )
+        spec = _load_spec(args.config)
+        wb = units.dtype_bytes(args.weight_dtype)
+        kb = units.dtype_bytes(args.kv_dtype)
+        try:
+            weight_read = float(accounting.decode_weight_read_bytes(spec, wb))
+        except UnsupportedArchitecture as error:
+            raise ValueError(
+                f"{error}; передайте --weight-read, --kv-per-token и --decode-flops"
+            ) from None
+        kv = float(accounting.kv_bytes_per_token(spec, kb))
+        tokens = min(context, spec.window) if spec.window else context
+        if tokens != context:
+            notes.append(f"окно внимания: читается KV {tokens} последних токенов")
+        try:
+            flops_value: float | None = float(
+                flops.forward_matrix_flops(spec, 1, context - 1)
+            )
+        except UnsupportedArchitecture as error:
+            flops_value, flops_refusal = None, str(error)
+        base = {
+            "config": Path(args.config).name,
+            "model_type": spec.model_type,
+            "weight_dtype": args.weight_dtype,
+            "kv_dtype": args.kv_dtype,
+        }
+        notes += _wrapper_notes(spec)
+        if spec.experts:
+            bound = "lower"
+            notes.append(
+                "MoE: R_W — эксперты одного токена; при батче читается объединение "
+                "экспертов (model --batch), поэтому настоящий порог не меньше"
+            )
+        if wb < BF16_BYTES:
+            bound = "lower"
+            notes.append(QUANT_READ_NOTE)
+    else:
+        if args.weight_read is None or args.kv_per_token is None:
+            raise ValueError(
+                "укажите --config или --weight-read и --kv-per-token "
+                "(для вычислительного порога ещё --decode-flops)"
+            )
+        weight_read, kv, flops_value = (
+            args.weight_read,
+            args.kv_per_token,
+            args.decode_flops,
+        )
+        tokens = context
+    inputs = base | {"weight_read": weight_read, "kv_per_token": kv, "context": context}
+    kv_notes = list(notes)
+    if kv * tokens > 0:
+        threshold: int | None = roofline.batch_threshold(weight_read, kv, tokens)
+    else:
+        threshold = None
+        kv_notes.append("без KV чтение контекста не растёт с батчем: порога нет")
+    out = [
+        _result(
+            "kv_read_batch_threshold",
+            threshold,
+            "",
+            "ceil(R_W / (kv_per_token × context))",
+            inputs,
+            A_CH2_MEM,
+            bound=bound if threshold is not None else None,
+            notes=(
+                "батч, с которого чтение KV всех запросов не меньше чтения общих весов",
+                *kv_notes,
+            ),
+        )
+    ]
+    rates = (args.device, args.peak_tflops, args.bandwidth)
+    if all(value is None for value in rates):
+        if args.config is None and args.decode_flops is not None:
+            raise ValueError(
+                "для вычислительного порога укажите --device или --peak-tflops и "
+                "--bandwidth"
+            )
+        return out
+    dev = _device(args, "--peak-tflops и --bandwidth")
+    peak = _peak(args, dev)
+    bw = _bandwidth(args, dev)
+    rate_notes = _aggregate_note(dev, _labels(peak, bw), RATES_SUFFIX)
+    compute_inputs = inputs | {**peak.inputs, **bw.inputs}
+    memory_note = (
+        "ёмкость памяти не проверяется: KV всех запросов батча должен поместиться "
+        "(serving)"
+    )
+    if flops_value is None:
+        if flops_refusal is None:
+            raise ValueError("для вычислительного порога нужен --decode-flops")
+        out.append(
+            _result(
+                "compute_bound_batch_threshold",
+                None,
+                "",
+                "не вычисляется",
+                compute_inputs,
+                A_CH1_TIME,
+                notes=(flops_refusal, *notes),
+            )
+        )
+        return out
+    compute_inputs["decode_flops"] = flops_value
+    kv_read = kv * tokens
+    point = roofline.compute_bound_batch(
+        flops_value, weight_read, kv_read, peak.value, bw.value
+    )
+    if point is None:
+        value = None
+        why = (
+            "шаг decode не становится вычислительно ограниченным ни при каком батче: "
+            f"на запрос F/Π = {flops_value / peak.value:.4g} s не больше "
+            f"R_KV/β = {kv_read / bw.value:.4g} s"
+        )
+    else:
+        value = max(1, math.ceil(point))
+        why = f"B_* = {point:.4g}; минимальный целый батч — ceil(B_*)"
+    out.append(
+        _result(
+            "compute_bound_batch_threshold",
+            value,
+            "",
+            "ceil((R_W/β) / (F/Π − R_KV/β)), R_KV = kv_per_token × context",
+            compute_inputs,
+            A_CH1_TIME,
+            bound=bound if value is not None else None,
+            notes=(why, memory_note, *notes, *rate_notes),
+        )
+    )
+    return out
+
+
+def _allreduce(args: argparse.Namespace) -> list[Result]:
+    _check(
+        args,
+        positive=("--bandwidth",),
+        non_negative=("--message", "--alpha"),
+        at_least=(("--devices", 1),),
+    )
+    n, message, bw, alpha = args.devices, args.message, args.bandwidth, args.alpha
+    inputs = {"devices": n, "message": message, "bandwidth": bw, "alpha": alpha}
+    ring = collectives.ring_allreduce_seconds(n, message, bw, alpha)
+    tree = collectives.tree_allreduce_seconds(n, message, bw, alpha)
+    rounds = collectives.tree_allreduce_rounds(n)
+    tree_note = (
+        f"несегментированное биномиальное дерево, {rounds} раундов; при n не степени "
+        "двойки — ceil(log2 n), как tree_collective.py автора"
+    )
+    if ring > 0:
+        ratio: float | None = tree / ring
+        winner = (
+            "дерево быстрее"
+            if tree < ring
+            else ("кольцо быстрее" if tree > ring else "время равно")
+        )
+        ratio_notes: tuple[str, ...] = (winner,)
+    else:
+        ratio, ratio_notes = None, ("одно устройство: коммуникации нет",)
+    crossover = collectives.ring_tree_crossover_bytes(n, bw, alpha)
     return [
         _result(
-            "expected_tokens_per_round",
-            tokens,
-            "tok",
-            "Σ a^i, i = 0..k",
+            "ring_allreduce_seconds",
+            ring,
+            "s",
+            "2(n−1)α + 2(n−1)M/(nB)",
             inputs,
-            A_CH8_SPEC,
-            notes=("позиции черновика принимаются независимо",),
+            A_CH6_RING,
         ),
         _result(
-            "breakeven_round_seconds",
-            speculative.breakeven_round_seconds(tokens, args.plain_step),
+            "tree_allreduce_seconds",
+            tree,
             "s",
-            "E[N] × T_plain",
-            inputs | {"plain_step": args.plain_step},
-            A_CH8_SPEC,
-            bound="upper",
-            notes=("раунд длиннее этого времени медленнее обычного decode",),
+            "2·ceil(log2 n)·(α + M/B)",
+            inputs,
+            A_CH6_RING,
+            notes=(tree_note,),
+        ),
+        _result(
+            "tree_to_ring_time_ratio",
+            ratio,
+            "",
+            "T_tree / T_ring",
+            inputs,
+            A_CH6_RING,
+            notes=ratio_notes,
+        ),
+        _result(
+            "ring_tree_crossover_bytes",
+            crossover,
+            "B",
+            "αB(L − (n − 1)) / ((n − 1)/n − L), L = ceil(log2 n)",
+            {"devices": n, "bandwidth": bw, "alpha": alpha},
+            A_CH6_RING,
+            notes=(
+                "сообщение меньше этого объёма быстрее передаёт дерево, больше — кольцо"
+                if crossover
+                else "дерево не быстрее кольца ни при каком объёме",
+            ),
         ),
     ]
 
@@ -1761,6 +2134,12 @@ def _parser() -> argparse.ArgumentParser:
 
     p = command("roofline", _roofline, "нижняя граница времени шага: max(F/Π, R/β)")
     device_options(p)
+    p.add_argument(
+        "--memory-only",
+        action="store_true",
+        help="только граница по чтению R/β, без пика (устройства без пика в снимке, "
+        "например Apple); вычислительная граница не оценивается",
+    )
     p.add_argument("--flops", type=float, required=True, help="FLOPs шага")
     p.add_argument(
         "--bytes", type=float, required=True, help="байт, прочитанных за шаг"
@@ -1894,17 +2273,15 @@ def _parser() -> argparse.ArgumentParser:
         _speculative,
         "спекулятивное декодирование: E[N] и безубыточный раунд",
     )
+    p.add_argument("--acceptance", type=float, help="доля принятия позиции, [0, 1]")
+    p.add_argument("--draft", type=int, help="токенов черновика за раунд")
+    p.add_argument("--plain-step", type=float, help="секунд на обычный шаг decode")
     p.add_argument(
-        "--acceptance", type=float, required=True, help="доля принятия позиции, [0, 1]"
-    )
-    p.add_argument(
-        "--draft", type=int, required=True, help="токенов черновика за раунд"
-    )
-    p.add_argument(
-        "--plain-step",
-        type=float,
-        required=True,
-        help="секунд на обычный шаг decode",
+        "--round",
+        dest="rounds",
+        action="append",
+        help="измеренный раунд секунды:выходные токены, например 0.0015:5 (можно "
+        "несколько раз): среднее время на токен",
     )
 
     p = command("ring", _ring, "кольцевой AllReduce")
@@ -1914,6 +2291,36 @@ def _parser() -> argparse.ArgumentParser:
         "--bandwidth", type=float, required=True, help="байт/с в одном направлении"
     )
     p.add_argument("--alpha", type=float, required=True, help="секунд на раунд")
+
+    p = command("allreduce", _allreduce, "кольцевой и древовидный AllReduce: сравнение")
+    p.add_argument("--devices", type=int, required=True, help="участников n")
+    p.add_argument("--message", type=float, required=True, help="байт на участника M")
+    p.add_argument(
+        "--bandwidth", type=float, required=True, help="байт/с в одном направлении"
+    )
+    p.add_argument("--alpha", type=float, required=True, help="секунд на раунд")
+
+    p = command(
+        "batch-threshold",
+        _batch_threshold,
+        "батч, с которого чтение KV догоняет чтение весов и decode упирается в вычисления",
+    )
+    device_options(p)
+    p.add_argument("--config", help="config.json в формате Hugging Face")
+    p.add_argument("--weight-dtype", default="bf16", help="тип весов при --config")
+    p.add_argument("--kv-dtype", default="bf16", help="тип KV при --config")
+    p.add_argument(
+        "--weight-read", type=float, help="байт общих весов, читаемых за шаг decode"
+    )
+    p.add_argument("--kv-per-token", type=float, help="байт KV на токен")
+    p.add_argument(
+        "--decode-flops",
+        type=float,
+        help="FLOPs шага decode на запрос (для вычислительного порога)",
+    )
+    p.add_argument(
+        "--context", type=int, required=True, help="длина контекста, токенов"
+    )
 
     p = command("cost", _cost, "стоимость вызова и принятой задачи")
     for name in (

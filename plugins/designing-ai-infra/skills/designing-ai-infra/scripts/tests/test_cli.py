@@ -28,11 +28,14 @@ ANCHORS = (
     "references/source-book/chapter10.md:600",
     "references/source-book/chapter11.md:62",
     "references/source-book/chapter11.md:515",
+    "references/source-book/chapter2.md:236",
     "references/source-book/chapter12.md:11",
+    "references/source-book/chapter12.md:156",
     "calculations/results/qwen3-30b-a3b-decode-b1-s8192.json#sha256=fbf0b07f78bd8d7ab3765f6fc9ad5f6992cc95192449c2f8f1ee0fd01b5bc75b",
     "calculations/results/checkpoint-interval-book.json#sha256=e986d06ba47b7d0c13b54a99cc2abde1744d674eb470b26d9cf00e417ac0c6ad",
     "calculations/results/training-pipeline-interleaved-m8.json#sha256=773f52ffe9134ea65961825a000bba925cd1734beb6937b2488ef400710703a3",
     "calculations/results/training-state-book.json#sha256=0cdea3fbd70fac7846e6655282e76624d3f5b14fd0e2627f5393fe178b6f3cd5",
+    "calculations/results/tree-qwen3-32b-t1-p8-h100.json#sha256=310710bf34b7d88a7ac7bd35335247b12c1b627549fd067ab52ed37691f07448",
 )
 SCRIPTS = Path(__file__).resolve().parents[1]
 SKILL = SCRIPTS.parent
@@ -675,6 +678,161 @@ class CheckpointCommonShockTest(unittest.TestCase):
         self.assertIn("больше нуля", message)
 
 
+class BatchThresholdCommandTest(unittest.TestCase):
+    def test_example_2_2_from_numbers_and_config(self) -> None:
+        # chapter2.md:262: «при $H=8192$ минимальный целочисленный размер батча равен 13,
+        # а при $H=2048$ — 51»
+        raw = (
+            "batch-threshold",
+            "--weight-read",
+            "15136811008",
+            "--kv-per-token",
+            "147456",
+        )
+        v = values(*raw, "--context", "8192")
+        self.assertEqual(v["kv_read_batch_threshold"]["value"], 13)
+        self.assertNotIn("compute_bound_batch_threshold", v)
+        v = values("batch-threshold", "--config", QWEN3_8B, "--context", "2048")
+        self.assertEqual(v["kv_read_batch_threshold"]["value"], 51)
+        self.assertEqual(
+            v["kv_read_batch_threshold"]["anchor"],
+            "references/source-book/chapter2.md:236",
+        )
+
+    def test_compute_bound_book(self) -> None:
+        # chapter1.md:307: B_* ≈ 147,7 при b_W = 1, Π = 989,4 TFLOP/s, β = 3,35 TB/s;
+        # «После примерно 148 запросов время вычислений превышает время чтения весов»
+        v = values(
+            "batch-threshold", "--weight-read", "70e9", "--kv-per-token", "0",
+            "--context", "1", "--decode-flops", "140e9", "--device", "h100-sxm",
+        )  # fmt: skip
+        self.assertEqual(v["compute_bound_batch_threshold"]["value"], 148)
+        self.assertIn("147.7", " ".join(v["compute_bound_batch_threshold"]["notes"]))
+        self.assertIsNone(v["kv_read_batch_threshold"]["value"])
+
+    def test_compute_bound_hand_derived(self) -> None:
+        # вывод вручную: B_* = (15e9/3e12) / (16e9/1e15 − 1e6/3e12) ≈ 319.15 → 320;
+        # порог примера 2-2 — ceil(15e9 / 1e6) = 15 000
+        v = values(
+            "batch-threshold", "--weight-read", "15e9", "--kv-per-token", "1e6",
+            "--context", "1", "--decode-flops", "16e9", "--peak-tflops", "1000",
+            "--bandwidth", "3e12",
+        )  # fmt: skip
+        self.assertEqual(v["compute_bound_batch_threshold"]["value"], 320)
+        self.assertEqual(v["kv_read_batch_threshold"]["value"], 15_000)
+
+    def test_compute_bound_unreachable_for_qwen3_8b(self) -> None:
+        # chapter1.md:459-461: 16.34 GFLOPs за шаг при 2048, KV 144 KiB на токен;
+        # на запрос F/Π ≈ 16.5 μs < R_KV/β ≈ 90.1 μs — порога нет
+        v = values(
+            "batch-threshold", "--config", QWEN3_8B, "--context", "2048",
+            "--device", "h100-sxm",
+        )  # fmt: skip
+        item = v["compute_bound_batch_threshold"]
+        self.assertIsNone(item["value"])
+        self.assertIn("не становится", " ".join(item["notes"]))
+
+    def test_moe_config_is_a_lower_bound(self) -> None:
+        v = values(
+            "batch-threshold", "--config", str(CONFIGS / "qwen3-30b-a3b.json"),
+            "--context", "8192",
+        )  # fmt: skip
+        item = v["kv_read_batch_threshold"]
+        self.assertEqual(item["bound"], "lower")
+        self.assertIn("объединение экспертов", " ".join(item["notes"]))
+
+    def test_config_and_numbers_are_exclusive(self) -> None:
+        message = fails(
+            "batch-threshold", "--config", QWEN3_8B, "--weight-read", "1",
+            "--context", "8",
+        )  # fmt: skip
+        self.assertIn("--config", message)
+        self.assertIn("--weight-read", fails("batch-threshold", "--context", "8"))
+
+
+class SpeculativeRoundsCommandTest(unittest.TestCase):
+    def test_mean_time_per_token_book(self) -> None:
+        # chapter8.md:544: «два раунда длительностью по 1,5 мс выводят соответственно 1 и
+        # 5 токенов. Суммарно получаются 3 мс и 6 токенов, то есть в среднем 0,5 мс на токен»
+        v = values("speculative", "--round", "0.0015:1", "--round", "0.0015:5")
+        self.assertAlmostEqual(v["mean_time_per_token_seconds"]["value"], 0.5e-3)
+        self.assertNotIn("expected_tokens_per_round", v)
+
+    def test_mean_time_hand_derived(self) -> None:
+        # вывод вручную: (0.03 + 0.02 + 0.05) / (2 + 1 + 4) = 0.1/7 s
+        v = values(
+            "speculative", "--round", "0.03:2", "--round", "0.02:1", "--round", "0.05:4"
+        )
+        self.assertAlmostEqual(v["mean_time_per_token_seconds"]["value"], 0.1 / 7)
+
+    def test_modes_are_checked(self) -> None:
+        self.assertIn("--round", fails("speculative"))
+        self.assertIn("--plain-step", fails("speculative", "--acceptance", "0.5"))
+        self.assertIn("--round", fails("speculative", "--round", "0.0015"))
+        self.assertIn("--round", fails("speculative", "--round", "0.0015:0"))
+
+
+class AllreduceCommandTest(unittest.TestCase):
+    def test_ring_and_tree_book(self) -> None:
+        # chapter6.md:524: для 8 карт и 10 KiB дерево «около 5,07 μs, что меньше 11,55 μs
+        # у кольцевого алгоритма»; «точка пересечения ... примерно на 680 KiB»
+        v = values(
+            "allreduce", "--devices", "8", "--message", "10240",
+            "--bandwidth", "450e9", "--alpha", "0.822e-6",
+        )  # fmt: skip
+        self.assertEqual(round(v["ring_allreduce_seconds"]["value"] * 1e6, 2), 11.55)
+        self.assertEqual(round(v["tree_allreduce_seconds"]["value"] * 1e6, 2), 5.07)
+        self.assertLess(v["tree_to_ring_time_ratio"]["value"], 1)
+        self.assertEqual(round(v["ring_tree_crossover_bytes"]["value"] / 1024, -1), 680)
+
+    def test_large_message_ring_wins(self) -> None:
+        # chapter6.md:524: 80 MiB — кольцо «около 0,34 ms», дерево «около 1,12 ms»
+        v = values(
+            "allreduce", "--devices", "8", "--message", str(80 * 2**20),
+            "--bandwidth", "450e9", "--alpha", "0.822e-6",
+        )  # fmt: skip
+        self.assertEqual(round(v["tree_allreduce_seconds"]["value"] * 1e3, 2), 1.12)
+        self.assertGreater(v["tree_to_ring_time_ratio"]["value"], 1)
+
+
+class MemoryOnlyRooflineTest(unittest.TestCase):
+    def test_phone_bandwidth_book(self) -> None:
+        # chapter12.md:165: «\\frac{15.14\\ \\mathrm{GB}}{84.8\\ \\mathrm{GB/s}}\\approx0.179\\ \\mathrm{s}»
+        v = values(
+            "roofline", "--memory-only", "--bandwidth", "84.8e9",
+            "--flops", "0", "--bytes", "15.14e9",
+        )  # fmt: skip
+        self.assertEqual(round(v["step_lower_bound_seconds"]["value"], 3), 0.179)
+        self.assertEqual(v["step_lower_bound_seconds"]["bound"], "lower")
+        self.assertIsNone(v["compute_seconds"]["value"])
+        self.assertIn("не оценива", " ".join(v["compute_seconds"]["notes"]))
+        self.assertIsNone(v["ridge_point"]["value"])
+
+    def test_apple_device_without_peaks(self) -> None:
+        # вывод вручную: 1e9 B / 819e9 B/s (m3-ultra-80gpu-256gb в снимке, пиков нет)
+        args = (
+            "roofline",
+            "--device",
+            "m3-ultra-80gpu-256gb",
+            "--flops",
+            "1e12",
+            "--bytes",
+            "1e9",
+        )
+        self.assertIn("--memory-only", fails(*args))
+        v = values(*args, "--memory-only")
+        self.assertAlmostEqual(v["memory_seconds"]["value"], 1e9 / 819e9)
+        self.assertAlmostEqual(v["step_lower_bound_seconds"]["value"], 1e9 / 819e9)
+        self.assertEqual(v["arithmetic_intensity"]["value"], 1000)
+
+    def test_memory_only_refuses_peak(self) -> None:
+        message = fails(
+            "roofline", "--memory-only", "--peak-tflops", "1", "--bandwidth", "1e9",
+            "--flops", "0", "--bytes", "1",
+        )  # fmt: skip
+        self.assertIn("--peak-tflops", message)
+
+
 # Все команды с корректными входами: для проверок якорей и единиц, а не чисел книги
 COMMANDS = tuple(
     shlex.split(line)
@@ -705,6 +863,10 @@ COMMANDS = tuple(
             " --device-mtbf 1e6 --common-job-mtbf 604800"
         ),
         "ring --devices 8 --message 1 --bandwidth 1 --alpha 0",
+        "allreduce --devices 8 --message 10240 --bandwidth 450e9 --alpha 0.822e-6",
+        (f"batch-threshold --config {QWEN3_8B} --context 128 --device h100-sxm"),
+        "speculative --round 0.0015:1 --round 0.0015:5",
+        "roofline --memory-only --device m3-ultra-80gpu-256gb --flops 1 --bytes 1",
         "cost --input-tokens 1 --input-price 1",
         (
             "edge --upload '1 MB' --download '1 MB' --up-mbps 1 --down-mbps 1"

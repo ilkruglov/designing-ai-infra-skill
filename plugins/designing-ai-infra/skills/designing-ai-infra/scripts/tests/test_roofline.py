@@ -49,6 +49,42 @@ class RooflineTest(unittest.TestCase):
         # то есть Π/β = 2·B_* при двух FLOPs на параметр
         self.assertEqual(round(roofline.ridge_point(989.4e12, 3.35e12) / 2, 1), 147.7)
 
+    def test_compute_bound_batch_book(self) -> None:
+        # chapter1.md:307: B_* = b_W·Π/(2β); «при $b_W=1$ ... получаем $B_*\\approx147{,}7$»,
+        # «После примерно 148 запросов время вычислений превышает время чтения весов».
+        # Модель книги: F = 2N = 140 GFLOPs на запрос, R_W = b_W·N = 70 GB, без KV
+        point = roofline.compute_bound_batch(140e9, 70e9, 0, 989.4e12, 3.35e12)
+        self.assertEqual(round(point, 1), 147.7)
+        self.assertEqual(math.ceil(point), 148)
+
+    def test_compute_bound_batch_with_context(self) -> None:
+        # вывод вручную: B_* = (R_W/β) / (F/Π − R_KV/β); F = 16 GFLOPs, R_W = 15 GB,
+        # R_KV = 1 MB, Π = 1 PFLOP/s, β = 3 TB/s — 5e-3 / (1.6e-5 − 3.333e-7) ≈ 319.15
+        point = roofline.compute_bound_batch(16e9, 15e9, 1e6, 1e15, 3e12)
+        self.assertAlmostEqual(point, 5e-3 / (1.6e-5 - 1e6 / 3e12))
+        self.assertEqual(math.ceil(point), 320)
+
+    def test_compute_bound_batch_unreachable(self) -> None:
+        # Qwen3-8B на H100 при контексте 2048 (chapter1.md:459-461: 16.34 GFLOPs,
+        # 144 KiB × 2048): на запрос F/Π ≈ 16.5 μs меньше R_KV/β ≈ 90.1 μs — шаг
+        # decode не становится вычислительно ограниченным ни при каком батче
+        self.assertIsNone(
+            roofline.compute_bound_batch(
+                16_344_154_112, 15_136_811_008, 147_456 * 2048, 989.4e12, 3.35e12
+            )
+        )
+
+    def test_compute_bound_batch_rejects_invalid_inputs(self) -> None:
+        for args in (
+            (-1, 70e9, 0, 989.4e12, 3.35e12),
+            (140e9, -1, 0, 989.4e12, 3.35e12),
+            (140e9, 70e9, -1, 989.4e12, 3.35e12),
+            (140e9, 70e9, 0, 0, 3.35e12),
+            (140e9, 70e9, 0, 989.4e12, math.nan),
+        ):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                roofline.compute_bound_batch(*args)
+
     def test_arithmetic_intensity(self) -> None:
         # Арифметическое тождество на числах chapter1.md:265 (F = 140 GFLOPs, R_W = 70 GB):
         # книга не приводит отношение, 140/70 = 2 FLOP/byte
