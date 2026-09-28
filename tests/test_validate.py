@@ -1588,6 +1588,20 @@ class PinTests(unittest.TestCase):
         self.assertEqual(1, len(errors), errors)
         self.assertIn("c791c07d", errors[0])
 
+    def test_bare_short_pin_check_ignores_decimals_and_emails(self) -> None:
+        # sha пина содержит буквы a–f: десятичное число после якоря — не sha;
+        # @ внутри слова (почта, repo@ref чужого репозитория) — не якорь
+        template = SKILL_DIRECTORY / "references" / "templates" / "sizing-sheet.md"
+        line = (
+            "Буфер на 1048576 байт, at 1048576 B, @1234567, "
+            "почта email@deadbeef1 и other/repo@deadbeef2."
+        )
+        self.assertEqual([], self.append_line(template, line))
+        # якорный @ в начале слова по-прежнему проверяется
+        errors = self.append_line(template, "Снимок @56ecb426.")
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("56ecb426", errors[0])
+
     def test_pins_are_the_lock_builder_constants(self) -> None:
         sys.path.insert(0, str(ROOT / "scripts"))
         try:
