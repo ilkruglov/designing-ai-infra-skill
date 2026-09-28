@@ -36,3 +36,8 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
 - [plan-resource-pool.md](references/playbooks/plan-resource-pool.md)
 - [design-edge-cloud.md](references/playbooks/design-edge-cloud.md)
 - [compare-model-architectures.md](references/playbooks/compare-model-architectures.md)
+- [sizing-sheet.md](references/templates/sizing-sheet.md)
+- [bottleneck-diagnosis.md](references/templates/bottleneck-diagnosis.md)
+- [deployment-decision.md](references/templates/deployment-decision.md)
+- [training-plan.md](references/templates/training-plan.md)
+- [resource-pool-plan.md](references/templates/resource-pool-plan.md)
