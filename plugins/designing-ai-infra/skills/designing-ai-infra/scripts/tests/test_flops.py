@@ -58,6 +58,15 @@ class ForwardTest(unittest.TestCase):
             with self.subTest(args=args), self.assertRaises(ValueError):
                 flops.attention_matrix_flops(QWEN, *args)
 
+    def test_fractional_counts_are_rejected(self) -> None:
+        for kwargs in (
+            {"new_tokens": 2.5},
+            {"new_tokens": 1, "history": 0.5},
+            {"new_tokens": 1, "batch": 1.5},
+        ):
+            with self.subTest(**kwargs), self.assertRaises(ValueError):
+                flops.forward_matrix_flops(QWEN, **kwargs)
+
 
 class MoeForwardTest(unittest.TestCase):
     def test_qwen3_30b_a3b_decode_step(self) -> None:

@@ -7,6 +7,7 @@ deepseek_v3 — MLA с MoE, qwen3.5 — гибридное линейное вн
 
 from __future__ import annotations
 
+from .checks import require_int_at_least
 from .model import ModelSpec, UnsupportedArchitecture
 
 
@@ -100,10 +101,7 @@ def kv_bytes_per_token(spec: ModelSpec, kv_bytes: float = 2.0) -> int:
 def kv_resident_bytes(
     spec: ModelSpec, context_tokens: int, kv_bytes: float = 2.0
 ) -> int:
-    if context_tokens < 0:
-        raise ValueError(
-            f"context_tokens не может быть отрицательным: {context_tokens}"
-        )
+    require_int_at_least("context_tokens", context_tokens, 0)
     tokens = min(context_tokens, spec.window) if spec.window else context_tokens
     return kv_bytes_per_token(spec, kv_bytes) * tokens
 

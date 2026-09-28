@@ -54,6 +54,10 @@ class DenseTest(unittest.TestCase):
             accounting.kv_resident_bytes(spec("qwen3-8b"), -1)
         self.assertEqual(accounting.kv_resident_bytes(spec("qwen3-8b"), 0), 0)
 
+    def test_fractional_context_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            accounting.kv_resident_bytes(spec("qwen3-8b"), 2.5)
+
     def test_llama_70b(self) -> None:
         s = spec("deepseek-r1-distill-llama-70b")
         # chapter1.md:189: веса BF16 141.11 GB

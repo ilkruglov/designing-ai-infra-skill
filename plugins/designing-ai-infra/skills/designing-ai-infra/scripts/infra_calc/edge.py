@@ -6,7 +6,7 @@ T_serial = S_u/B_u + R + T_c + S_d/B_d; ускорение модели помо
 
 from __future__ import annotations
 
-from .roofline import _non_negative, _positive
+from .checks import require_non_negative, require_positive
 
 
 def serial_seconds(
@@ -17,12 +17,12 @@ def serial_seconds(
     download_bytes: float,
     download_bandwidth: float,
 ) -> float:
-    _non_negative("upload_bytes", upload_bytes)
-    _positive("upload_bandwidth", upload_bandwidth)
-    _non_negative("rtt", rtt)
-    _non_negative("compute_seconds", compute_seconds)
-    _non_negative("download_bytes", download_bytes)
-    _positive("download_bandwidth", download_bandwidth)
+    require_non_negative("upload_bytes", upload_bytes)
+    require_positive("upload_bandwidth", upload_bandwidth)
+    require_non_negative("rtt", rtt)
+    require_non_negative("compute_seconds", compute_seconds)
+    require_non_negative("download_bytes", download_bytes)
+    require_positive("download_bandwidth", download_bandwidth)
     return (
         upload_bytes / upload_bandwidth
         + rtt
@@ -38,8 +38,8 @@ def compression_gain_seconds(
     codec_seconds: float,
 ) -> float:
     """Выигрыш от сжатия перед отправкой; отрицателен, если кодек дороже сэкономленной передачи."""
-    _non_negative("original_bytes", original_bytes)
-    _non_negative("compressed_bytes", compressed_bytes)
-    _positive("upload_bandwidth", upload_bandwidth)
-    _non_negative("codec_seconds", codec_seconds)
+    require_non_negative("original_bytes", original_bytes)
+    require_non_negative("compressed_bytes", compressed_bytes)
+    require_positive("upload_bandwidth", upload_bandwidth)
+    require_non_negative("codec_seconds", codec_seconds)
     return (original_bytes - compressed_bytes) / upload_bandwidth - codec_seconds

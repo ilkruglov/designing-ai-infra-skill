@@ -1,3 +1,4 @@
+import math
 import unittest
 
 from infra_calc import roofline
@@ -72,6 +73,14 @@ class RooflineTest(unittest.TestCase):
         ):
             with self.subTest(args=args), self.assertRaises(ValueError):
                 roofline.batch_threshold(*args)
+
+    def test_nan_and_fractional_counts_are_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            roofline.compute_seconds(math.nan, 989.4e12)
+        with self.assertRaises(ValueError):
+            roofline.memory_seconds(70e9, math.nan)
+        with self.assertRaises(ValueError):
+            roofline.batch_threshold(15_136_811_008, 147_456, 2048.5)
 
 
 if __name__ == "__main__":

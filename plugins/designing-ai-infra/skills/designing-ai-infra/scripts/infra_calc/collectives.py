@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 
-from .roofline import _non_negative, _positive
+from .checks import require_non_negative, require_positive
 
 
 def _devices(name: str, devices: int) -> None:
@@ -18,15 +18,15 @@ def _devices(name: str, devices: int) -> None:
 
 def ring_bytes_sent_per_device(devices: int, message_bytes: float) -> float:
     _devices("devices", devices)
-    _non_negative("message_bytes", message_bytes)
+    require_non_negative("message_bytes", message_bytes)
     return 2 * (devices - 1) * message_bytes / devices
 
 
 def ring_allreduce_seconds(
     devices: int, message_bytes: float, bandwidth: float, round_latency: float
 ) -> float:
-    _positive("bandwidth", bandwidth)
-    _non_negative("round_latency", round_latency)
+    require_positive("bandwidth", bandwidth)
+    require_non_negative("round_latency", round_latency)
     return (
         2 * (devices - 1) * round_latency
         + ring_bytes_sent_per_device(devices, message_bytes) / bandwidth
@@ -47,12 +47,12 @@ def tp_step_seconds(
     round_latency: float,
 ) -> float:
     """Шаг при TP: локальная часть делится на tp, добавляются кольцевые редукции (формулы 6-5, 6-9)."""
-    _non_negative("local_seconds_single", local_seconds_single)
+    require_non_negative("local_seconds_single", local_seconds_single)
     _devices("tp", tp)
-    _non_negative("reductions", reductions)
-    _non_negative("message_bytes", message_bytes)
-    _positive("bandwidth", bandwidth)
-    _non_negative("round_latency", round_latency)
+    require_non_negative("reductions", reductions)
+    require_non_negative("message_bytes", message_bytes)
+    require_positive("bandwidth", bandwidth)
+    require_non_negative("round_latency", round_latency)
     communication = (
         0.0
         if tp == 1
@@ -80,10 +80,10 @@ def all_to_all_phase(
                 f"матрица назначений не квадратная: в строке {i} {len(row)} элементов вместо {p}"
             )
         for j, count in enumerate(row):
-            _non_negative(f"counts[{i}][{j}]", count)
-    _non_negative("vector_bytes", vector_bytes)
-    _positive("bandwidth", bandwidth)
-    _non_negative("startup_seconds", startup_seconds)
+            require_non_negative(f"counts[{i}][{j}]", count)
+    require_non_negative("vector_bytes", vector_bytes)
+    require_positive("bandwidth", bandwidth)
+    require_non_negative("startup_seconds", startup_seconds)
     sends = [
         sum(row[j] for j in range(p) if j != i) * vector_bytes
         for i, row in enumerate(counts)

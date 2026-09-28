@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from .accounting import _attention_matmul, _mlp_matmul
+from .checks import require_int_at_least
 from .model import ModelSpec, UnsupportedArchitecture
 
 HEAD_TOKENS: dict[str, Callable[[int], int]] = {
@@ -31,10 +32,8 @@ def _require_standard_attention(spec: ModelSpec) -> None:
 
 
 def _check_tokens(new_tokens: int, history: int) -> None:
-    if new_tokens < 1:
-        raise ValueError(f"new_tokens должен быть не меньше 1: {new_tokens}")
-    if history < 0:
-        raise ValueError(f"history не может быть отрицательным: {history}")
+    require_int_at_least("new_tokens", new_tokens, 1)
+    require_int_at_least("history", history, 0)
 
 
 def attention_matrix_flops(spec: ModelSpec, new_tokens: int, history: int = 0) -> int:
@@ -53,8 +52,7 @@ def forward_matrix_flops(
 ) -> int:
     _require_standard_attention(spec)
     _check_tokens(new_tokens, history)
-    if batch < 1:
-        raise ValueError(f"batch должен быть не меньше 1: {batch}")
+    require_int_at_least("batch", batch, 1)
     if output_head not in HEAD_TOKENS:
         raise ValueError(f"output_head должен быть одним из {', '.join(HEAD_TOKENS)}")
     per_token = sum(

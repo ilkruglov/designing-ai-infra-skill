@@ -1,3 +1,4 @@
+import math
 import unittest
 
 from infra_calc import queueing
@@ -48,6 +49,23 @@ class QueueingTest(unittest.TestCase):
         for args in ((-4, 2.5), (4, -2.5)):
             with self.subTest(args=args), self.assertRaises(ValueError):
                 queueing.littles_law_in_system(*args)
+
+    def test_unknown_class_names_known_ones(self) -> None:
+        with self.assertRaises(ValueError) as caught:
+            queueing.demand({"short": 1.0}, CLASSES)
+        self.assertIn("long_input", str(caught.exception))
+
+    def test_fractional_tokens_and_nan_rate_are_rejected(self) -> None:
+        for arrivals, classes in (
+            ({"a": 1.0}, {"a": (1024.5, 256)}),
+            ({"a": 1.0}, {"a": (1024, 256.5)}),
+            ({"a": math.nan}, {"a": (1024, 256)}),
+        ):
+            with (
+                self.subTest(arrivals=arrivals, classes=classes),
+                self.assertRaises(ValueError),
+            ):
+                queueing.demand(arrivals, classes)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from .roofline import _non_negative
+from .checks import require_non_negative
 
 
 def call_cost(
@@ -29,7 +29,7 @@ def call_cost(
         ("cache_write_tokens", cache_write_tokens),
         ("cache_write_price", cache_write_price),
     ):
-        _non_negative(name, value)
+        require_non_negative(name, value)
     dollars = (
         input_tokens * input_price
         + output_tokens * output_price
@@ -42,7 +42,7 @@ def call_cost(
 def cost_per_accepted_task(
     cost_per_attempt: float, success_probability: float
 ) -> float:
-    _non_negative("cost_per_attempt", cost_per_attempt)
+    require_non_negative("cost_per_attempt", cost_per_attempt)
     if not 0 < success_probability <= 1:
         raise ValueError(
             f"вероятность успеха должна лежать в (0, 1]: {success_probability}"

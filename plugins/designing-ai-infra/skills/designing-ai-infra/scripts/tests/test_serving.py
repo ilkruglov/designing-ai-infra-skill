@@ -1,3 +1,4 @@
+import math
 import unittest
 
 from infra_calc import serving
@@ -71,6 +72,16 @@ class ServingTest(unittest.TestCase):
         for args in ((3.6, 0), (3.6, -1000), (-3.6, 1000)):
             with self.subTest(args=args), self.assertRaises(ValueError):
                 serving.cost_per_million_tokens(*args)
+
+    def test_fractional_batch_and_nan_are_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            serving.tpot_lower_bound_seconds(2.5, 140e9, 70e9, 0, 989.4e12, 3.35e12)
+        with self.assertRaises(ValueError):
+            serving.tokens_per_second(2.5, 0.02)
+        with self.assertRaises(ValueError):
+            serving.tokens_per_second(8, math.nan)
+        with self.assertRaises(ValueError):
+            serving.max_concurrent_requests(96e9, 16e9, math.nan)
 
 
 if __name__ == "__main__":
