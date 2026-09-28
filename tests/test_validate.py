@@ -853,6 +853,55 @@ class BenchmarkCoverageTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("golden without calculation scenario: 398", result.stdout)
 
+    def _run_with_first_scenario_files(self, files: object) -> str:
+        with repository_copy() as copied_root:
+            path = copied_root / PLUGIN_DIRECTORY / "evals" / "benchmark-v1.json"
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload["evals"][0]["files"] = files
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            result = run_validator(copied_root)
+        self.assertNotEqual(0, result.returncode)
+        self.assertNotIn("Traceback", result.stderr)
+        return result.stdout
+
+    def test_rejects_scenario_file_outside_plugin(self) -> None:
+        # Вложение вне плагина не попадает в установленный плагин: у
+        # прогона оно есть, у пользователя — нет. «../» и абсолютный путь
+        # проходят проверку существования, поэтому нужна отдельная граница.
+        for outside in ("../../README.md", "/etc/hostname"):
+            with self.subTest(path=outside):
+                stdout = self._run_with_first_scenario_files([outside])
+                self.assertIn("benchmark scenario file outside plugin", stdout)
+
+    def test_rejects_non_string_scenario_file(self) -> None:
+        stdout = self._run_with_first_scenario_files([None])
+        self.assertIn("invalid benchmark scenario file", stdout)
+
+    def test_rejects_scenario_files_that_are_not_a_list(self) -> None:
+        # Строка вместо списка иначе перебиралась бы по символам.
+        stdout = self._run_with_first_scenario_files(
+            "evals/fixtures/chat-rag-brief.yaml"
+        )
+        self.assertIn("benchmark scenario files must be a list", stdout)
+
+    def test_rejects_duplicate_golden_id(self) -> None:
+        with repository_copy() as copied_root:
+            path = copied_root / PLUGIN_DIRECTORY / "evals" / "calc-goldens.json"
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload["goldens"].append(dict(payload["goldens"][0]))
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("duplicate golden id: 301", result.stdout)
+
 
 CALCULATOR_DIRECTORY = SKILL_DIRECTORY / "scripts" / "infra_calc"
 CALCULATOR_TESTS_DIRECTORY = SKILL_DIRECTORY / "scripts" / "tests"

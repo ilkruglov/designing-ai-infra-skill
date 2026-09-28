@@ -1020,15 +1020,36 @@ def validate_benchmark_inputs(
     обнаруживаются только после прогона бенчмарка.
     """
     plugin_root = root / PLUGIN_DIRECTORY
+    resolved_plugin_root = plugin_root.resolve()
     calculation_ids: set[int] = set()
     for scenario in scenarios:
         if not isinstance(scenario, dict):
             continue
-        for relative in scenario.get("files", []):
-            if not (plugin_root / relative).is_file():
+        label = scenario.get("id", scenario.get("name", "?"))
+        files = scenario.get("files", [])
+        if not isinstance(files, list):
+            errors.append(f"benchmark scenario files must be a list (scenario {label})")
+            files = []
+        for relative in files:
+            if not isinstance(relative, str) or not relative:
                 errors.append(
-                    f"benchmark scenario file missing: {relative} "
-                    f"(scenario {scenario.get('id', scenario.get('name', '?'))})"
+                    f"invalid benchmark scenario file: {relative!r} (scenario {label})"
+                )
+                continue
+            # вложение обязано лежать внутри плагина: только оно попадает
+            # в установленный плагин вместе со сценарием
+            target = (plugin_root / relative).resolve()
+            if Path(relative).is_absolute() or not target.is_relative_to(
+                resolved_plugin_root
+            ):
+                errors.append(
+                    f"benchmark scenario file outside plugin: {relative} "
+                    f"(scenario {label})"
+                )
+                continue
+            if not target.is_file():
+                errors.append(
+                    f"benchmark scenario file missing: {relative} (scenario {label})"
                 )
         scenario_id = scenario.get("id")
         if isinstance(scenario_id, int) and scenario_id in CALCULATION_IDS:
@@ -1045,11 +1066,13 @@ def validate_benchmark_inputs(
         if not isinstance(rows, list):
             errors.append("invalid calc-goldens.json: goldens must be a list")
             return
-        golden_ids = {
-            row["id"]
-            for row in rows
-            if isinstance(row, dict) and isinstance(row.get("id"), int)
-        }
+        for row in rows:
+            if not isinstance(row, dict) or not isinstance(row.get("id"), int):
+                errors.append(f"invalid golden row: {str(row)[:80]}")
+                continue
+            if row["id"] in golden_ids:
+                errors.append(f"duplicate golden id: {row['id']}")
+            golden_ids.add(row["id"])
     elif calculation_ids:
         errors.append(
             f"missing required file: {goldens_path.relative_to(root).as_posix()}"
