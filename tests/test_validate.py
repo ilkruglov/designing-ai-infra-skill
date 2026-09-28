@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -378,6 +379,42 @@ class ValidateRepositoryTests(unittest.TestCase):
             result = run_validator(copied_root)
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_excluded_paths_are_pinned(self) -> None:
+        # is_excluded_path: рабочие каталоги SDD (docs/superpowers, .superpowers) и
+        # служебные .git/.tmp на любой глубине не проверяются; соседний docs/other —
+        # обычная часть репозитория, и её ошибки сообщаются
+        ignored = (
+            Path("docs") / "superpowers",
+            Path(".superpowers"),
+            Path(".tmp"),
+            Path("plugins") / ".tmp",
+            PLUGIN_DIRECTORY / ".git" / "objects",
+        )
+        reported = Path("docs") / "other"
+        with repository_copy() as copied_root:
+            for directory in (*ignored, reported):
+                target = copied_root / directory
+                target.mkdir(parents=True, exist_ok=True)
+                (target / "broken.json").write_text("{\n", encoding="utf-8")
+                (target / "broken.md").write_text(
+                    "[Broken local link](missing-file.md)\n", encoding="utf-8"
+                )
+
+            result = run_validator(copied_root)
+
+        errors = [
+            line for line in result.stdout.splitlines() if line.startswith("ERROR:")
+        ]
+        self.assertEqual(2, len(errors), result.stdout)
+        self.assertTrue(
+            errors[0].startswith(f"ERROR: invalid JSON in {reported / 'broken.json'}:"),
+            result.stdout,
+        )
+        self.assertEqual(
+            f"ERROR: broken Markdown link in {reported / 'broken.md'}: missing-file.md",
+            errors[1],
+        )
 
     def test_rejects_missing_author_attribution(self) -> None:
         with repository_copy() as copied_root:
@@ -909,6 +946,8 @@ CALCULATOR_TESTS_DIRECTORY = SKILL_DIRECTORY / "scripts" / "tests"
 HEADING_ANCHOR = "references/source-book/chapter1.md:263"
 PARAGRAPH_ANCHOR = "references/source-book/chapter1.md:265"
 SAMPLE_CALL = "\n\ndef test_sample() -> None:\n    sample.public_fn()\n"
+AUTHOR_RESULTS = Path(".tmp") / "upcalc" / "calculations" / "results"
+AUTHOR_RESULT_NAME = re.compile(r"calculations/results/([\w.-]+\.json)#sha256=")
 
 
 class CalculatorCoverageTests(unittest.TestCase):
@@ -923,10 +962,20 @@ class CalculatorCoverageTests(unittest.TestCase):
             "from infra_calc import sample\n\n" + test_text, encoding="utf-8"
         )
 
-    @staticmethod
-    def add_author_result(root: Path, content: bytes) -> str:
-        results = root / ".tmp" / "upcalc" / "calculations" / "results"
+    def add_author_result(self, root: Path, content: bytes) -> str:
+        """Клон оригинала в копии: sample.json плюс результаты, на которые уже
+        ссылаются настоящие тесты калькуляторов. Без них валидатор сообщил бы, что
+        их нет в клоне, и тест проверял бы не свою причину отказа."""
+        real = ROOT / AUTHOR_RESULTS
+        if not real.is_dir():
+            self.skipTest(
+                "нужен клон оригинала .tmp/upcalc: без него хеши не сверяются"
+            )
+        results = root / AUTHOR_RESULTS
         results.mkdir(parents=True, exist_ok=True)
+        for test_file in (ROOT / CALCULATOR_TESTS_DIRECTORY).glob("test_*.py"):
+            for name in AUTHOR_RESULT_NAME.findall(test_file.read_text("utf-8")):
+                shutil.copy2(real / name, results / name)
         (results / "sample.json").write_bytes(content)
         return hashlib.sha256(content).hexdigest()
 
@@ -1086,6 +1135,41 @@ class CalculatorCoverageTests(unittest.TestCase):
             result = run_validator(copied_root)
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_rejects_author_result_missing_from_local_clone(self) -> None:
+        # клон на месте, а файла в нём нет: якорь указывает на несуществующий результат
+        with repository_copy() as copied_root:
+            self.add_author_result(copied_root, b'{"value": 1}\n')
+            anchor = f"calculations/results/absent.json#sha256={'0' * 64}"
+            self.add_calculator(copied_root, f'ANCHORS = ("{anchor}",)\n' + SAMPLE_CALL)
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            f"calculator test anchor missing from local author clone: "
+            f"test_sample.py: {anchor}",
+            result.stdout,
+        )
+
+    def test_rejects_local_clone_off_the_pin(self) -> None:
+        # хеши сверяются с клоном на пине 56ecb425; клон на другом коммите — ошибка
+        with repository_copy() as copied_root:
+            digest = self.add_author_result(copied_root, b'{"value": 1}\n')
+            anchor = f"calculations/results/sample.json#sha256={digest}"
+            self.add_calculator(copied_root, f'ANCHORS = ("{anchor}",)\n' + SAMPLE_CALL)
+            head = copied_root / ".tmp" / "upcalc" / ".git" / "HEAD"
+            head.parent.mkdir(parents=True)
+            head.write_text("0" * 40 + "\n", encoding="utf-8")
+            off_pin = run_validator(copied_root)
+            head.write_text(
+                "56ecb425b07ea6d16e891cba87bf7db416927d09\n", encoding="utf-8"
+            )
+            on_pin = run_validator(copied_root)
+
+        self.assertNotEqual(0, off_pin.returncode)
+        self.assertIn("local author clone is not at pin 56ecb425", off_pin.stdout)
+        self.assertEqual(0, on_pin.returncode, on_pin.stdout + on_pin.stderr)
 
     def test_skips_hash_check_without_local_clone(self) -> None:
         # копия репозитория не содержит .tmp/upcalc: форма проверяется, хеш — нет

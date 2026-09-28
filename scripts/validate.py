@@ -12,6 +12,7 @@ from urllib.parse import unquote, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from build_source_lock import UPSTREAM_COMMIT
 from source_anchors import (
     HEADING,
     LOCAL_SOURCE_ANCHOR,
@@ -100,7 +101,8 @@ AUTHOR_RESULT = re.compile(
     r"^calculations/results/(?P<name>[\w.-]+\.json)#sha256=(?P<sha256>[0-9a-f]{64})$"
 )
 # Разреженный клон оригинала на пине; в git не входит и может отсутствовать
-AUTHOR_RESULTS_CLONE = Path(".tmp") / "upcalc" / "calculations" / "results"
+AUTHOR_CLONE = Path(".tmp") / "upcalc"
+AUTHOR_RESULTS_CLONE = AUTHOR_CLONE / "calculations" / "results"
 CJK = re.compile(r"[\u3000-\u9fff]")
 NUMBERS_PATH = SKILL_DIRECTORY / "references" / "numbers.md"
 TABLE_SEPARATOR = re.compile(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$")
@@ -222,14 +224,19 @@ def add_contract_error(errors: list[str], contract: str, detail: str) -> None:
     errors.append(f"invalid {contract}: {detail}")
 
 
-# .superpowers/ и docs/superpowers/ — рабочие материалы SDD-процесса разработки
-# этого репозитория (см. .gitignore); в публикуемый репозиторий не попадают,
-# поэтому валидатор должен их игнорировать так же, как .git и .tmp.
-EXCLUDED_TOP_LEVEL_DIRECTORIES = (".git", ".tmp", ".superpowers")
+# .git и .tmp — служебные каталоги на любой глубине (вложенный клон, временные
+# файлы инструментов). .superpowers/ и docs/superpowers/ — рабочие материалы
+# SDD-процесса разработки этого репозитория (см. .gitignore); в публикуемый
+# репозиторий не попадают, поэтому валидатор их тоже игнорирует, но только от
+# корня: docs/other и прочие соседние каталоги проверяются.
+EXCLUDED_ANY_DEPTH_DIRECTORIES = (".git", ".tmp")
+EXCLUDED_TOP_LEVEL_DIRECTORIES = (".superpowers",)
 EXCLUDED_NESTED_DIRECTORIES = (("docs", "superpowers"),)
 
 
 def is_excluded_path(relative_parts: tuple[str, ...]) -> bool:
+    if any(part in EXCLUDED_ANY_DEPTH_DIRECTORIES for part in relative_parts):
+        return True
     if relative_parts and relative_parts[0] in EXCLUDED_TOP_LEVEL_DIRECTORIES:
         return True
     return any(
@@ -1173,14 +1180,41 @@ def _check_test_anchor(
     if not author:
         errors.append(f"calculator test anchor has unknown form: {test_name}: {anchor}")
         return
-    local = root / AUTHOR_RESULTS_CLONE / author.group("name")
-    if local.is_file():
-        actual = hashlib.sha256(local.read_bytes()).hexdigest()
-        if actual != author.group("sha256"):
-            errors.append(
-                f"calculator test anchor hash mismatch: {test_name}: {anchor} "
-                f"(local clone has {actual})"
-            )
+    clone = root / AUTHOR_RESULTS_CLONE
+    if not clone.is_dir():
+        # копия репозитория без клона: форма проверена, хеш сверить не с чем
+        return
+    local = clone / author.group("name")
+    if not local.is_file():
+        errors.append(
+            f"calculator test anchor missing from local author clone: {test_name}: "
+            f"{anchor}"
+        )
+        return
+    actual = hashlib.sha256(local.read_bytes()).hexdigest()
+    if actual != author.group("sha256"):
+        errors.append(
+            f"calculator test anchor hash mismatch: {test_name}: {anchor} "
+            f"(local clone has {actual})"
+        )
+
+
+def _check_author_clone_pin(root: Path, errors: list[str]) -> None:
+    """Хеши результатов автора имеют смысл только для клона на пине оригинала.
+
+    HEAD читается файлом, без вызова git: у отсоединённого клона в нём sha
+    коммита. Клон без .git (распакованный архив) не проверяется.
+    """
+    head = root / AUTHOR_CLONE / ".git" / "HEAD"
+    if not head.is_file():
+        return
+    current = head.read_text(encoding="utf-8").strip()
+    if current != UPSTREAM_COMMIT:
+        errors.append(
+            f"local author clone is not at pin {UPSTREAM_COMMIT[:8]}: "
+            f"{AUTHOR_CLONE.as_posix()}/.git/HEAD is {current!r}; hashes of "
+            "calculations/results would be checked against another commit"
+        )
 
 
 def validate_calculator_coverage(root: Path, errors: list[str]) -> None:
@@ -1194,6 +1228,7 @@ def validate_calculator_coverage(root: Path, errors: list[str]) -> None:
     tests_dir = root / CALC_TESTS_DIRECTORY
     if not calc_dir.is_dir():
         return
+    _check_author_clone_pin(root, errors)
     tested: set[tuple[str, str]] = set()
     for test_file in sorted(tests_dir.glob("test_*.py")):
         tree = ast.parse(test_file.read_text(encoding="utf-8"))
