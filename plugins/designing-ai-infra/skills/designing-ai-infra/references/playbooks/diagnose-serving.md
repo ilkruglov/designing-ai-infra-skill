@@ -56,14 +56,14 @@ python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --weights 1638
 
 ```bash
 python3 scripts/calc.py queueing --class long_in=8192:256 --class long_out=1024:2048 \
-  --rate long_in=2 --rate long_out=2 --decode-capacity 2796.34
+  --rate long_in=2 --rate long_out=2 --decode-capacity 2796.34 --capacity-upper-bound
 ```
 
 ```text
-**decode_utilization**: 1.64644
+**decode_utilization** (нижняя граница): 1.64644
 ```
 
-2796,34 шага/s — верхняя граница мощности decode одной карты (`serving --batch 64 --context 2742`, шаг 8 `references/playbooks/size-inference.md`), значит 1,65 — нижняя граница загрузки: при пределе движка в 64 одновременные последовательности (условие примера 3-1) очередь растёт при любой реализации. Без этого предела по памяти помещается 196 запросов контекста 2742, и граница мощности выше: `python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --weights 16381470720 --weight-read 15136811008 --decode-flops 16753491968 --kv-per-token 147456 --context 2742 --batch 196` — 3721.29 tok/s, загрузка ≈ 1,24 (`python3 scripts/calc.py queueing --class long_in=8192:256 --class long_out=1024:2048 --rate long_in=2 --rate long_out=2 --decode-capacity 3721.29`), очередь растёт и тогда, но TPOT каждого запроса — ≥ 52,7 ms. В воспроизведении этой нагрузки пул KV заполнялся до 100 %, p95 TTFT — 242,9 s, событий вытеснения — 62 (`references/chapters/ch03-workloads.md`). Здесь лечится мощность или приём, а не kernel. Если растёт один интервал ITL при вставке длинного prefill (в главе 8 максимальный ITL 26 → 376 ms при непрерывной пакетной обработке), лечится планирование: блочный prefill с максимальным блоком, удовлетворяющим ITL.
+2796,34 шага/s — верхняя граница мощности decode одной карты (`serving --batch 64 --context 2742`, шаг 8 `references/playbooks/size-inference.md`), значит 1,65 — нижняя граница загрузки: при пределе движка в 64 одновременные последовательности (условие примера 3-1) очередь растёт при любой реализации. Без этого предела по памяти помещается 196 запросов контекста 2742, и граница мощности выше: `python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --weights 16381470720 --weight-read 15136811008 --decode-flops 16753491968 --kv-per-token 147456 --context 2742 --batch 196` — 3721.29 tok/s, загрузка не меньше ≈ 1,24 (`python3 scripts/calc.py queueing --class long_in=8192:256 --class long_out=1024:2048 --rate long_in=2 --rate long_out=2 --decode-capacity 3721.29 --capacity-upper-bound`), очередь растёт и тогда, но TPOT каждого запроса — ≥ 52,7 ms. В воспроизведении этой нагрузки пул KV заполнялся до 100 %, p95 TTFT — 242,9 s, событий вытеснения — 62 (`references/chapters/ch03-workloads.md`). Здесь лечится мощность или приём, а не kernel. Если растёт один интервал ITL при вставке длинного prefill (в главе 8 максимальный ITL 26 → 376 ms при непрерывной пакетной обработке), лечится планирование: блочный prefill с максимальным блоком, удовлетворяющим ITL.
 
 ### 4. Неполнота модели или накладные расходы
 

@@ -130,7 +130,7 @@ Qwen3-8B при 8K — 133,59 TFLOPs prefill и 20,0 GFLOPs на шаг decode. 
 
 **Гейт.** Для каждой модели на одном и том же железе посчитаны `max_concurrent_requests` (верхняя граница) при нужном контексте и нижняя граница шага decode. Найдены пороги: длина контекста, при которой число запросов падает на ступеньку; batch, при котором чтение KV догоняет чтение весов. Число запросов меняется целыми скачками.
 
-**Чем закрыть.** Плотная Qwen3-8B против MoE Qwen3-30B-A3B на H100 SXM, контекст 8192, резерв 2 GiB, batch 1 (числа — из шагов 3 и 5):
+**Чем закрыть.** Плотная Qwen3-8B против MoE Qwen3-30B-A3B на H100 SXM, контекст 8192 — одна длина для ёмкости и для шага (`--memory-context` не задан), резерв 2 GiB, batch 1 (числа — из шагов 3 и 5):
 
 ```bash
 python3 scripts/calc.py serving --device h100-sxm --weights 16381470720 --weight-read 15136811008 \
@@ -146,7 +146,7 @@ python3 scripts/calc.py serving --device h100-sxm --weights 61064245248 --weight
 **tpot_lower_bound_seconds** (нижняя граница): 0.00205643 s
 ```
 
-При одном запросе MoE быстрее по нижней границе (2,06 против 4,88 ms), но из-за 61 GB весов вмещает 20 запросов 8K против 50; при `--context 32768` — 5 против 12. С ростом batch у MoE растёт и чтение объединения экспертов (шаг 5), которого `serving` по `decode_weight_read_bytes` не видит: с ним граница TPOT MoE при batch > 1 остаётся нижней, но слабой — реальное чтение больше. Для batch B в `--weight-read` передаётся `decode_weight_read_bytes_at_batch` из `model --batch B`. Порог batch по KV — `batch-threshold` (шаг 5 `references/playbooks/size-inference.md`); для MoE он нижняя граница, потому что при batch читается объединение экспертов.
+При одном запросе MoE быстрее по нижней границе шага при 8192 (2,06 против 4,88 ms), но из-за 61 GB весов вмещает 20 запросов 8K против 50; при `--context 32768` — 5 против 12. С ростом batch у MoE растёт и чтение объединения экспертов (шаг 5), которого `serving` по `decode_weight_read_bytes` не видит: с ним граница TPOT MoE при batch > 1 остаётся нижней, но слабой — реальное чтение больше. Для batch B в `--weight-read` передаётся `decode_weight_read_bytes_at_batch` из `model --batch B`. Порог batch по KV — `batch-threshold` (шаг 5 `references/playbooks/size-inference.md`); для MoE он нижняя граница, потому что при batch читается объединение экспертов.
 
 Гибридные модели и MLA требуют трёх поправок:
 
