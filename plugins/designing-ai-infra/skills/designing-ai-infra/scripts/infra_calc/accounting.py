@@ -140,6 +140,20 @@ def decode_weight_read_bytes(spec: ModelSpec, bytes_per_param: float = 2.0) -> i
     return int((parameter_count(spec, active=True) - lookup_only) * bytes_per_param)
 
 
+def prefill_weight_read_parameters(spec: ModelSpec, tokens: int) -> int:
+    """Параметры, которые prefill n токенов одного запроса читает хотя бы раз.
+
+    Учёт как у decode_weight_read_bytes: словарная голова читается целиком
+    (логиты нужны хотя бы для последнего токена), у MoE — эксперты одного
+    токена (U = k: все токены могут выбрать одних и тех же). Без общих весов
+    таблица эмбеддингов читается строками входа — не больше min(V, n); при
+    общих весах голова читает эту матрицу целиком, и чтение не меняется.
+    """
+    require_int_at_least("tokens", tokens, 0)
+    unread_rows = 0 if spec.tied_embeddings else spec.vocab - min(spec.vocab, tokens)
+    return parameter_count(spec, active=True) - unread_rows * spec.hidden
+
+
 def _check_tp(spec: ModelSpec, tp: int) -> None:
     """Головы — минимальная единица распределения TP (глава 6.2.2)."""
     require_int_at_least("tp", tp, 1)

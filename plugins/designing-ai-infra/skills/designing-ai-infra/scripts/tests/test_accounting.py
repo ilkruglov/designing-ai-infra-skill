@@ -54,6 +54,42 @@ class DenseTest(unittest.TestCase):
         tied = replace(spec("qwen3-8b"), tied_embeddings=True)
         self.assertEqual(accounting.decode_weight_read_bytes(tied), 15_136_811_008)
 
+    def test_prefill_reads_only_input_rows_of_embedding_table(self) -> None:
+        # вывод вручную: без общих весов prefill n токенов читает не больше
+        # min(V, n) строк таблицы 151 936 × 4096, словарную голову — целиком (логиты
+        # хотя бы последнего токена), слои — все. При n = 16:
+        # 8 190 735 360 − (151 936 − 16) × 4096 = 7 568 471 040 параметров;
+        # × 2 B = 15 136 942 080 = decode_weight_read_bytes + 16 × 4096 × 2
+        s = spec("qwen3-8b")
+        self.assertEqual(
+            accounting.prefill_weight_read_parameters(s, 16), 7_568_471_040
+        )
+        self.assertEqual(
+            2 * accounting.prefill_weight_read_parameters(s, 16),
+            accounting.decode_weight_read_bytes(s) + 16 * 4096 * 2,
+        )
+        # n ≥ V: вся таблица, чтение = все параметры
+        self.assertEqual(
+            accounting.prefill_weight_read_parameters(s, 151_936),
+            accounting.parameter_count(s),
+        )
+        # общий префикс может закрыть весь вход: строк таблицы — ноль
+        self.assertEqual(
+            accounting.prefill_weight_read_parameters(s, 0),
+            8_190_735_360 - 622_329_856,
+        )
+        # общие веса: голова читает всю матрицу, она же — таблица; чтение = все
+        # параметры 7 568 405 504 (без отдельной головы) при любом n
+        tied = replace(s, tied_embeddings=True)
+        for tokens in (0, 16):
+            with self.subTest(tokens=tokens):
+                self.assertEqual(
+                    accounting.prefill_weight_read_parameters(tied, tokens),
+                    7_568_405_504,
+                )
+        with self.assertRaises(ValueError):
+            accounting.prefill_weight_read_parameters(s, -1)
+
     def test_negative_context_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             accounting.kv_resident_bytes(spec("qwen3-8b"), -1)
@@ -85,6 +121,26 @@ class MoeTest(unittest.TestCase):
         # qwen3-30b-a3b-decode-b1-s8192.json: kv_bytes_per_token_per_request;
         # kv-comparison-n8192-b1.json: qwen3-30b-a3b
         self.assertEqual(accounting.kv_bytes_per_token(s), 98_304)
+
+    def test_prefill_read_is_one_token_experts_plus_input_rows(self) -> None:
+        # вывод вручную: активные параметры одного токена (U = k) без непрочитанных
+        # строк таблицы. Qwen3-30B-A3B, V = 151 936, h = 2048, n = 16:
+        # 3 353 032 704 − (151 936 − 16) × 2048 = 3 041 900 544;
+        # × 2 B = 6 083 801 088 = 6 083 735 552 (decode) + 16 × 2048 × 2.
+        # DeepSeek-V3, V = 129 280, h = 7168, n = 16:
+        # 37 552 297 472 − (129 280 − 16) × 7168 = 36 625 733 120
+        cases = (
+            ("qwen3-30b-a3b", 3_041_900_544, 16 * 2048),
+            ("deepseek-v3", 36_625_733_120, 16 * 7168),
+        )
+        for name, expected, rows in cases:
+            with self.subTest(name=name):
+                s = spec(name)
+                read = accounting.prefill_weight_read_parameters(s, 16)
+                self.assertEqual(read, expected)
+                self.assertEqual(
+                    2 * read, accounting.decode_weight_read_bytes(s) + 2 * rows
+                )
 
 
 class MlaTest(unittest.TestCase):

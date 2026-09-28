@@ -5,10 +5,11 @@ import shlex
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from infra_calc import cli
+from infra_calc import cli, model
 from infra_calc.result import Result
 
 ANCHORS = (
@@ -1994,9 +1995,12 @@ class FinalReviewTest(unittest.TestCase):
 
     def test_moe_ttft_reads_only_active_experts_at_least(self) -> None:
         # нижняя граница чтения весов prefill MoE — эксперты одного токена (U = k): все
-        # токены могут выбрать одних и тех же экспертов. Qwen3-30B-A3B в BF16:
-        # 61 064 245 248 × 3 353 032 704 / 30 532 122 624 = 6 706 065 408 B (2 B на
-        # активный параметр); 6 706 065 408 / 3.35e12 = 2.00181 ms вместо 18.228 ms по M_w
+        # токены могут выбрать одних и тех же экспертов; таблица эмбеддингов без общих
+        # весов — только min(V, n) строк входа. Qwen3-30B-A3B в BF16, n = 16:
+        # N_prefill = 3 353 032 704 − (151 936 − 16) × 2048 = 3 041 900 544;
+        # 61 064 245 248 × 3 041 900 544 / 30 532 122 624 = 6 083 801 088 B
+        # (2 B на параметр) = 6 083 735 552 + 16 × 2048 × 2;
+        # 6 083 801 088 / 3.35e12 = 1.816060 ms (было 2.00181 ms с полной таблицей)
         moe = values(
             "serving", "--device", "h100-sxm", "--config", str(CONFIGS / "qwen3-30b-a3b.json"),
             "--weights", "61064245248", "--weight-read", "6083735552", "--decode-flops", "1",
@@ -2004,20 +2008,27 @@ class FinalReviewTest(unittest.TestCase):
         )  # fmt: skip
         ttft = moe["ttft_lower_bound_seconds"]
         self.assertEqual(ttft["bound"], "lower")
-        self.assertAlmostEqual(ttft["value"] * 1e3, 2.001810570, places=6)
+        self.assertAlmostEqual(ttft["value"] * 1e3, 1.816060026, places=6)
         self.assertEqual(ttft["inputs"]["active_parameters"], 3_353_032_704)
         self.assertEqual(ttft["inputs"]["parameters"], 30_532_122_624)
+        self.assertEqual(ttft["inputs"]["prefill_read_parameters"], 3_041_900_544)
+        self.assertEqual(ttft["inputs"]["prefill_tokens"], 16)
+        self.assertIn("M_w·N_prefill/N", ttft["formula"])
         self.assertIn("U = k", " ".join(ttft["notes"]))
-        # плотная модель и вызов без --config — по-прежнему M_w
+        # плотная модель с --config: все веса без непрочитанных строк таблицы.
+        # Qwen3-8B, n = 16: 8 190 735 360 − (151 936 − 16) × 4096 = 7 568 471 040;
+        # × 2 B = 15 136 942 080 B; / 3.35e12 = 4.518490 ms (было 16 381 470 720 B)
         dense = values(
             "serving", "--device", "h100-sxm", "--config", QWEN3_8B,
             "--weights", "16381470720", "--weight-read", "15136811008",
             "--decode-flops", "1", "--prefill-flops", "1e9", "--kv-per-token", "147456",
             "--context", "16",
         )  # fmt: skip
-        self.assertAlmostEqual(
-            dense["ttft_lower_bound_seconds"]["value"], 16381470720 / 3.35e12
-        )
+        item = dense["ttft_lower_bound_seconds"]
+        self.assertEqual(item["bound"], "lower")
+        self.assertAlmostEqual(item["value"] * 1e3, 4.518490173, places=6)
+        self.assertEqual(item["inputs"]["prefill_read_parameters"], 7_568_471_040)
+        self.assertNotIn("active_parameters", item["inputs"])
         # гибридная MoE: активные параметры калькулятор не считает — примечание
         hybrid = values(
             "serving", "--device", "h100-sxm", "--config",
@@ -2029,6 +2040,112 @@ class FinalReviewTest(unittest.TestCase):
         self.assertAlmostEqual(item["value"], 69.32e9 / 3.35e12)
         self.assertIsNone(item["bound"])
         self.assertIn("M_w", " ".join(item["notes"]))
+
+    PREFILL_8B = (
+        "serving", "--device", "h100-sxm", "--weights", "16381470720",
+        "--weight-read", "15136811008", "--decode-flops", "1", "--prefill-flops", "1e9",
+        "--kv-per-token", "147456",
+    )  # fmt: skip
+
+    def test_prefill_read_embedding_rows_edges(self) -> None:
+        # DeepSeek-V3 при 1 B на параметр (M_w = N = 671 026 419 200), n = 16:
+        # 37 552 297 472 − (129 280 − 16) × 7168 = 36 625 733 120 B; / 3.35e12 =
+        # 10.933055 ms вместо 11.209641 ms с полной таблицей (разница 2.5 %)
+        v3 = values(
+            "serving", "--device", "h100-sxm", "--config", str(CONFIGS / "deepseek-v3.json"),
+            "--weights", "671026419200", "--weight-read", "0", "--decode-flops", "1",
+            "--prefill-flops", "1e9", "--kv-per-token", "70272", "--context", "16",
+        )  # fmt: skip
+        self.assertAlmostEqual(
+            v3["ttft_lower_bound_seconds"]["value"] * 1e3, 10.933054663, places=6
+        )
+        # n ≥ V: вся таблица; Qwen3-8B, n = 151 936 — все веса 16 381 470 720 B
+        whole = values(*self.PREFILL_8B, "--config", QWEN3_8B, "--context", "151936")
+        self.assertAlmostEqual(
+            whole["ttft_lower_bound_seconds"]["value"], 16381470720 / 3.35e12
+        )
+        # общий префикс уже в пуле: строки таблицы читает только собственная часть
+        # входа, n = 32 − 16 = 16 — то же, что --context 16 без префикса
+        prefix = values(
+            *self.PREFILL_8B, "--config", QWEN3_8B, "--context", "32",
+            "--shared-prefix-tokens", "16",
+        )  # fmt: skip
+        item = prefix["ttft_lower_bound_seconds"]
+        self.assertEqual(item["inputs"]["prefill_tokens"], 16)
+        self.assertAlmostEqual(item["value"] * 1e3, 4.518490173, places=6)
+        # TP = 2: 15 136 942 080 / 2 = 7 568 471 040 B на карту; / 3.35e12 = 2.259245 ms
+        tp = values(
+            *self.PREFILL_8B, "--config", QWEN3_8B, "--context", "16", "--tp", "2"
+        )
+        self.assertAlmostEqual(
+            tp["ttft_lower_bound_seconds"]["value"] * 1e3, 2.259245087, places=6
+        )
+        self.assertIn("TP", tp["ttft_lower_bound_seconds"]["formula"])
+
+    def test_prefill_read_with_tied_embeddings_is_all_weights(self) -> None:
+        # общие веса: голова читает всю матрицу, она же — таблица эмбеддингов, поэтому
+        # чтение prefill — все веса M_w: 2 × 7 568 405 504 = 15 136 811 008 B
+        config = json.loads(Path(QWEN3_8B).read_text())
+        config["tie_word_embeddings"] = True
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "qwen3-8b-tied.json"
+            path.write_text(json.dumps(config))
+            v = values(*self.PREFILL_8B, "--config", str(path), "--context", "16")
+        item = v["ttft_lower_bound_seconds"]
+        self.assertEqual(item["bound"], "lower")
+        self.assertAlmostEqual(item["value"], 16381470720 / 3.35e12)
+        self.assertEqual(item["formula"], "max(F_prefill/Π, M_w/β)")
+
+    def test_prefill_read_notes_state_quantization_direction(self) -> None:
+        # доля по числу параметров занижает чтение, только если непрочитанные веса
+        # не тяжелее прочитанных: эксперты квантизованы сильнее — граница нижняя;
+        # обратный случай (непрочитанные точнее) примечание называет
+        for config in ("qwen3-30b-a3b.json", "qwen3-8b.json"):
+            with self.subTest(config=config):
+                v = values(
+                    *self.PREFILL_8B,
+                    "--config",
+                    str(CONFIGS / config),
+                    "--context",
+                    "16",
+                )
+                notes = " ".join(v["ttft_lower_bound_seconds"]["notes"])
+                self.assertIn("min(V, n)", notes)
+                self.assertIn("остаётся нижней", notes)
+                self.assertIn("может перестать быть нижней", notes)
+        moe = values(
+            *self.PREFILL_8B, "--config", str(CONFIGS / "qwen3-30b-a3b.json"),
+            "--context", "16",
+        )  # fmt: skip
+        notes = " ".join(moe["ttft_lower_bound_seconds"]["notes"])
+        self.assertIn("эксперты квантизованы сильнее остальных весов", notes)
+        self.assertIn("эксперты хранятся точнее остальных весов", notes)
+
+    def test_prefill_read_unsupported_dense_is_not_a_bound_without_tying(self) -> None:
+        # параметры гибридной архитектуры не считаются; без MoE и с отдельной таблицей
+        # эмбеддингов M_w включает непрочитанные строки — это не нижняя граница,
+        # при общих весах M_w читается целиком — граница
+        hybrid = model.parse_spec(model.load_config(CONFIGS / "qwen3.6-35b-a3b.json"))
+        dense = replace(hybrid, experts=0, experts_per_token=0)
+        read, term, inputs, bound, notes = cli._prefill_read(dense, 1e9, 16, 0)
+        self.assertEqual((read, term, inputs, bound), (1e9, "M_w", {}, None))
+        self.assertIn("min(V, n)", " ".join(notes))
+        tied = replace(dense, tied_embeddings=True)
+        self.assertEqual(
+            cli._prefill_read(tied, 1e9, 16, 0), (1e9, "M_w", {}, "lower", ())
+        )
+
+    def test_prefill_read_without_config_keeps_all_weights_and_says_so(self) -> None:
+        # без --config значение прежнее — все веса M_w, но примечание говорит, что
+        # у модели без общих весов эмбеддингов и у MoE оно может быть выше минимума
+        v = values(*self.PREFILL_8B, "--context", "16")
+        item = v["ttft_lower_bound_seconds"]
+        self.assertAlmostEqual(item["value"], 16381470720 / 3.35e12)
+        self.assertEqual(item["bound"], "lower")
+        notes = " ".join(item["notes"])
+        self.assertIn("--config", notes)
+        self.assertIn("выше настоящего минимума", notes)
+        self.assertIn("TTFT", self.option_help("serving", "--config"))
 
     def test_prefill_flops_are_divided_by_tp(self) -> None:
         # арифметическое тождество: F_prefill/(TP·Π) = 2e12 / (2 × 1e12) = 1 s

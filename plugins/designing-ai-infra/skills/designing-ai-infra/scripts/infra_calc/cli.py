@@ -102,6 +102,7 @@ DIMENSIONLESS = frozenset(
         "params",
         "parameters",
         "active_parameters",
+        "prefill_read_parameters",
         "device_count",
         "batch",
         "dp",
@@ -150,6 +151,7 @@ INPUT_UNITS: dict[str, str] = {
     "context": "tok",
     "memory_context": "tok",
     "shared_prefix": "tok",
+    "prefill_tokens": "tok",
     "window": "tok",
     "fixed_state": "B",
     "tokens": "tok",
@@ -1213,38 +1215,109 @@ def _serving_price(
     )
 
 
+PREFILL_NO_CONFIG_NOTE = (
+    "без --config чтение весов prefill взято как все веса M_w. Это нижняя граница "
+    "для плотной модели с общими весами эмбеддингов и словарной головы "
+    "(tie_word_embeddings); без общих весов prefill читает не больше min(V, n) строк "
+    "таблицы эмбеддингов, у MoE — не всех экспертов, и значение может быть выше "
+    "настоящего минимума. С --config граница точнее"
+)
+
+
 def _prefill_read(
-    spec: ModelSpec | None, weights_card: float
+    spec: ModelSpec | None, weights_card: float, tokens: int, prefix: int
 ) -> tuple[float, str, dict[str, Any], str | None, tuple[str, ...]]:
     """Чтение весов prefill для TTFT: байты, член формулы, входы, граница, примечания.
 
-    У MoE все токены входа могут выбрать одних и тех же k экспертов, поэтому
-    нижняя граница чтения — активные параметры одного токена (U = k), а не все
-    веса M_w.
+    Учёт — как у decode_weight_read_bytes (accounting.prefill_weight_read_parameters):
+    словарная голова целиком, у MoE — эксперты одного токена (U = k: все токены
+    входа могут выбрать одних и тех же), таблица эмбеддингов без общих весов —
+    не больше min(V, n) строк входа. Байты — доля M_w по числу параметров.
+    Без --config — все веса M_w, как раньше, с примечанием.
     """
-    if spec is None or not spec.experts:
-        return weights_card, "M_w", {}, "lower", ()
+    if spec is None:
+        return weights_card, "M_w", {}, "lower", (PREFILL_NO_CONFIG_NOTE,)
     try:
         total = accounting.parameter_count(spec)
-        active = accounting.parameter_count(spec, active=True)
+        read = accounting.prefill_weight_read_parameters(spec, tokens)
     except UnsupportedArchitecture:
+        if not spec.experts and spec.tied_embeddings:
+            return weights_card, "M_w", {}, "lower", ()
+        skipped = (
+            "короткий вход затрагивает не каждого эксперта"
+            if spec.experts
+            else "без общих весов эмбеддингов prefill читает не больше min(V, n) строк "
+            "таблицы"
+        )
         note = (
-            f"MoE ({spec.model_type}): активные параметры этой архитектуры калькулятор "
-            "не считает, поэтому чтение весов prefill взято как все веса M_w; короткий "
-            "вход затрагивает не каждого эксперта, и значение может быть выше "
-            "настоящего минимума — это не нижняя граница"
+            f"{'MoE ' if spec.experts else ''}({spec.model_type}): параметры этой "
+            "архитектуры калькулятор не считает, поэтому чтение весов prefill взято "
+            f"как все веса M_w; {skipped}, и значение может быть выше настоящего "
+            "минимума — это не нижняя граница"
         )
         return weights_card, "M_w", {}, None, (note,)
-    note = (
-        "MoE: нижняя граница чтения весов prefill — эксперты одного токена "
-        "(U = k), M_w·N_active/N: все токены входа могут выбрать одних и тех же "
-        "экспертов. Доля взята по числу параметров; если эксперты квантизованы "
-        "сильнее остальных весов, граница остаётся нижней. При равномерной "
-        "маршрутизации n токенов затрагивают в среднем E·[1 − (1 − k/E)^n] "
-        "экспертов слоя — это оценка, а не граница"
+    if read == total:
+        # плотная модель с общими весами (или n ≥ V): читаются все веса
+        return weights_card, "M_w", {}, "lower", ()
+    tokens_text = (
+        f"n = context − shared_prefix = {tokens} ток.: KV общего префикса может уже "
+        "быть в пуле, и тогда его строки prefill не читает"
+        if prefix
+        else f"n = {tokens} ток. входа"
     )
-    inputs = {"parameters": total, "active_parameters": active}
-    return weights_card * active / total, "M_w·N_active/N", inputs, "lower", (note,)
+    if spec.tied_embeddings:
+        table = (
+            "общие веса эмбеддингов и головы: голова читает эту матрицу целиком, "
+            "таблица из чтения не исключается"
+        )
+        n_prefill = "N_prefill = N_active"
+    else:
+        table = (
+            "таблица эмбеддингов без общих весов — не больше min(V, n) строк входа, "
+            f"{tokens_text}; калькулятор берёт min(V, n) строк, а у повторяющихся "
+            "токенов строка одна: если токены входа повторяются, минимум чтения "
+            "меньше — не больше чем на (n − 1)·h параметров"
+        )
+        n_prefill = (
+            "N_prefill = N_active − (V − min(V, n))·h"
+            if spec.experts
+            else "N_prefill = N − (V − min(V, n))·h"
+        )
+    head = "словарная голова — целиком: логиты нужны хотя бы для последнего токена"
+    share = (
+        "Доля M_w·N_prefill/N взята по числу параметров, то есть при одинаковых "
+        "байтах на параметр"
+    )
+    if spec.experts:
+        note = (
+            "MoE: нижняя граница чтения весов prefill — эксперты одного токена "
+            "(U = k): все токены входа могут выбрать одних и тех же экспертов; "
+            f"{table}; {head}; {n_prefill}. {share}: граница остаётся нижней, пока "
+            "непрочитанные веса (эксперты вне k и строки таблицы) занимают на "
+            "параметр в среднем не больше байт, чем прочитанные, — так бывает, если "
+            "эксперты квантизованы сильнее остальных весов: непрочитанные веса почти "
+            "целиком эксперты. Обратный случай — эксперты хранятся точнее остальных "
+            "весов (или таблица эмбеддингов точнее слоёв): доля завышает чтение, и "
+            "граница может перестать быть нижней. При равномерной маршрутизации "
+            "n токенов затрагивают в среднем E·[1 − (1 − k/E)^n] экспертов слоя — это "
+            "оценка, а не граница"
+        )
+        inputs: dict[str, Any] = {
+            "parameters": total,
+            "active_parameters": accounting.parameter_count(spec, active=True),
+        }
+    else:
+        note = (
+            "чтение весов prefill — все веса без непрочитанных строк таблицы "
+            f"эмбеддингов: {table}; {head}; {n_prefill}. {share}: граница остаётся "
+            "нижней, пока непрочитанные строки таблицы занимают на параметр не больше "
+            "байт, чем прочитанные веса в среднем; если таблица эмбеддингов хранится "
+            "точнее слоёв (например, BF16 при квантизованных слоях), доля завышает "
+            "чтение, и граница может перестать быть нижней"
+        )
+        inputs = {"parameters": total}
+    inputs |= {"prefill_read_parameters": read, "prefill_tokens": tokens}
+    return weights_card * read / total, "M_w·N_prefill/N", inputs, "lower", (note,)
 
 
 def _serving(args: argparse.Namespace) -> list[Result]:
@@ -1603,8 +1676,8 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             )
         )
     if args.prefill_flops is not None:
-        prefill_read, read_term, moe_inputs, ttft_bound, moe_notes = _prefill_read(
-            spec, weights_card
+        prefill_read, read_term, read_inputs, ttft_bound, read_notes = _prefill_read(
+            spec, weights_card, context - prefix, prefix
         )
         ttft = serving.ttft_lower_bound_seconds(
             args.prefill_flops / tp, prefill_read, peak.value, bw.value
@@ -1621,14 +1694,14 @@ def _serving(args: argparse.Namespace) -> list[Result]:
                     **arch,
                     "prefill_flops": args.prefill_flops,
                     "weights": args.weights,
-                    **moe_inputs,
+                    **read_inputs,
                     **parallel,
                     **peak.inputs,
                     **bw.inputs,
                 },
                 A_CH1_REF,
                 bound=ttft_bound,
-                notes=(*rate_notes, *tp_notes, *moe_notes),
+                notes=(*rate_notes, *tp_notes, *read_notes),
             )
         )
     if args.price_per_hour is not None:
@@ -2997,7 +3070,9 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--config",
         help="config.json модели: архитектура для --tp, фиксированного состояния и "
-        "окна внимания (sliding_window ограничивает KV запроса)",
+        "окна внимания (sliding_window ограничивает KV запроса); с ним нижняя граница "
+        "TTFT точнее — чтение весов prefill без непрочитанных строк таблицы "
+        "эмбеддингов и, у MoE, без экспертов вне k одного токена",
     )
     p.add_argument(
         "--tp",
