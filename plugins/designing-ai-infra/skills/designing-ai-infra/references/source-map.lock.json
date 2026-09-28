@@ -4,6 +4,357 @@
     "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
     "translation_commit": "83f26c39ed5fe0e5a16c4f7191e0bebb42c86d94"
   },
-  "anchors": {},
+  "anchors": {
+    "chapter1.md:101": {
+      "line_sha256": "0297f1d858a906b0d1b611b6e8de9c6429165f60408e4c3b74681f917565ad45",
+      "line_text": "### 1.2.1 Оценка решений по порядку величины",
+      "kind": "heading"
+    },
+    "chapter1.md:11": {
+      "line_sha256": "8c973f5978fd4b794263c14892d2235dd36db1e257e617fe5b442fc75f21ab71",
+      "line_text": "### 1.1.1 Повышение уровня абстракции программирования: от операционной системы к контексту модели",
+      "kind": "heading"
+    },
+    "chapter1.md:152": {
+      "line_sha256": "5b3da846b2034662646e4a465115c09faaf6fe1a5bedcca967abfe52bfe8829f",
+      "line_text": "### 1.2.2 Какие ключевые показатели необходимы для анализа AI-систем",
+      "kind": "heading"
+    },
+    "chapter1.md:189": {
+      "line_sha256": "b6bea4d1fc8b0d58689851004f6e784c14847389e79233051957c2217692ce19",
+      "line_text": "### 1.2.3 Пересчёт объёма хранения параметров и пропускной способности соединения",
+      "kind": "heading"
+    },
+    "chapter1.md:263": {
+      "line_sha256": "f890ec8ad5433b94970f4c8f3379da72f7acaf60312fe1ce426152a2adefea55",
+      "line_text": "### 1.3.2 Сколько времени занимают вычисления и чтение по отдельности",
+      "kind": "heading"
+    },
+    "chapter1.md:31": {
+      "line_sha256": "68858d48cd92c1b7e51ff9a0408f36d0f328953200739b2cec19aadd0123b0fc",
+      "line_text": "### 1.1.2 Разделение обязанностей между шестью уровнями: от задачи до аппаратного обеспечения",
+      "kind": "heading"
+    },
+    "chapter1.md:325": {
+      "line_sha256": "fb9c510bb437a2770d821e6be437d247151d89499d30cab3c369e2876a928c94",
+      "line_text": "### 1.3.3 Проверка оценки с помощью измерений",
+      "kind": "heading"
+    },
+    "chapter1.md:357": {
+      "line_sha256": "57688cbed3d8f87a4f217cadfef40823d19c01f8928eeee2d9cf1060f7ad83b5",
+      "line_text": "### 1.3.4 Почему измерения не достигают предела: неполнота модели или системные накладные расходы",
+      "kind": "heading"
+    },
+    "chapter1.md:361": {
+      "line_sha256": "b5238e5893993b175fde5d4a6391699afa66b47430efdc3a936f0cb96e8ae90e",
+      "line_text": "## 1.4 Как требования определяют проектирование архитектуры",
+      "kind": "heading"
+    },
+    "chapter1.md:365": {
+      "line_sha256": "026e08db51c93e6c530bfe08abab40d0535012ef0519bf816b2f0ed6d2317505",
+      "line_text": "### 1.4.1 TPU",
+      "kind": "heading"
+    },
+    "chapter1.md:379": {
+      "line_sha256": "5fb9e5df6d01d441df7ec0bd5403cb81d52767af24e69291795e858af5c71505",
+      "line_text": "### 1.4.2 SmartNIC",
+      "kind": "heading"
+    },
+    "chapter1.md:401": {
+      "line_sha256": "d6e5279f11ac5c703555d730550a537c5834541cdcfb2023fdbba6ce848ed9d9",
+      "line_text": "### 1.4.3 Unified Bus",
+      "kind": "heading"
+    },
+    "chapter1.md:417": {
+      "line_sha256": "5a321e6887f8bb06fab7d7fc8648f05d201e73de992f5c279de26156c9b07d92",
+      "line_text": "### 1.4.4 Последовательное распространение изменений",
+      "kind": "heading"
+    },
+    "chapter1.md:438": {
+      "line_sha256": "dd521bdf1d87a7b2826002a798bbc9e4f4e1fc2bcf717ec29abec1b771f3c399",
+      "line_text": "## Заблуждения и ловушки",
+      "kind": "heading"
+    },
+    "chapter1.md:450": {
+      "line_sha256": "eb17b722c8c18139bc7141ee4701a9103c37673e149363202d43b83f2403bc35",
+      "line_text": "## Краткий справочник чисел для этой главы",
+      "kind": "heading"
+    },
+    "chapter1.md:504": {
+      "line_sha256": "ce8eb7fc4f4558e3e8b9bec6197129ea00583dc4b7c61d484d7efa5548985ea3",
+      "line_text": "## Итоги главы",
+      "kind": "heading"
+    },
+    "chapter1.md:57": {
+      "line_sha256": "88eb9f5895e8e50cd6162a34853800f71dcf0d8e9f36462449178db530e0cbdb",
+      "line_text": "### 1.1.3 Обработка одного запроса на генерацию",
+      "kind": "heading"
+    },
+    "chapter2.md:106": {
+      "line_sha256": "35a72561555a5cb89fdc42f407a192f796990ea69b8ce279a6608a0b316b63de",
+      "line_text": "### 2.1.3 Вычисление внимания и позиционное кодирование",
+      "kind": "heading"
+    },
+    "chapter2.md:1241": {
+      "line_sha256": "ce8eb7fc4f4558e3e8b9bec6197129ea00583dc4b7c61d484d7efa5548985ea3",
+      "line_text": "## Итоги главы",
+      "kind": "heading"
+    },
+    "chapter2.md:146": {
+      "line_sha256": "4be4b6de501b47a9377061162678eb7145c1b641a86c4075d68a52ab0f1ece4d",
+      "line_text": "### 2.1.4 Сеть прямого распространения и объём вычислений прямого прохода",
+      "kind": "heading"
+    },
+    "chapter2.md:216": {
+      "line_sha256": "c0bf5df1a114c1dc85884bf71d959a0755ca6c12795987e8292c7eb1ccb4ff2e",
+      "line_text": "## 2.2 Расчёт потребления ресурсов при авторегрессионной генерации",
+      "kind": "heading"
+    },
+    "chapter2.md:220": {
+      "line_sha256": "0905424135a64ccd51e7f8132aa698eee6698dd44d61dec7653a91b33a5ff6d1",
+      "line_text": "### 2.2.1 Prefill, decode и повторное использование состояния",
+      "kind": "heading"
+    },
+    "chapter2.md:23": {
+      "line_sha256": "ffd0623ccc317c57f0339cc40d44221c2815950fe7678231af678ac2ecd4c371",
+      "line_text": "### 2.1.1 Последовательные зависимости и причинный вычислительный граф",
+      "kind": "heading"
+    },
+    "chapter2.md:236": {
+      "line_sha256": "a0b9526028b7481d3e29d87a4aa56639d9dd946fea95a0f2a427054dbb22fa87",
+      "line_text": "### 2.2.2 Потребление памяти и объём доступа к данным",
+      "kind": "heading"
+    },
+    "chapter2.md:266": {
+      "line_sha256": "aa9501ebdee09ab4ae145899801375c54dfae138f6be7794a0e849bdefca0e84",
+      "line_text": "### 2.2.3 Объём вычислений и чтения-записи состояния при генерации полного ответа",
+      "kind": "heading"
+    },
+    "chapter2.md:312": {
+      "line_sha256": "da6ae486d760918974cb33e98fc54210cbcbda70f20819a35674936d0bd47656",
+      "line_text": "### 2.3.1 Многоголовое внимание и совместное использование KV",
+      "kind": "heading"
+    },
+    "chapter2.md:334": {
+      "line_sha256": "cf9da516fcbdd26766795c1ade3e79ad6adce8df56ccec996265b3730e42f89c",
+      "line_text": "### 2.3.2 Сжатие скрытых переменных и пути выполнения MLA",
+      "kind": "heading"
+    },
+    "chapter2.md:360": {
+      "line_sha256": "c874b1ac5ec623ef52461f06348441ed6b0fc7f2fee4dc170170a0e8c3e8f659",
+      "line_text": "### 2.3.3 Локальное окно, сжатие контекста и разреженный индекс",
+      "kind": "heading"
+    },
+    "chapter2.md:396": {
+      "line_sha256": "18f0a29d8d27d4142cbc83d5851e4a8d33ba65864fb72504c073bc34abbf5029",
+      "line_text": "### 2.3.4 Линейное внимание и рекуррентное обновление конечного состояния",
+      "kind": "heading"
+    },
+    "chapter2.md:418": {
+      "line_sha256": "3446918628a1551addc13803a20a25ba060b382c034b38df52e8c1cfeaf72bd1",
+      "line_text": "### 2.3.5 Состав состояния при гибридном внимании",
+      "kind": "heading"
+    },
+    "chapter2.md:45": {
+      "line_sha256": "c6a4d01f1f258ac8d035b8ff52cddf7a0a6157841792ae6cc8bf69ae077601d5",
+      "line_text": "### 2.1.2 Конфигурация модели и структура тензоров",
+      "kind": "heading"
+    },
+    "chapter2.md:454": {
+      "line_sha256": "d2865412a957bbd7dc3c8a062967fc65accdccb943fd1e8bb5ca282fe4eb3d45",
+      "line_text": "### 2.3.6 Сколько хранится на каждый токен и сколько считывается при каждом decode",
+      "kind": "heading"
+    },
+    "chapter2.md:526": {
+      "line_sha256": "b52ee61b9671fd2fff3d4f8c0a6202fac668a16eb8e851f6219d308462f351fd",
+      "line_text": "## 2.4 Условные вычисления и повторное использование весов экспертов",
+      "kind": "heading"
+    },
+    "chapter2.md:542": {
+      "line_sha256": "d6e374ed65937ac44425c31e46803ad6de9c4cbebf2fde8d34b222004e7270d6",
+      "line_text": "### 2.4.2 Фактический объём вычислений и чтение весов внутри пакета",
+      "kind": "heading"
+    },
+    "chapter2.md:573": {
+      "line_sha256": "ac208fa6bdcb635ed417c17440dc2a637f432119a869290be0b63b5468e623c1",
+      "line_text": "### 2.4.3 Общие эксперты и вычисления в латентном пространстве",
+      "kind": "heading"
+    },
+    "chapter2.md:593": {
+      "line_sha256": "133b049942afb178df87413bebfd2c5794c87f16b9fcdc1fbdba02d034cdd1f7",
+      "line_text": "### 2.5.1 Глубина, ширина и гранулярность экспертов",
+      "kind": "heading"
+    },
+    "chapter2.md:603": {
+      "line_sha256": "cd25397f360b1ded2bd9dd54faef85202206dac56cfaec84bca57596f106a144",
+      "line_text": "### 2.5.2 Остаточные соединения и межслойные состояния",
+      "kind": "heading"
+    },
+    "chapter2.md:621": {
+      "line_sha256": "432ca7716794535f860711ccd520914c0fdfc8a29f3a4747b3ec1cea8942119d",
+      "line_text": "### 2.5.3 Предсказание нескольких токенов и вспомогательные вычисления",
+      "kind": "heading"
+    },
+    "chapter2.md:643": {
+      "line_sha256": "fd3858dc79b25e78ecdab61b2533fa12dc07366384feb15ef2fd05ba16b0985e",
+      "line_text": "### 2.6.1 Требования компонентов к ресурсам и сводные показатели моделей",
+      "kind": "heading"
+    },
+    "chapter2.md:805": {
+      "line_sha256": "d177088b6490163054c9ed7fcd5fec4e6ba7596ac307a7cdd637dfc8f75e69de",
+      "line_text": "### 2.6.2 Число параметров, числовая точность и ограничения по ёмкости",
+      "kind": "heading"
+    },
+    "chapter2.md:861": {
+      "line_sha256": "1961a0e701a8aebc2dbe7beec9215d3a44d630ef51926c35de70e49a1b6033a3",
+      "line_text": "### 2.6.3 Сравнение моделей при разных параметрах запроса",
+      "kind": "heading"
+    },
+    "chapter2.md:903": {
+      "line_sha256": "dd521bdf1d87a7b2826002a798bbc9e4f4e1fc2bcf717ec29abec1b771f3c399",
+      "line_text": "## Заблуждения и ловушки",
+      "kind": "heading"
+    },
+    "chapter3.md:13": {
+      "line_sha256": "4c447c2224bb99d750250d18bdb4d97553f32c75cf51c827241cfafad93be718",
+      "line_text": "### 3.1.1 Prefill и Decode",
+      "kind": "heading"
+    },
+    "chapter3.md:151": {
+      "line_sha256": "09f72c37f9587dd4f546f562d55275386e2591cbf94a3ed50213f450251c636f",
+      "line_text": "### 3.2.1 Многораундовый диалог и рост префикса",
+      "kind": "heading"
+    },
+    "chapter3.md:173": {
+      "line_sha256": "e7f1c7bd5bee76e378ec9ce65efb63ed8d0221bd146e56f15eb43b0bd2ef4890",
+      "line_text": "### 3.2.2 Рассуждение и проверка: сколько стоит выполнение одной задачи",
+      "kind": "heading"
+    },
+    "chapter3.md:201": {
+      "line_sha256": "95381fe5eb1ad180c69c847feb74f7e61bd41c02a05ba7beef2546938d3df149",
+      "line_text": "### 3.2.3 Нагрузка агента",
+      "kind": "heading"
+    },
+    "chapter3.md:209": {
+      "line_sha256": "dad0e1b66eeaca4bff495175faebb72d9a8a17f66dce70b7850d009b6f950b30",
+      "line_text": "### 3.2.4 Ветвление, ожидание инструментов и хранение состояния",
+      "kind": "heading"
+    },
+    "chapter3.md:286": {
+      "line_sha256": "4c9be3063cfb1dd4b01150c3c19709d3060ee87dfa65b49cbf1989aa7f433dbd",
+      "line_text": "### 3.3.1 Визуальное кодирование, генерация текста и состояние",
+      "kind": "heading"
+    },
+    "chapter3.md:29": {
+      "line_sha256": "e5d0442dd9c29ba1bb2cd4a459e9c2b38315c1964cc9d8d0ef18c2c2f033946a",
+      "line_text": "### 3.1.2 Цели задач и метрики оценки",
+      "kind": "heading"
+    },
+    "chapter3.md:3": {
+      "line_sha256": "fbf9afb6769a2a6b3e436a62c5674379625a8193eeb457ef862a6d3227686655",
+      "line_text": "# Глава 3. Нагрузки инференса и обучения",
+      "kind": "heading"
+    },
+    "chapter3.md:324": {
+      "line_sha256": "d4cd653464a2a711691519a798ecc7924338d5c0bdb854bf4402d6f45c07e811",
+      "line_text": "### 3.3.2 Процессы вычисления при генерации аудио и изображений",
+      "kind": "heading"
+    },
+    "chapter3.md:334": {
+      "line_sha256": "f6a3611d32976963214551fda53b556dd31473e59e7843e549fe7dce6becf176",
+      "line_text": "### 3.3.3 Непрерывное восприятие, начало ответа и прерывание",
+      "kind": "heading"
+    },
+    "chapter3.md:384": {
+      "line_sha256": "885390069afee1b5da077d06004a97db6382e9f9afeada421ce7cc8cf8fc3eb2",
+      "line_text": "### 3.4.1 Прямые вычисления, обратное распространение и обновление параметров",
+      "kind": "heading"
+    },
+    "chapter3.md:428": {
+      "line_sha256": "0ada45cbb1af0b4afad1a529b0cd63163c040bf0711731d73c8f1110f56d5c20",
+      "line_text": "### 3.4.2 Предобучение, промежуточное обучение и SFT",
+      "kind": "heading"
+    },
+    "chapter3.md:442": {
+      "line_sha256": "c47217db55f6a5ce68d23780331b4f18a0d7e9332e80c1428254683a1942cc60",
+      "line_text": "### 3.4.3 От оценки $6ND$ к поэлементному расчёту затрат на обучение",
+      "kind": "heading"
+    },
+    "chapter3.md:476": {
+      "line_sha256": "5d285df9b88c1a2f27911a8e9dcdf1a10456c927f87a8c1d084cf048e5ba7c7f",
+      "line_text": "### 3.5.1 Rollout, вознаграждение и проверка среды",
+      "kind": "heading"
+    },
+    "chapter3.md:486": {
+      "line_sha256": "f7507a5a925c685984bdd5aee7541b4f29444e175ba3a3470b16c6d54f3e4bb9",
+      "line_text": "### 3.5.2 Эффективные примеры, обновление стратегии и синхронизация весов",
+      "kind": "heading"
+    },
+    "chapter3.md:506": {
+      "line_sha256": "5cc88920e5b1701ec6cc3ec35d78731c7c48c75f3cad64a5b519ca0b55b77d21",
+      "line_text": "### 3.5.3 Объём вычислений на каждом этапе при фиксированном количестве эффективных примеров",
+      "kind": "heading"
+    },
+    "chapter3.md:553": {
+      "line_sha256": "4f17b56131775fe7a11d1c30e9d23b7c85b99a4af7e32703f8e2259617cc5837",
+      "line_text": "### 3.6.1 Scaling Law: взаимосвязь размера модели и объёма данных",
+      "kind": "heading"
+    },
+    "chapter3.md:611": {
+      "line_sha256": "af0dc9cf408b1688130d94d6b3f403fcf36b01b8c0c99cca5fa7dd9ef5da8408",
+      "line_text": "### 3.6.2 Затраты на обучение от Llama до Qwen",
+      "kind": "heading"
+    },
+    "chapter3.md:667": {
+      "line_sha256": "e7e2ed710b4a93c26c399c957088be9ce9fa2411ccb196e76ce11a1a64f5a4c6",
+      "line_text": "### 3.6.3 Стоимость полного жизненного цикла при соблюдении требований к качеству",
+      "kind": "heading"
+    },
+    "chapter3.md:701": {
+      "line_sha256": "dd521bdf1d87a7b2826002a798bbc9e4f4e1fc2bcf717ec29abec1b771f3c399",
+      "line_text": "## Заблуждения и ловушки",
+      "kind": "heading"
+    },
+    "chapter3.md:75": {
+      "line_sha256": "d875bd8e9ffc8b915f3658bc8bdb61780b7b263788b525b3226e713b45125b8d",
+      "line_text": "### 3.1.3 Распределение запросов",
+      "kind": "heading"
+    },
+    "preface.md:120": {
+      "line_sha256": "70a1e25e673310a3687fa5617a3b364b61851443642b2d585ce09fb820ae1e25",
+      "line_text": "## Предварительные знания",
+      "kind": "heading"
+    },
+    "preface.md:15": {
+      "line_sha256": "206a9a3543aa4c0d5533be3d86a6b1641abb4e2604ed7453dc8370d8d9734e38",
+      "line_text": "## От оценки порядка величин к проектированию систем",
+      "kind": "heading"
+    },
+    "preface.md:25": {
+      "line_sha256": "044148b1e8e517c2ca4a9fafea872885c74ac88724f5b0ae08052aac3e0beb83",
+      "line_text": "## От ускорения операторов до объединения десяти тысяч ускорителей",
+      "kind": "heading"
+    },
+    "preface.md:47": {
+      "line_sha256": "39bfb2fc631e72618a0ad810bcd0cc6e09c4d05c4440bba4764cf38bb87f0ea0",
+      "line_text": "## Что я хочу объяснить в этой книге",
+      "kind": "heading"
+    },
+    "preface.md:63": {
+      "line_sha256": "e20247bbcede69d5ac0b16d7a77412054cd2d29e5c1f64164f0032567d7d8c21",
+      "line_text": "## Структура книги",
+      "kind": "heading"
+    },
+    "preface.md:9": {
+      "line_sha256": "3a96d7d0f692d04ff9572ab3e3afbba2c44d2f2f91459c938f9c8e42a0f91579",
+      "line_text": "## Повышение уровня абстракции программирования: от операционной системы к контексту модели",
+      "kind": "heading"
+    },
+    "preface.md:96": {
+      "line_sha256": "0fbeaae348f5fc0ab57a8ec28a03520cdd743ee90e257e24f3fdf340202b4b7d",
+      "line_text": "## Как читать эту книгу",
+      "kind": "heading"
+    }
+  },
   "allowed_inline": []
 }
