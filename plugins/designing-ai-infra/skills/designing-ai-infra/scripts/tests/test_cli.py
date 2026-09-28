@@ -1384,6 +1384,111 @@ class ServingSplitTest(unittest.TestCase):
         self.assertIn("голов", message)
 
 
+# Синтетический конфиг формы Mistral-7B-v0.1: sliding_window на всех слоях. Чисел книги
+# для окна нет; эталоны ниже выведены вручную из формул serving.
+MISTRAL_WINDOW = {
+    "model_type": "mistral", "hidden_size": 4096, "intermediate_size": 14336,
+    "num_attention_heads": 32, "num_hidden_layers": 32, "num_key_value_heads": 8,
+    "vocab_size": 32000, "tie_word_embeddings": False, "sliding_window": 4096,
+}  # fmt: skip
+
+
+class ServingWindowTest(unittest.TestCase):
+    """serving --config с окном внимания: KV запроса — последние min(длина, окно) токенов."""
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.config = Path(tmp.name) / "mistral-7b.json"
+        self.config.write_text(json.dumps(MISTRAL_WINDOW))
+
+    def serving(self, *extra: str, config: bool = True) -> dict[str, dict[str, Any]]:
+        # веса и чтение весов — model по этому конфигу: 14 483 464 192 и 14 221 320 192 B;
+        # KV на токен 2·32·8·128·2 = 131 072 B
+        return values(
+            "serving", "--device", "h100-sxm",
+            *(("--config", str(self.config)) if config else ()),
+            "--weights", "14483464192", "--weight-read", "14221320192",
+            "--decode-flops", "0", "--kv-per-token", "131072", *extra,
+        )  # fmt: skip
+
+    def test_window_caps_step_and_capacity(self) -> None:
+        # окно 4096 при контексте 32 768: шаг читает KV 4096 токенов каждого запроса,
+        # (14 221 320 192 + 16·131 072·4096) / 3.35e12 = 22 811 254 784 / 3.35e12 =
+        # 6.80933 ms (без окна — 82 940 796 928 B, 24.76 ms); ёмкость
+        # ⌊(80e9 − 14 483 464 192) / (131 072·4096)⌋ = ⌊122.03⌋ = 122 (без окна — 15)
+        v = self.serving("--context", "32768", "--batch", "16")
+        step = v["tpot_lower_bound_seconds"]
+        self.assertEqual(step["bound"], "lower")
+        self.assertAlmostEqual(step["value"] * 1e3, 6.809329786, places=6)
+        self.assertEqual(step["inputs"]["window"], 4096)
+        self.assertEqual(step["input_units"]["window"], "tok")
+        self.assertEqual(step["inputs"]["kv_request"], 131072 * 4096)
+        self.assertAlmostEqual(
+            v["tokens_per_second_upper_bound"]["value"], 16 / step["value"]
+        )
+        capacity = v["max_concurrent_requests"]
+        self.assertEqual(capacity["value"], 122)
+        self.assertEqual(capacity["bound"], "upper")
+        self.assertIn("min(memory_context, window)", capacity["formula"])
+        for item in (step, capacity):
+            self.assertIn("всего контекста", " ".join(item["notes"]))
+        full = self.serving("--context", "32768", "--batch", "16", config=False)
+        self.assertEqual(full["max_concurrent_requests"]["value"], 15)
+        self.assertEqual(
+            round(full["tpot_lower_bound_seconds"]["value"] * 1e3, 2), 24.76
+        )
+
+    def test_window_applies_to_memory_context(self) -> None:
+        # шаг при 2048 < окна — без изменений: (14 221 320 192 + 16·131 072·2048) / 3.35e12
+        # = 5.52725 ms; память при 8192 — 4096 токенов на запрос, как выше: 122
+        v = self.serving(
+            "--context", "2048", "--memory-context", "8192", "--batch", "16"
+        )
+        self.assertEqual(v["max_concurrent_requests"]["value"], 122)
+        step = v["tpot_lower_bound_seconds"]
+        self.assertAlmostEqual(step["value"] * 1e3, 5.527249996, places=6)
+        self.assertEqual(step["inputs"]["kv_request"], 131072 * 2048)
+        self.assertNotIn("всего контекста", " ".join(step["notes"]))
+
+    def test_window_with_shared_prefix(self) -> None:
+        # префикс 3072 при длине 6144 и окне 4096: в окне последних 4096 токенов
+        # собственных min(6144 − 3072, 4096) = 3072 и 4096 − 3072 = 1024 токена префикса.
+        # Ёмкость ⌊(80e9 − 14 483 464 192 − 1024·131 072) / (3072·131 072)⌋ =
+        # ⌊65 382 318 080 / 402 653 184⌋ = ⌊162.38⌋ = 162 (без окна — 161).
+        # Шаг, batch 16: (14 221 320 192 + 1024·131 072 + 16·3072·131 072) / 3.35e12 =
+        # 20 797 988 864 / 3.35e12 = 6.20835 ms; без дедупликации префикса —
+        # 16·4096 токенов, 6.80933 ms
+        v = self.serving(
+            "--context", "6144", "--batch", "16", "--shared-prefix-tokens", "3072"
+        )
+        capacity = v["max_concurrent_requests"]
+        self.assertEqual(capacity["value"], 162)
+        self.assertIn("134 217 728 B на карту", " ".join(capacity["notes"]))
+        step = v["tpot_lower_bound_seconds"]
+        self.assertAlmostEqual(step["value"] * 1e3, 6.208354885, places=6)
+        self.assertEqual(step["inputs"]["kv_shared_prefix"], 1024 * 131072)
+        self.assertEqual(step["inputs"]["kv_request"], 3072 * 131072)
+        full = v["tpot_without_prefix_dedup_seconds"]
+        self.assertAlmostEqual(full["value"] * 1e3, 6.809329786, places=6)
+        plain = self.serving(
+            "--context", "6144", "--batch", "16", "--shared-prefix-tokens", "3072",
+            config=False,
+        )  # fmt: skip
+        self.assertEqual(plain["max_concurrent_requests"]["value"], 161)
+
+    def test_window_longer_than_context_changes_nothing(self) -> None:
+        # 2048 < 4096: ⌊(80e9 − 14 483 464 192) / (131 072·2048)⌋ = 244, как без config
+        v = self.serving("--context", "2048")
+        self.assertEqual(v["max_concurrent_requests"]["value"], 244)
+        plain = self.serving("--context", "2048", config=False)
+        for name in ("max_concurrent_requests", "tpot_lower_bound_seconds"):
+            self.assertEqual(v[name]["value"], plain[name]["value"])
+        self.assertNotIn(
+            "всего контекста", " ".join(v["max_concurrent_requests"]["notes"])
+        )
+
+
 # Все команды с корректными входами: для проверок якорей и единиц, а не чисел книги
 COMMANDS = tuple(
     shlex.split(line)

@@ -150,6 +150,7 @@ INPUT_UNITS: dict[str, str] = {
     "context": "tok",
     "memory_context": "tok",
     "shared_prefix": "tok",
+    "window": "tok",
     "fixed_state": "B",
     "tokens": "tok",
     "total_tokens": "tok",
@@ -1027,6 +1028,39 @@ def _roofline(args: argparse.Namespace) -> list[Result]:
     return out
 
 
+def _window_split(length: int, prefix: int, window: int | None) -> tuple[int, int]:
+    """Токены KV запроса длины length: (собственные, общего префикса).
+
+    Окно внимания оставляет последние min(length, window) токенов; собственные
+    — min(length − prefix, window), остальные в окне — хвост общего префикса.
+    """
+    if not window:
+        return length - prefix, prefix
+    own = min(length - prefix, window)
+    return own, min(length, window) - own
+
+
+def _window_notes(window: int | None, length: int, name: str) -> tuple[str, ...]:
+    """Примечание об окне внимания, когда окно короче длины."""
+    if not window or window >= length:
+        return ()
+    head = (
+        f"окно внимания window = {window} ток. (sliding_window из --config): "
+        f"KV запроса — последние min({name}, window) = {window} из {length} ток."
+    )
+    if name == "context":
+        tail = (
+            "; нижняя граница шага при любом движке. Движок, который держит и "
+            "читает KV всего контекста, даёт шаг больше"
+        )
+    else:
+        tail = (
+            "; верхняя граница ёмкости. Движок, который держит KV всего контекста, "
+            "вмещает меньше запросов"
+        )
+    return (head + tail,)
+
+
 def _optional_memory(
     args: argparse.Namespace, dev: hardware.Device | None
 ) -> tuple[_Quantity | None, str]:
@@ -1219,6 +1253,12 @@ def _serving(args: argparse.Namespace) -> list[Result]:
     kv_card = args.kv_per_token / kv_div
     state_card = state_total / state_div
     weights_card = args.weights / tp
+    # окно внимания (sliding_window): запрос хранит и читает KV последних
+    # min(длина, окно) токенов; из них общему префиксу принадлежат те, что не
+    # собственные. Без окна — вся длина и весь префикс
+    window = spec.window if spec is not None else None
+    own_memory, shared_memory = _window_split(memory_context, prefix, window)
+    own_step, shared_step = _window_split(context, prefix, window)
 
     dev = _device(args, "--peak-tflops, --bandwidth и --memory")
     if tp > 1 and dev is not None and dev.scope != SINGLE:
@@ -1277,21 +1317,30 @@ def _serving(args: argparse.Namespace) -> list[Result]:
     w_term = "M_w/TP" if tp > 1 else "M_w"
     kv_term = "kv_per_token/d_KV" if kv_div > 1 else "kv_per_token"
     s_term = (" + S/TP" if state_div > 1 else " + S") if state_total else ""
+    window_input = {"window": window} if window else {}
     memory_inputs: dict[str, Any] = {
         **arch,
         "weights": args.weights,
         "kv_per_token": args.kv_per_token,
         "memory_context": memory_context,
         **({"shared_prefix": prefix} if prefix else {}),
+        **window_input,
         "reserve": args.reserve,
         **state,
         **parallel,
     }
     if prefix:
-        own = memory_context - prefix
+        if window:
+            own_term = "min(memory_context − shared_prefix, window)"
+            shared_term = f"(min(memory_context, window) − {own_term})"
+            own_text = f"{own_term} = {own_memory}"
+        else:
+            own_term = "(memory_context − shared_prefix)"
+            shared_term = "shared_prefix"
+            own_text = f"memory_context − shared_prefix = {own_memory}"
         memory_formula = (
-            f"floor((C − {w_term} − reserve − {kv_term} × shared_prefix) / "
-            f"({kv_term} × (memory_context − shared_prefix){s_term}))"
+            f"floor((C − {w_term} − reserve − {kv_term} × {shared_term}) / "
+            f"({kv_term} × {own_term}{s_term}))"
         )
         if dev is not None and dev.scope != SINGLE:
             where = (
@@ -1304,18 +1353,19 @@ def _serving(args: argparse.Namespace) -> list[Result]:
         prefix_notes: tuple[str, ...] = (
             (
                 f"общий префикс shared_prefix = {prefix} ток. хранится в пуле один раз "
-                f"({format_number(round(kv_card * prefix))} B {where}), на запрос — "
-                f"memory_context − shared_prefix = {own} собственных ток.; один раз "
+                f"({format_number(round(kv_card * shared_memory))} B {where}), на "
+                f"запрос — {own_text} собственных ток.; один раз "
                 "хранятся заполненные блоки префикса, неполный хвостовой блок каждый "
                 "запрос копирует при записи (8.3.2) — задавайте префикс кратным блоку KV"
             ),
         )
     else:
-        own = memory_context
+        length = "min(memory_context, window)" if window else "memory_context"
         memory_formula = (
-            f"floor((C − {w_term} − reserve) / ({kv_term} × memory_context{s_term}))"
+            f"floor((C − {w_term} − reserve) / ({kv_term} × {length}{s_term}))"
         )
         prefix_notes = ()
+    memory_window_notes = _window_notes(window, memory_context, "memory_context")
     if memory is None:
         capacity = _result(
             "max_concurrent_requests",
@@ -1341,6 +1391,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             ),
             "верхняя граница: активации, фрагментация и буферы сверх --reserve не учтены",
             lengths,
+            *memory_window_notes,
             *prefix_notes,
             *tp_notes,
             *state_notes,
@@ -1350,9 +1401,9 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             serving.max_concurrent_requests(
                 memory.value,
                 weights_card,
-                kv_card * own + state_card,
+                kv_card * own_memory + state_card,
                 args.reserve,
-                shared_bytes=kv_card * prefix,
+                shared_bytes=kv_card * shared_memory,
             ),
             "",
             memory_formula,
@@ -1363,11 +1414,11 @@ def _serving(args: argparse.Namespace) -> list[Result]:
         )
 
     kv_key = "kv_request_per_device" if tp > 1 else "kv_request"
-    kv_full = kv_card * context + state_card
+    kv_full = kv_card * (own_step + shared_step) + state_card
     # с общим префиксом нижняя граница читает его один раз на batch: как ядро
     # внимания читает префикс, книга не описывает, а меньше этого прочитать нельзя
-    shared_read = kv_card * prefix
-    kv_request = kv_full - shared_read
+    shared_read = kv_card * shared_step
+    kv_request = kv_card * own_step + state_card
 
     def step_seconds(per_request: float, shared: float) -> float:
         return serving.tpot_lower_bound_seconds(
@@ -1387,6 +1438,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
         "decode_flops": args.decode_flops,
         "weight_read": args.weight_read,
         "context": context,
+        **window_input,
         **(
             {"shared_prefix": prefix, "kv_shared_prefix": shared_read} if prefix else {}
         ),
@@ -1403,12 +1455,23 @@ def _serving(args: argparse.Namespace) -> list[Result]:
     step_formula = f"max(B·{f_term}, ({r_term} + B·{kv_read})/β)"
     if prefix:
         # префикс — один раз на batch, собственная часть и состояние — каждым запросом
-        own_read = f"{kv_term} × (context − shared_prefix){s_term}"
+        if window:
+            own_tokens = "min(context − shared_prefix, window)"
+            shared_tokens = f"(min(context, window) − {own_tokens})"
+        else:
+            own_tokens = "(context − shared_prefix)"
+            shared_tokens = "shared_prefix"
+        own_read = f"{kv_term} × {own_tokens}{s_term}"
         step_formula = (
-            f"max(B·{f_term}, ({r_term} + {kv_term} × shared_prefix + "
+            f"max(B·{f_term}, ({r_term} + {kv_term} × {shared_tokens} + "
             f"B·({own_read}))/β)"
         )
-    step_notes = [*rate_notes, lengths, *tp_notes]
+    step_notes = [
+        *rate_notes,
+        lengths,
+        *_window_notes(window, context, "context"),
+        *tp_notes,
+    ]
     prefix_step_notes: list[str] = []
     if prefix:
         prefix_step_notes.append(
@@ -1465,8 +1528,9 @@ def _serving(args: argparse.Namespace) -> list[Result]:
                 notes=(
                     *step_notes,
                     (
-                        "без дедупликации префикса: каждый запрос читает KV всего "
-                        "context, включая общий префикс; нижняя граница шага, только "
+                        "без дедупликации префикса: каждый запрос читает KV всех "
+                        f"{'min(context, window)' if window else 'context'} ток., "
+                        "включая общий префикс; нижняя граница шага, только "
                         "если ядро внимания читает префикс каждым запросом — это "
                         "допущение о ядре, книга (8.3) его не описывает"
                     ),
@@ -2847,7 +2911,8 @@ def _parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--config",
-        help="config.json модели: архитектура для --tp и фиксированного состояния",
+        help="config.json модели: архитектура для --tp, фиксированного состояния и "
+        "окна внимания (sliding_window ограничивает KV запроса)",
     )
     p.add_argument(
         "--tp",
