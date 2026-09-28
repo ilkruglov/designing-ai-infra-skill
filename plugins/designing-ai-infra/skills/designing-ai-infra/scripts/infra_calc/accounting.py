@@ -7,7 +7,7 @@ deepseek_v3 — MLA с MoE, qwen3.5 — гибридное линейное вн
 
 from __future__ import annotations
 
-from .checks import require_int_at_least
+from .checks import require_finite, require_int_at_least
 from .model import ModelSpec, UnsupportedArchitecture
 
 
@@ -138,3 +138,98 @@ def decode_weight_read_bytes(spec: ModelSpec, bytes_per_param: float = 2.0) -> i
     """
     lookup_only = 0 if spec.tied_embeddings else embedding_parameters(spec)
     return int((parameter_count(spec, active=True) - lookup_only) * bytes_per_param)
+
+
+def _check_tp(spec: ModelSpec, tp: int) -> None:
+    """Головы — минимальная единица распределения TP (глава 6.2.2)."""
+    require_int_at_least("tp", tp, 1)
+    if spec.heads % tp:
+        raise ValueError(
+            f"TP={tp} не делит {spec.heads} голов внимания {spec.model_type}: "
+            "голова — минимальная единица распределения (глава 6.2.2)"
+        )
+    if spec.family != "mla_moe":
+        kv = spec.kv_heads
+        if (tp <= kv and kv % tp) or (tp > kv and tp % kv):
+            raise ValueError(
+                f"TP={tp} и {kv} голов KV {spec.model_type}: головы KV не "
+                "распределяются по картам поровну"
+            )
+    if spec.family == "hybrid_linear":
+        for label, count in (
+            ("линейных голов ключей", spec.linear_key_heads),
+            ("линейных голов значений", spec.linear_value_heads),
+        ):
+            if count % tp:
+                raise ValueError(
+                    f"TP={tp} не делит {count} {label} {spec.model_type}: состояние "
+                    "линейных слоёв не делится по картам поровну"
+                )
+
+
+def tp_kv_divisor(spec: ModelSpec, tp: int) -> int:
+    """Во сколько раз KV на токен одной карты TP меньше KV всей модели (глава 6.2.2).
+
+    GQA и MHA делят KV по головам KV: min(TP, kv_heads); при TP больше числа
+    голов KV каждая голова хранится на TP/kv_heads картах. Латентный KV MLA —
+    один вектор на токен для всех голов (глава 2.3.2), поэтому каждая карта TP
+    хранит его целиком: делитель 1.
+    """
+    _check_tp(spec, tp)
+    if spec.family == "mla_moe":
+        return 1
+    return min(tp, spec.kv_heads)
+
+
+def tp_fixed_state_divisor(spec: ModelSpec, tp: int) -> int:
+    """Делитель фиксированного состояния линейных слоёв на карту TP.
+
+    Рекуррентное и свёрточное состояние гибридной модели относится к линейным
+    головам и делится вместе с ними; таблица главы 6.2.2 (31/117 запросов
+    Qwen3.6 на двух H100) получается именно при таком делении.
+    """
+    _check_tp(spec, tp)
+    return tp if spec.family == "hybrid_linear" else 1
+
+
+def expected_active_experts(experts: int, top_k: int, tokens: int) -> float:
+    """E[E_active] = E[1 − (1 − k/E)^m], формула (6-8).
+
+    Каждый из m токенов независимо и равномерно выбирает k экспертов из E.
+    Реальная маршрутизация неравномерна: объединение лежит между k
+    (все токены выбрали одних экспертов) и min(m·k, E).
+    """
+    require_int_at_least("experts", experts, 1)
+    require_int_at_least("top_k", top_k, 1)
+    require_int_at_least("tokens", tokens, 1)
+    if top_k > experts:
+        raise ValueError(f"top_k больше числа экспертов: {top_k} > {experts}")
+    return experts * (1 - (1 - top_k / experts) ** tokens)
+
+
+def batch_decode_weight_read_bytes(
+    spec: ModelSpec, experts_per_layer: float, bytes_per_param: float = 2.0
+) -> int:
+    """Чтение весов за шаг decode батча MoE: R = R_общие + U·L_MoE·b_W·N_e (глава 2.4.2).
+
+    U — различных маршрутизируемых экспертов на слой в батче; при U = k это
+    decode_weight_read_bytes. Каждый выбранный эксперт читается один раз на шаг.
+    """
+    if not spec.experts:
+        raise ValueError(
+            f"{spec.model_type} — не MoE: чтение весов за шаг не зависит от батча"
+        )
+    require_finite("experts_per_layer", experts_per_layer)
+    if not spec.experts_per_token <= experts_per_layer <= spec.experts:
+        raise ValueError(
+            f"экспертов на слой должно быть от k = {spec.experts_per_token} до "
+            f"E = {spec.experts}: {experts_per_layer}"
+        )
+    moe_layers = sum(
+        1 for layer in range(spec.layers) if not _is_dense_mlp_layer(spec, layer)
+    )
+    expert = 3 * spec.hidden * spec.moe_intermediate
+    lookup_only = 0 if spec.tied_embeddings else embedding_parameters(spec)
+    extra = (experts_per_layer - spec.experts_per_token) * moe_layers * expert
+    parameters = parameter_count(spec, active=True) - lookup_only + extra
+    return int(parameters * bytes_per_param)

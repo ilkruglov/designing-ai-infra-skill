@@ -1,3 +1,4 @@
+import math
 import unittest
 from dataclasses import replace
 from pathlib import Path
@@ -9,12 +10,16 @@ ANCHORS = (
     "references/source-book/chapter1.md:450",
     "references/source-book/chapter2.md:236",
     "references/source-book/chapter2.md:418",
+    "references/source-book/chapter2.md:542",
     "references/source-book/chapter3.md:611",
+    "references/source-book/chapter6.md:131",
+    "references/source-book/chapter6.md:391",
     "references/source-book/chapter8.md:52",
     "calculations/results/kv-comparison-n8192-b1.json#sha256=1a45a55edf05115855d798572a84cec00dddee2418589e2fdc3aed968441a257",
     "calculations/results/chapter2-model-comparison.json#sha256=8d8192a345eb560c3642fc93b4f3ece38740059b09642f266b352d8fc8c1a83e",
     "calculations/results/qwen3-30b-a3b-decode-b1-s8192.json#sha256=fbf0b07f78bd8d7ab3765f6fc9ad5f6992cc95192449c2f8f1ee0fd01b5bc75b",
     "calculations/results/v3-forward-b64.json#sha256=91bf7eff7450033791c452788a1b2a249665cb263df6e131f823e77976d00598",
+    "calculations/results/qwen3-30b-a3b-decode-b64-s8192-balanced.json#sha256=110e9a83aebd7e326ec87c3a652f82477b1b4e7d838a7e56e1eceb1bd6d89700",
 )
 CONFIGS = Path(__file__).resolve().parent / "fixtures" / "configs"
 
@@ -103,6 +108,120 @@ class HybridTest(unittest.TestCase):
     def test_hybrid_parameters_are_not_guessed(self) -> None:
         with self.assertRaises(model.UnsupportedArchitecture):
             accounting.parameter_count(spec("qwen3.5-397b-a17b"))
+
+
+class TensorParallelTest(unittest.TestCase):
+    def test_gqa_kv_split_and_duplication_book(self) -> None:
+        # chapter6.md:207: «У Qwen3-32B есть 8 KV-голов, поэтому при TP8 на каждую карту
+        # приходится по одной. При TP16 ... обе карты должны хранить состояние этой
+        # KV-головы. При контексте 128K состояние каждой KV-головы занимает 4 GiB:
+        # суммарно 32 GiB на восьми картах и 64 GiB на шестнадцати.»
+        s = spec("qwen3-32b")
+        per_token = accounting.kv_bytes_per_token(s)
+        for tp, total_gib in ((8, 32), (16, 64)):
+            with self.subTest(tp=tp):
+                per_card = per_token * 131_072 // accounting.tp_kv_divisor(s, tp)
+                self.assertEqual(per_card, 4 * 2**30)
+                self.assertEqual(per_card * tp, total_gib * 2**30)
+
+    def test_gqa_divisor_below_kv_heads(self) -> None:
+        # вывод вручную: при TP ≤ числа голов KV каждая карта хранит kv_heads/TP голов
+        s = spec("qwen3-30b-a3b")  # 4 головы KV
+        self.assertEqual(accounting.tp_kv_divisor(s, 1), 1)
+        self.assertEqual(accounting.tp_kv_divisor(s, 2), 2)
+        self.assertEqual(accounting.tp_kv_divisor(s, 8), 4)
+
+    def test_mla_latent_is_not_split(self) -> None:
+        # chapter2.md:334: MLA хранит на токен одну скрытую переменную до повышающей
+        # проекции, общую для всех голов; chapter6.md:207: TP делит внимание по головам —
+        # поэтому каждая карта TP хранит латентный KV целиком
+        s = spec("deepseek-v3")
+        self.assertEqual(accounting.tp_kv_divisor(s, 8), 1)
+
+    def test_hybrid_state_split(self) -> None:
+        # chapter6.md:154: «Число запросов 128K/32K на двух H100 | 2/10 | 7/29 | 31/117»;
+        # 31/117 у Qwen3.6 получается, только если фиксированное состояние линейных
+        # слоёв делится между двумя картами (проверка в test_cli)
+        s = spec("qwen3.6-35b-a3b")
+        self.assertEqual(accounting.tp_kv_divisor(s, 2), 2)
+        self.assertEqual(accounting.tp_fixed_state_divisor(s, 2), 2)
+        self.assertEqual(accounting.tp_fixed_state_divisor(spec("qwen3-8b"), 4), 1)
+
+    def test_tp_must_divide_heads(self) -> None:
+        # chapter6.md:207: «Голову нельзя разделить дальше: это минимальная единица
+        # распределения»
+        for name, tp in (("qwen3-8b", 3), ("qwen3-32b", 6), ("qwen3-30b-a3b", 0)):
+            with self.subTest(name=name, tp=tp), self.assertRaises(ValueError):
+                accounting.tp_kv_divisor(spec(name), tp)
+        # вывод вручную: TP = 32 делит 64 головы, каждая из 8 голов KV хранится на
+        # 4 картах — делитель 8; TP = 64 не делит 16 голов внимания Qwen3.6
+        self.assertEqual(accounting.tp_kv_divisor(spec("qwen3-32b"), 32), 8)
+        with self.assertRaises(ValueError):
+            accounting.tp_fixed_state_divisor(spec("qwen3.6-35b-a3b"), 64)
+
+
+class ExpertUnionTest(unittest.TestCase):
+    def test_expected_experts_book(self) -> None:
+        # chapter6.md:422, формула (6-8): E[E_active] = E[1 − (1 − k/E)^m];
+        # chapter6.md:425: «При $E=128,k=8,m=8$ ожидается около 52 активных экспертов, а
+        # идеальный объём чтения составляет приблизительно 1,8 GiB» (36 MiB на эксперта)
+        experts = accounting.expected_active_experts(128, 8, 8)
+        self.assertEqual(round(experts), 52)
+        self.assertEqual(round(experts * 36 * 2**20 / 2**30, 1), 1.8)
+        # шаблон sizing-sheet: U(4) = 128·[1 − (1 − 8/128)^4] ≈ 29.123
+        self.assertEqual(
+            round(accounting.expected_active_experts(128, 8, 4), 3), 29.123
+        )
+        # один токен выбирает ровно k экспертов
+        self.assertEqual(accounting.expected_active_experts(128, 8, 1), 8)
+
+    def test_batch_weight_read_matches_author_balanced(self) -> None:
+        # qwen3-30b-a3b-decode-b64-s8192-balanced.json: expert_union_per_layer 128,
+        # weight_read_once_per_operator_bytes 60 442 177 536; автор добавляет 64 строки
+        # эмбеддингов по 2048 × 2 байта, которые decode_weight_read_bytes не считает;
+        # chapter6.md:150: «Чтение весов за шаг (batch 64, контекст 32K) | ... | 60,44 GB»
+        s = spec("qwen3-30b-a3b")
+        read = accounting.batch_decode_weight_read_bytes(s, 128)
+        self.assertEqual(read, 60_442_177_536 - 64 * 2048 * 2)
+        self.assertEqual(round(read / 1e9, 2), 60.44)
+        # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --routing balanced
+        # (код автора на 56ecb425): expert_union_per_layer 32,
+        # weight_read_once_per_operator_bytes 16 955 387 904 — минус 4 строки эмбеддингов
+        self.assertEqual(
+            accounting.batch_decode_weight_read_bytes(s, 32),
+            16_955_387_904 - 4 * 2048 * 2,
+        )
+
+    def test_one_token_equals_single_request_read(self) -> None:
+        # U = k: объединение экспертов одного токена — те же k экспертов
+        for name in ("qwen3-30b-a3b", "deepseek-v3"):
+            with self.subTest(name=name):
+                s = spec(name)
+                self.assertEqual(
+                    accounting.batch_decode_weight_read_bytes(s, s.experts_per_token),
+                    accounting.decode_weight_read_bytes(s),
+                )
+
+    def test_fractional_expected_union(self) -> None:
+        # вывод вручную: non_expert + U·layers·3·h·f·2 при U = 29.123 для qwen3-30b-a3b:
+        # 2 459 856 896 + 29.1233·48·9 437 184 байт
+        s = spec("qwen3-30b-a3b")
+        union = accounting.expected_active_experts(128, 8, 4)
+        self.assertEqual(
+            accounting.batch_decode_weight_read_bytes(s, union),
+            int(2_459_856_896 + union * 48 * 3 * 2048 * 768 * 2),
+        )
+
+    def test_rejects_impossible_union_and_dense(self) -> None:
+        s = spec("qwen3-30b-a3b")
+        for union in (7, 129, -1, math.nan):
+            with self.subTest(union=union), self.assertRaises(ValueError):
+                accounting.batch_decode_weight_read_bytes(s, union)
+        with self.assertRaises(ValueError):
+            accounting.batch_decode_weight_read_bytes(spec("qwen3-8b"), 8)
+        for args in ((128, 0, 4), (128, 129, 4), (128, 8, 0), (0, 8, 4)):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                accounting.expected_active_experts(*args)
 
 
 class WindowTest(unittest.TestCase):

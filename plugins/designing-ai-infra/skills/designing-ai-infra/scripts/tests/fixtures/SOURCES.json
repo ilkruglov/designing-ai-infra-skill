@@ -28,5 +28,17 @@
     "upstream_path": "calculations/configs/models/qwen3.5-397b-a17b/config.json",
     "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
     "sha256": "3ae7fa89c2f7d1354096418ddaf1331e9e0898a8ca11e804fb6dbaa087efb7da"
+  },
+  {
+    "file": "configs/qwen3-32b.json",
+    "upstream_path": "calculations/configs/models/qwen3-32b/config.json",
+    "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
+    "sha256": "97e295b63283935788fac5e4f8860862a56d4089538cafc93f0431f2ebe483bb"
+  },
+  {
+    "file": "configs/qwen3.6-35b-a3b.json",
+    "upstream_path": "calculations/configs/models/qwen3.6-35b-a3b/config.json",
+    "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
+    "sha256": "93a4693fa9d8392fbfccd4b3c9873f4bfdcb14fdede978b123d07d19675efe99"
   }
 ]

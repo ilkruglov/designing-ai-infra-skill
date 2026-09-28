@@ -19,8 +19,12 @@ ANCHORS = (
     "references/source-book/chapter3.md:384",
     "references/source-book/chapter3.md:442",
     "references/source-book/chapter3.md:611",
+    "references/source-book/chapter2.md:542",
+    "references/source-book/chapter6.md:131",
+    "references/source-book/chapter6.md:391",
     "references/source-book/chapter6.md:473",
     "references/source-book/chapter6.md:705",
+    "references/source-book/chapter8.md:52",
     "references/source-book/chapter8.md:536",
     "references/source-book/chapter10.md:151",
     "references/source-book/chapter10.md:322",
@@ -833,6 +837,208 @@ class MemoryOnlyRooflineTest(unittest.TestCase):
         self.assertIn("--peak-tflops", message)
 
 
+class ModelParallelCommandTest(unittest.TestCase):
+    QWEN3_32B = str(CONFIGS / "qwen3-32b.json")
+
+    def test_kv_per_device_book(self) -> None:
+        # chapter6.md:207: «При контексте 128K состояние каждой KV-головы занимает 4 GiB:
+        # суммарно 32 GiB на восьми картах и 64 GiB на шестнадцати»
+        for tp in ("8", "16"):
+            with self.subTest(tp=tp):
+                v = values(
+                    "model",
+                    "--config",
+                    self.QWEN3_32B,
+                    "--context",
+                    "131072",
+                    "--tp",
+                    tp,
+                )
+                self.assertEqual(v["kv_resident_bytes_per_device"]["value"], 4 * 2**30)
+                self.assertEqual(v["kv_bytes_per_token_per_device"]["value"], 32_768)
+        notes = " ".join(v["kv_bytes_per_token_per_device"]["notes"])
+        self.assertIn("дублиру", notes)
+        # chapter6.md:139: «BF16-веса плотной модели Qwen3-32B занимают около 65,52 GB»
+        v = values("model", "--config", self.QWEN3_32B, "--tp", "2")
+        self.assertEqual(
+            round(v["weight_bytes_per_device"]["value"] * 2 / 1e9, 2), 65.52
+        )
+
+    def test_kv_divisibility_is_stated(self) -> None:
+        v = values("model", "--config", QWEN3_8B)
+        self.assertIn("min(TP, 8)", " ".join(v["kv_bytes_per_token"]["notes"]))
+        v = values("model", "--config", str(CONFIGS / "deepseek-v3.json"))
+        self.assertIn("не делится", " ".join(v["kv_bytes_per_token"]["notes"]))
+        v = values("model", "--config", str(CONFIGS / "deepseek-v3.json"), "--tp", "8")
+        self.assertEqual(v["kv_bytes_per_token_per_device"]["value"], 70_272)
+
+    def test_tp_must_divide_heads(self) -> None:
+        message = fails("model", "--config", QWEN3_8B, "--tp", "3")
+        self.assertIn("голов", message)
+
+
+class ExpertUnionCommandTest(unittest.TestCase):
+    QWEN3_30B = str(CONFIGS / "qwen3-30b-a3b.json")
+
+    def test_uniform_routing_union(self) -> None:
+        # шаблон sizing-sheet и формула (6-8), chapter6.md:422: U(4) ≈ 29.123 при E = 128, k = 8
+        v = values("model", "--config", self.QWEN3_30B, "--batch", "4")
+        union = v["experts_per_layer_at_batch"]
+        self.assertEqual(round(union["value"], 3), 29.123)
+        self.assertIn("равномерн", " ".join(union["notes"]))
+        read = v["decode_weight_read_bytes_at_batch"]
+        self.assertEqual(
+            read["value"], int(2_459_856_896 + union["value"] * 48 * 9_437_184)
+        )
+
+    def test_explicit_union_matches_author(self) -> None:
+        # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --routing balanced
+        # (код автора на 56ecb425): expert_union_per_layer 32, weight_read_once_per_operator_bytes
+        # 16 955 387 904, из них 4 × 2048 × 2 байта — строки эмбеддингов
+        v = values(
+            "model", "--config", self.QWEN3_30B, "--batch", "4",
+            "--experts-per-layer", "32",
+        )  # fmt: skip
+        self.assertEqual(v["experts_per_layer_at_batch"]["value"], 32)
+        self.assertEqual(
+            v["decode_weight_read_bytes_at_batch"]["value"], 16_955_387_904 - 16_384
+        )
+
+    def test_refusals(self) -> None:
+        self.assertIn("MoE", fails("model", "--config", QWEN3_8B, "--batch", "4"))
+        message = fails(
+            "model", "--config", self.QWEN3_30B, "--batch", "4",
+            "--experts-per-layer", "40",
+        )  # fmt: skip
+        self.assertIn("32", message)
+        message = fails(
+            "model", "--config", self.QWEN3_30B, "--experts-per-layer", "32"
+        )
+        self.assertIn("--batch", message)
+
+
+class ServingSplitTest(unittest.TestCase):
+    RTX_12GIB = (
+        "serving", "--device", "rtx-pro6000-blackwell-ws", "--memory", "12884901888",
+        "--weights", "0", "--weight-read", "15136811008", "--decode-flops", "16344154112",
+        "--kv-per-token", "147456", "--context", "2048",
+    )  # fmt: skip
+
+    def test_memory_context_book(self) -> None:
+        # chapter8.md:78: «Если учитывать только размер KV на момент завершения prefill, в
+        # 12 GiB поместятся 42 коротких запроса»; с выделением на 2304 токена — 37
+        # (chapter8.md:75); шаг — при длине входа 2048
+        short = values(*self.RTX_12GIB)
+        self.assertEqual(short["max_concurrent_requests"]["value"], 42)
+        v = values(*self.RTX_12GIB, "--memory-context", "2304")
+        memory = v["max_concurrent_requests"]
+        self.assertEqual(memory["value"], 37)
+        self.assertEqual(memory["inputs"]["memory_context"], 2304)
+        step = v["tpot_lower_bound_seconds"]
+        self.assertEqual(step["inputs"]["context"], 2048)
+        self.assertEqual(step["value"], short["tpot_lower_bound_seconds"]["value"])
+
+    def test_without_memory_only_time_bounds(self) -> None:
+        # chapter1.md:464: TPOT 8.62 ms и TTFT 58.9 ms на RTX PRO 6000 — без бюджета памяти
+        v = values(
+            "serving", "--peak-tflops", "503.8", "--bandwidth", "1.792e12",
+            "--weights", "16.38e9", "--weight-read", "15.14e9", "--decode-flops", "16.34e9",
+            "--prefill-flops", "29.69e12", "--kv-per-token", "147456", "--context", "2048",
+        )  # fmt: skip
+        self.assertEqual(round(v["tpot_lower_bound_seconds"]["value"] * 1e3, 2), 8.62)
+        self.assertEqual(round(v["ttft_lower_bound_seconds"]["value"] * 1e3, 1), 58.9)
+        capacity = v["max_concurrent_requests"]
+        self.assertIsNone(capacity["value"])
+        self.assertIn("не оценивал", " ".join(capacity["notes"]))
+
+    def test_fixed_state_from_flag_and_config(self) -> None:
+        # chapter2.md:422: Qwen3.6 — 20 KiB KV на токен и фиксированное состояние
+        # 61,875 MiB; вывод вручную: 12 GiB / (20 KiB × 8192 + 61.875 MiB) =
+        # 12288 / 221.875 → 55 запросов (без состояния — 76)
+        base = (
+            "serving", "--peak-tflops", "1", "--bandwidth", "1e12", "--memory", "12884901888",
+            "--weights", "0", "--weight-read", "0", "--decode-flops", "0",
+            "--kv-per-token", "20480", "--context", "8192",
+        )  # fmt: skip
+        self.assertEqual(values(*base)["max_concurrent_requests"]["value"], 76)
+        v = values(*base, "--fixed-state-bytes", "64880640")
+        self.assertEqual(v["max_concurrent_requests"]["value"], 55)
+        auto = values(*base, "--config", str(CONFIGS / "qwen3.6-35b-a3b.json"))
+        capacity = auto["max_concurrent_requests"]
+        self.assertEqual(capacity["value"], 55)
+        self.assertEqual(capacity["inputs"]["fixed_state"], 64_880_640)
+        self.assertIn("config", " ".join(capacity["notes"]))
+        # состояние читается на каждом шаге (chapter2.md:454): R = B·(KV + S) при нулевых весах
+        step = auto["tpot_lower_bound_seconds"]["value"]
+        self.assertAlmostEqual(step, (20480 * 8192 + 64_880_640) / 1e12)
+
+    def test_tp_capacity_book_table(self) -> None:
+        # chapter6.md:154: «Число запросов 128K/32K на двух H100 | 2/10 | 7/29 | 31/117»,
+        # chapter6.md:153: на одной H100 — 0/1, 1/5, 3/11; chapter6.md:139: Qwen3-32B на
+        # четырёх картах — семь сессий 128K, на восьми — шестнадцать; резерв 2 GiB на карту
+        qwen32 = values("model", "--config", ModelParallelCommandTest.QWEN3_32B)
+        cases = (
+            (
+                "qwen3-32b.json",
+                qwen32["weight_bytes"]["value"],
+                262144,
+                {1: (0, 1), 2: (2, 10), 4: (7, 28), 8: (16, 64)},
+            ),
+            ("qwen3-30b-a3b.json", 61_064_245_248, 98304, {1: (1, 5), 2: (7, 29)}),
+            ("qwen3.6-35b-a3b.json", 69.32e9, 20480, {1: (3, 11), 2: (31, 117)}),
+        )
+        for config, weights, kv, expected in cases:
+            for tp, counts in expected.items():
+                for context, count in zip((131072, 32768), counts):
+                    with self.subTest(config=config, tp=tp, context=context):
+                        v = values(
+                            "serving", "--device", "h100-sxm", "--config", str(CONFIGS / config),
+                            "--tp", str(tp), "--weights", str(weights), "--weight-read", "0",
+                            "--decode-flops", "0", "--kv-per-token", str(kv),
+                            "--context", str(context), "--reserve", "2147483648",
+                        )  # fmt: skip
+                        self.assertEqual(v["max_concurrent_requests"]["value"], count)
+
+    def test_tp_step_local_part_book(self) -> None:
+        # chapter6.md:505-508: «Локальный доступ к памяти» 29,35 / 14,68 / 7,34 / 3,67 ms при
+        # TP1/2/4/8; chapter6.md:225: 63,97 GB весов и 34,36 GB KV при s = 131 064
+        for tp, expected in ((1, 29.35), (2, 14.68), (4, 7.34), (8, 3.67)):
+            with self.subTest(tp=tp):
+                v = values(
+                    "serving", "--device", "h100-sxm", "--config",
+                    ModelParallelCommandTest.QWEN3_32B, "--tp", str(tp),
+                    "--weights", "65.52e9", "--weight-read", "63.97e9",
+                    "--decode-flops", "0.34e12", "--kv-per-token", "262144",
+                    "--context", "131064",
+                )  # fmt: skip
+                step = v["tpot_lower_bound_seconds"]
+                self.assertEqual(round(step["value"] * 1e3, 2), expected)
+                if tp > 1:
+                    self.assertIn("AllReduce", " ".join(step["notes"]))
+
+    def test_tp_price_counts_all_cards(self) -> None:
+        # арифметическое тождество: TP2 при том же шаге удваивает цену токена;
+        # 999999 байт при 1 GB/s и TP2 — шаг 0.5 ms, 2000 ток/с, 2 × 3.6 $/ч
+        v = values(
+            "serving", "--peak-tflops", "1", "--bandwidth", "1e9", "--memory", "1e9",
+            "--config", QWEN3_8B, "--tp", "2", "--weights", "0", "--weight-read", "999999",
+            "--decode-flops", "0", "--kv-per-token", "1", "--context", "1",
+            "--price-per-hour", "3.6",
+        )  # fmt: skip
+        self.assertAlmostEqual(
+            v["tokens_per_second_upper_bound"]["value"], 2000, places=0
+        )
+        self.assertAlmostEqual(
+            v["cost_per_million_tokens_lower_bound"]["value"], 1.0, places=3
+        )
+
+    def test_tp_needs_config(self) -> None:
+        message = fails(*self.RTX_12GIB, "--tp", "2")
+        self.assertIn("--config", message)
+        message = fails(*self.RTX_12GIB, "--tp", "3", "--config", QWEN3_8B)
+        self.assertIn("голов", message)
+
+
 # Все команды с корректными входами: для проверок якорей и единиц, а не чисел книги
 COMMANDS = tuple(
     shlex.split(line)
@@ -867,6 +1073,17 @@ COMMANDS = tuple(
         (f"batch-threshold --config {QWEN3_8B} --context 128 --device h100-sxm"),
         "speculative --round 0.0015:1 --round 0.0015:5",
         "roofline --memory-only --device m3-ultra-80gpu-256gb --flops 1 --bytes 1",
+        f"model --config {CONFIGS / 'qwen3-30b-a3b.json'} --context 64 --batch 4 --tp 2",
+        f"model --config {CONFIGS / 'qwen3.6-35b-a3b.json'} --context 64 --tp 2",
+        (
+            f"serving --device h100-sxm --config {CONFIGS / 'qwen3.6-35b-a3b.json'} --tp 2"
+            " --weights 69.32e9 --weight-read 5.89e9 --decode-flops 1e9 --prefill-flops 1e12"
+            " --kv-per-token 20480 --context 4096 --memory-context 4608 --price-per-hour 2"
+        ),
+        (
+            "serving --peak-tflops 1 --bandwidth 1e12 --weights 1 --weight-read 1"
+            " --decode-flops 1 --kv-per-token 1 --context 1"
+        ),
         "cost --input-tokens 1 --input-price 1",
         (
             "edge --upload '1 MB' --download '1 MB' --up-mbps 1 --down-mbps 1"

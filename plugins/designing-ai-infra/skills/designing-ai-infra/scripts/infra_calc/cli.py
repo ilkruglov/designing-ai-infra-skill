@@ -52,10 +52,13 @@ A_CH1_TIME = f"{BOOK}/chapter1.md:263"
 A_CH1_REF = f"{BOOK}/chapter1.md:450"
 A_CH2_MEM = f"{BOOK}/chapter2.md:236"
 A_CH2_HYBRID = f"{BOOK}/chapter2.md:418"
+A_CH2_EXPERTS = f"{BOOK}/chapter2.md:542"
 A_CH3_QUEUE = f"{BOOK}/chapter3.md:75"
 A_CH3_PRICE = f"{BOOK}/chapter3.md:209"
 A_CH3_STATE = f"{BOOK}/chapter3.md:384"
 A_CH3_TRAIN = f"{BOOK}/chapter3.md:442"
+A_CH6_TP = f"{BOOK}/chapter6.md:131"
+A_CH6_UNION = f"{BOOK}/chapter6.md:391"
 A_CH6_RING = f"{BOOK}/chapter6.md:473"
 A_CH7_TIME = f"{BOOK}/chapter7.md:938"
 A_CH8_MEM = f"{BOOK}/chapter8.md:52"
@@ -105,6 +108,10 @@ DIMENSIONLESS = frozenset(
         "stages",
         "microbatches",
         "virtual_stages",
+        "tp",
+        "experts",
+        "top_k",
+        "experts_per_layer",
         "acceptance",
         "calls",
         "success",
@@ -137,6 +144,8 @@ LABELS = frozenset(
 INPUT_UNITS: dict[str, str] = {
     **dict.fromkeys(DIMENSIONLESS | LABELS, ""),
     "context": "tok",
+    "memory_context": "tok",
+    "fixed_state": "B",
     "tokens": "tok",
     "total_tokens": "tok",
     "draft": "tok",
@@ -440,9 +449,187 @@ def _weight_estimate(
     return int(overhead), None, (note,)
 
 
+def _kv_tp_note(spec: ModelSpec) -> str:
+    """Делится ли KV по TP у этой архитектуры (глава 6.2.2)."""
+    if spec.family == "mla_moe":
+        return (
+            "латентный KV MLA по TP не делится: одна скрытая переменная на токен "
+            "для всех голов, каждая карта TP хранит её целиком"
+        )
+    note = (
+        f"при TP KV делится по головам KV: на карту kv_bytes_per_token / "
+        f"min(TP, {spec.kv_heads}); при TP > {spec.kv_heads} головы KV дублируются"
+    )
+    if spec.family == "hybrid_linear":
+        note += "; фиксированное состояние линейных слоёв делится на TP"
+    return note
+
+
+def _model_tp(
+    spec: ModelSpec,
+    args: argparse.Namespace,
+    kb: float,
+    weight_bytes: int | None,
+    base: dict[str, Any],
+) -> list[Result]:
+    tp = args.tp
+    kv_div = accounting.tp_kv_divisor(spec, tp)
+    inputs = base | {"tp": tp, "kv_dtype": args.kv_dtype}
+    kv_notes = [_kv_tp_note(spec)]
+    if spec.family != "mla_moe" and tp > spec.kv_heads:
+        kv_notes.append(
+            f"TP={tp} больше {spec.kv_heads} голов KV: каждая голова KV хранится на "
+            f"{tp // spec.kv_heads} картах, KV дублируется"
+        )
+    kv_formula = (
+        "kv_bytes_per_token (не делится)"
+        if kv_div == 1
+        else f"kv_bytes_per_token / min(TP, {spec.kv_heads})"
+    )
+    out: list[Result] = []
+    if weight_bytes is not None:
+        out.append(
+            _result(
+                "weight_bytes_per_device",
+                weight_bytes // tp,
+                "B",
+                "weight_bytes / TP",
+                base | {"tp": tp, "weight_dtype": args.weight_dtype},
+                A_CH6_TP,
+                notes=(
+                    (
+                        "идеальное деление: матрицы по головам и промежуточному "
+                        "измерению, эмбеддинги и голова по словарю; нормализации "
+                        "копируются"
+                    ),
+                ),
+            )
+        )
+    out.append(
+        _result(
+            "kv_bytes_per_token_per_device",
+            accounting.kv_bytes_per_token(spec, kb) // kv_div,
+            "B",
+            kv_formula,
+            inputs,
+            A_CH6_TP,
+            notes=kv_notes,
+        )
+    )
+    if args.context:
+        out.append(
+            _result(
+                "kv_resident_bytes_per_device",
+                accounting.kv_resident_bytes(spec, args.context, kb) // kv_div,
+                "B",
+                kv_formula.replace("kv_bytes_per_token", "kv_resident_bytes"),
+                inputs | {"context": args.context},
+                A_CH6_TP,
+                notes=kv_notes,
+            )
+        )
+    recurrent, conv = accounting.fixed_state_bytes(spec)
+    if recurrent or conv:
+        out.append(
+            _result(
+                "fixed_state_bytes_per_device",
+                (recurrent + conv) // accounting.tp_fixed_state_divisor(spec, tp),
+                "B",
+                "fixed_state_bytes / TP",
+                base | {"tp": tp},
+                A_CH6_TP,
+                notes=(
+                    (
+                        "состояние линейных слоёв делится вместе с линейными головами "
+                        "(таблица главы 6.2.2: 31/117 запросов Qwen3.6 на двух H100)"
+                    ),
+                ),
+            )
+        )
+    return out
+
+
+def _model_batch(
+    spec: ModelSpec, args: argparse.Namespace, wb: float, base: dict[str, Any]
+) -> list[Result]:
+    if args.batch is None:
+        raise ValueError(
+            "--experts-per-layer задаётся вместе с --batch: число различных "
+            "экспертов зависит от батча"
+        )
+    if not spec.experts:
+        raise ValueError(
+            "--batch и --experts-per-layer относятся к MoE: у "
+            f"{spec.model_type} чтение весов за шаг не зависит от батча"
+        )
+    batch, k, experts = args.batch, spec.experts_per_token, spec.experts
+    inputs = base | {"batch": batch, "experts": experts, "top_k": k}
+    if args.experts_per_layer is None:
+        union = accounting.expected_active_experts(experts, k, batch)
+        union_formula = "E·[1 − (1 − k/E)^B]"
+        union_notes: tuple[str, ...] = (
+            (
+                "равномерная независимая маршрутизация (формула 6-8); decode — один "
+                "токен на запрос. Реальная маршрутизация неравномерна: от k (одни и "
+                f"те же эксперты) до min(B·k, E) = {min(batch * k, experts)}; "
+                "измеренное или худшее значение задайте через --experts-per-layer"
+            ),
+        )
+    else:
+        union = args.experts_per_layer
+        highest = min(batch * k, experts)
+        require_finite("--experts-per-layer", union)
+        if not k <= union <= highest:
+            raise ValueError(
+                "--experts-per-layer должно лежать в [k, min(B·k, E)] = "
+                f"[{k}, {highest}]: {union:g}"
+            )
+        union_formula = f"{USER} (--experts-per-layer)"
+        union_notes = ("худший случай для батча B — min(B·k, E)",)
+    out = [
+        _result(
+            "experts_per_layer_at_batch",
+            union,
+            "",
+            union_formula,
+            inputs,
+            A_CH6_UNION,
+            notes=union_notes,
+        )
+    ]
+    try:
+        read: int | None = accounting.batch_decode_weight_read_bytes(spec, union, wb)
+        read_notes: tuple[str, ...] = (
+            "общие веса читаются один раз на шаг, каждый выбранный эксперт — один раз",
+        )
+    except UnsupportedArchitecture as error:
+        read, read_notes = None, (str(error),)
+    out.append(
+        _result(
+            "decode_weight_read_bytes_at_batch",
+            read,
+            "B",
+            "R_общие + U × L_MoE × 3·h·f_e × bytes_per_param"
+            if read is not None
+            else "не вычисляется",
+            inputs | {"experts_per_layer": union, "weight_dtype": args.weight_dtype},
+            A_CH2_EXPERTS,
+            bound="lower" if read is not None and wb < BF16_BYTES else None,
+            notes=read_notes,
+        )
+    )
+    return out
+
+
 def _model(args: argparse.Namespace) -> list[Result]:
-    _check(args, non_negative=("--quant-overhead-bytes",), at_least=(("--context", 0),))
+    _check(
+        args,
+        non_negative=("--quant-overhead-bytes",),
+        at_least=(("--context", 0), ("--tp", 1), ("--batch", 1)),
+    )
     spec = _load_spec(args.config)
+    if args.tp is not None:
+        accounting.tp_kv_divisor(spec, args.tp)  # отказ до расчётов
     wb = units.dtype_bytes(args.weight_dtype)
     kb = units.dtype_bytes(args.kv_dtype)
     wrapper = _wrapper_notes(spec)
@@ -580,6 +767,7 @@ def _model(args: argparse.Namespace) -> list[Result]:
             kv_formula,
             kv_inputs,
             A_CH8_MEM,
+            notes=(_kv_tp_note(spec),),
         )
     )
     if args.context:
@@ -609,6 +797,16 @@ def _model(args: argparse.Namespace) -> list[Result]:
         )
     if args.context:
         out += _forward_flops(spec, args.context, base)
+    if args.tp is not None:
+        if params is not None:
+            weight_total: int | None = accounting.weight_bytes(spec, wb) + overhead
+        elif args.params is not None:
+            weight_total = int(args.params * wb) + overhead
+        else:
+            weight_total = None
+        out += _model_tp(spec, args, kb, weight_total, base)
+    if args.batch is not None or args.experts_per_layer is not None:
+        out += _model_batch(spec, args, wb, base)
     return out
 
 
@@ -790,6 +988,57 @@ def _roofline(args: argparse.Namespace) -> list[Result]:
     return out
 
 
+def _optional_memory(
+    args: argparse.Namespace, dev: hardware.Device | None
+) -> tuple[_Quantity | None, str]:
+    """Ёмкость для бюджета памяти или причина, почему он не оценивается."""
+    if args.memory is None and dev is None:
+        return None, (
+            "ёмкость памяти не оценивалась: не задан --memory и нет --device; "
+            "посчитаны только границы времени"
+        )
+    if args.memory is None and dev is not None and dev.memory_bytes is None:
+        return None, (
+            f"ёмкость памяти не оценивалась: у {dev.id} ёмкость не опубликована в "
+            f"снимке {hardware.SNAPSHOT}; передайте --memory"
+        )
+    return _memory(args, dev), ""
+
+
+def _serving_state(
+    args: argparse.Namespace, spec: ModelSpec | None
+) -> tuple[float, int, list[str]]:
+    """Фиксированное состояние запроса (всей модели), его делитель по TP и примечания."""
+    auto = 0
+    if spec is not None:
+        recurrent, conv = accounting.fixed_state_bytes(spec)
+        auto = recurrent + conv
+    notes: list[str] = []
+    if args.fixed_state_bytes is not None:
+        total: float = args.fixed_state_bytes
+        if auto:
+            notes.append(
+                f"--fixed-state-bytes заменяет состояние из config: {auto} B на запрос"
+            )
+    elif auto:
+        total = auto
+        notes.append(
+            f"фиксированное состояние из config ({spec.model_type if spec else ''}): "
+            f"{auto} B на запрос — рекуррентное и свёрточное состояние линейных слоёв"
+        )
+    else:
+        total = 0
+    divisor = 1
+    if spec is not None and args.tp > 1 and total:
+        if spec.family != "hybrid_linear":
+            raise ValueError(
+                f"как делится --fixed-state-bytes по TP у {spec.model_type}, "
+                "калькулятор не знает; задайте состояние на карту без --tp"
+            )
+        divisor = accounting.tp_fixed_state_divisor(spec, args.tp)
+    return total, divisor, notes
+
+
 def _serving(args: argparse.Namespace) -> list[Result]:
     _check(
         args,
@@ -802,70 +1051,165 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             "--memory",
             "--reserve",
             "--price-per-hour",
+            "--fixed-state-bytes",
         ),
-        at_least=(("--context", 1), ("--batch", 1)),
+        at_least=(
+            ("--context", 1),
+            ("--memory-context", 1),
+            ("--batch", 1),
+            ("--tp", 1),
+        ),
     )
+    tp = args.tp
+    spec = _load_spec(args.config) if args.config is not None else None
+    if tp > 1 and spec is None:
+        raise ValueError(
+            "для --tp нужен --config: деление KV между картами зависит от "
+            "архитектуры (GQA — по головам KV, латентный KV MLA не делится)"
+        )
+    kv_div = accounting.tp_kv_divisor(spec, tp) if spec is not None else 1
+    state_total, state_div, state_notes = _serving_state(args, spec)
+    context = args.context
+    memory_context = args.memory_context or context
+    kv_card = args.kv_per_token / kv_div
+    state_card = state_total / state_div
+    weights_card = args.weights / tp
+
     dev = _device(args, "--peak-tflops, --bandwidth и --memory")
     peak = _peak(args, dev)
     bw = _bandwidth(args, dev)
-    memory = _memory(args, dev)
+    memory, skipped = _optional_memory(args, dev)
     rate_notes = _aggregate_note(dev, _labels(peak, bw), RATES_SUFFIX)
-    memory_notes = (
-        *memory.notes,
-        *_aggregate_note(
-            dev,
-            _labels(memory),
-            "; веса и KV считаются размещёнными во всём агрегате",
-        ),
-        "верхняя граница: активации, фрагментация и буферы сверх --reserve не учтены",
-    )
-    kv_request = args.kv_per_token * args.context
-    memory_inputs = {
-        **memory.inputs,
+    if memory_context == context:
+        lengths = (
+            f"шаг и память — при одной длине context = {context} ток.: при длине "
+            "входа память занижена, при длине к концу генерации шаг — граница только "
+            "последнего шага; длину для памяти задаёт --memory-context"
+        )
+    else:
+        lengths = (
+            f"шаг — при context = {context} ток., память — при memory_context = "
+            f"{memory_context} ток."
+        )
+    arch: dict[str, Any] = {}
+    if spec is not None:
+        arch = {"config": Path(args.config).name, "model_type": spec.model_type}
+    parallel: dict[str, Any] = {"tp": tp} if tp > 1 else {}
+    tp_notes: list[str] = []
+    if tp > 1:
+        assert spec is not None  # проверено выше: --tp > 1 требует --config
+        split = (
+            "не делится (латентный KV MLA)" if kv_div == 1 else f"делится на {kv_div}"
+        )
+        dup = (
+            f", головы KV дублируются на {tp // spec.kv_heads} картах"
+            if spec.family != "mla_moe" and tp > spec.kv_heads
+            else ""
+        )
+        tp_notes.append(
+            f"TP={tp}: веса, их чтение и FLOPs делятся на {tp} идеально, KV на токен "
+            f"{split}{dup}; значения — на одну карту"
+        )
+    state = {"fixed_state": state_total} if state_total else {}
+
+    w_term = "M_w/TP" if tp > 1 else "M_w"
+    kv_term = "kv_per_token/d_KV" if kv_div > 1 else "kv_per_token"
+    s_term = (" + S/TP" if state_div > 1 else " + S") if state_total else ""
+    memory_inputs: dict[str, Any] = {
+        **arch,
         "weights": args.weights,
         "kv_per_token": args.kv_per_token,
-        "context": args.context,
+        "memory_context": memory_context,
         "reserve": args.reserve,
+        **state,
+        **parallel,
     }
+    if memory is None:
+        capacity = _result(
+            "max_concurrent_requests",
+            None,
+            "",
+            "не вычисляется",
+            memory_inputs,
+            A_CH8_MEM,
+            notes=(skipped,),
+        )
+    else:
+        memory_notes = (
+            *memory.notes,
+            *_aggregate_note(
+                dev,
+                _labels(memory),
+                "; веса и KV считаются размещёнными во всём агрегате",
+            ),
+            "верхняя граница: активации, фрагментация и буферы сверх --reserve не учтены",
+            lengths,
+            *tp_notes,
+            *state_notes,
+        )
+        capacity = _result(
+            "max_concurrent_requests",
+            serving.max_concurrent_requests(
+                memory.value,
+                weights_card,
+                kv_card * memory_context + state_card,
+                args.reserve,
+            ),
+            "",
+            f"floor((C − {w_term} − reserve) / ({kv_term} × memory_context{s_term}))",
+            memory.inputs | memory_inputs,
+            A_CH8_MEM,
+            bound="upper",
+            notes=memory_notes,
+        )
+
+    kv_request = kv_card * context + state_card
     step = serving.tpot_lower_bound_seconds(
         args.batch,
-        args.decode_flops,
-        args.weight_read,
+        args.decode_flops / tp,
+        args.weight_read / tp,
         kv_request,
         peak.value,
         bw.value,
     )
     step_inputs = {
+        **arch,
         "batch": args.batch,
         "decode_flops": args.decode_flops,
         "weight_read": args.weight_read,
+        "context": context,
         "kv_request": kv_request,
+        **state,
+        **parallel,
         **peak.inputs,
         **bw.inputs,
     }
+    f_term = "F_decode/(TP·Π)" if tp > 1 else "F_decode/Π"
+    r_term = "R_W/TP" if tp > 1 else "R_W"
+    kv_read = "R_KV/d_KV" if kv_div > 1 else "R_KV"
+    kv_read = f"({kv_read}{s_term})" if state_total else kv_read
+    step_notes = [*rate_notes, lengths, *tp_notes]
+    if tp > 1:
+        step_notes.append(
+            "AllReduce между картами не учтён (allreduce, ring): граница остаётся нижней"
+        )
+    if state_total:
+        step_notes.append(
+            "фиксированное состояние читается на каждом шаге (глава 2.3.6); запись "
+            "не учтена, граница остаётся нижней"
+        )
     throughput = serving.tokens_per_second(args.batch, step)
     out = [
-        _result(
-            "max_concurrent_requests",
-            serving.max_concurrent_requests(
-                memory.value, args.weights, kv_request, args.reserve
-            ),
-            "",
-            "floor((C − M_w − reserve) / (kv_per_token × context))",
-            memory_inputs,
-            A_CH8_MEM,
-            bound="upper",
-            notes=memory_notes,
-        ),
+        capacity,
         _result(
             "tpot_lower_bound_seconds",
             step,
             "s",
-            "max(B·F_decode/Π, (R_W + B·R_KV)/β)",
+            f"max(B·{f_term}, ({r_term} + B·{kv_read})/β)",
             step_inputs,
             A_CH1_TIME,
             bound="lower",
-            notes=rate_notes,
+            notes=step_notes,
         ),
         _result(
             "tokens_per_second_upper_bound",
@@ -875,44 +1219,52 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             step_inputs,
             A_CH1_TIME,
             bound="upper",
-            notes=rate_notes,
+            notes=step_notes,
         ),
     ]
     if args.prefill_flops is not None:
         ttft = serving.ttft_lower_bound_seconds(
-            args.prefill_flops, args.weights, peak.value, bw.value
+            args.prefill_flops / tp, weights_card, peak.value, bw.value
         )
         out.append(
             _result(
                 "ttft_lower_bound_seconds",
                 ttft,
                 "s",
-                "max(F_prefill/Π, M_w/β)",
+                "max(F_prefill/(TP·Π), M_w/(TP·β))"
+                if tp > 1
+                else "max(F_prefill/Π, M_w/β)",
                 {
+                    **arch,
                     "prefill_flops": args.prefill_flops,
                     "weights": args.weights,
+                    **parallel,
                     **peak.inputs,
                     **bw.inputs,
                 },
                 A_CH1_REF,
                 bound="lower",
-                notes=rate_notes,
+                notes=(*rate_notes, *tp_notes),
             )
         )
     if args.price_per_hour is not None:
-        price = serving.cost_per_million_tokens(args.price_per_hour, throughput)
+        price = serving.cost_per_million_tokens(args.price_per_hour * tp, throughput)
         out.append(
             _result(
                 "cost_per_million_tokens_lower_bound",
                 price,
                 "$",
-                "price_per_hour / 3600 / tok_s × 10^6",
+                "TP × price_per_hour / 3600 / tok_s × 10^6"
+                if tp > 1
+                else "price_per_hour / 3600 / tok_s × 10^6",
                 {
                     "price_per_hour": args.price_per_hour,
                     "tokens_per_second": throughput,
+                    **parallel,
                 },
                 A_CH3_PRICE,
                 bound="lower",
+                notes=(f"оплачиваются все {tp} карты экземпляра",) if tp > 1 else (),
             )
         )
     return out
@@ -2131,6 +2483,22 @@ def _parser() -> argparse.ArgumentParser:
         type=float,
         help="байт scale и частей в высокой точности сверх параметров × байты (квантизация)",
     )
+    p.add_argument(
+        "--tp",
+        type=int,
+        help="число карт тензорного параллелизма: веса, KV и состояние на карту",
+    )
+    p.add_argument(
+        "--batch",
+        type=int,
+        help="запросов в шаге decode (MoE): объединение экспертов и чтение весов",
+    )
+    p.add_argument(
+        "--experts-per-layer",
+        type=float,
+        help="различных экспертов на слой в батче вместо равномерной оценки "
+        "(измерение или худший случай min(B·k, E))",
+    )
 
     p = command("roofline", _roofline, "нижняя граница времени шага: max(F/Π, R/β)")
     device_options(p)
@@ -2162,14 +2530,48 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--prefill-flops", type=float, help="FLOPs prefill одного запроса (для TTFT)"
     )
-    p.add_argument("--kv-per-token", type=float, required=True, help="байт KV на токен")
     p.add_argument(
-        "--context", type=int, required=True, help="длина контекста, токенов"
+        "--kv-per-token", type=float, required=True, help="байт KV на токен всей модели"
     )
-    p.add_argument("--batch", type=int, default=1)
-    p.add_argument("--memory", type=float, help="байт памяти одного устройства")
+    p.add_argument(
+        "--context",
+        type=int,
+        required=True,
+        help="длина контекста для шага, токенов: при длине входа — нижняя граница "
+        "каждого шага decode",
+    )
+    p.add_argument(
+        "--memory-context",
+        type=int,
+        help="длина контекста для бюджета памяти, токенов: к концу генерации (вход + "
+        "выход − 1, до блока KV); по умолчанию равна --context",
+    )
+    p.add_argument("--batch", type=int, default=1, help="запросов в шаге decode")
+    p.add_argument(
+        "--memory",
+        type=float,
+        help="байт памяти одного устройства; без него и без --device ёмкость не "
+        "оценивается",
+    )
     p.add_argument(
         "--reserve", type=float, default=0, help="байт резерва среды выполнения"
+    )
+    p.add_argument(
+        "--fixed-state-bytes",
+        type=float,
+        help="байт фиксированного состояния на запрос всей модели (линейное внимание "
+        "и т. п.); для гибридной модели из --config берётся автоматически",
+    )
+    p.add_argument(
+        "--config",
+        help="config.json модели: архитектура для --tp и фиксированного состояния",
+    )
+    p.add_argument(
+        "--tp",
+        type=int,
+        default=1,
+        help="карт тензорного параллелизма; --weights, --weight-read, FLOPs и KV "
+        "задаются для всей модели и делятся по картам (нужен --config)",
     )
     p.add_argument("--price-per-hour", type=float, help="$ за час устройства")
 
