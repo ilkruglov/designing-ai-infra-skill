@@ -357,6 +357,30 @@ def _snapshot_peak(dev: hardware.Device, args: argparse.Namespace) -> float:
         ) from None
 
 
+def _refuse_mixed_rates(
+    dev: hardware.Device | None, peak: _Quantity, bw: _Quantity
+) -> None:
+    """У агрегата пик и полоса берутся либо оба из снимка, либо оба явно.
+
+    Значение агрегата в снимке — сумма по всем его устройствам; явное значение
+    чаще задают на карту. Одна граница с пиком карты и полосой стойки (или
+    наоборот) смешала бы охваты, и понять, какой из них имелся в виду, нельзя.
+    """
+    if dev is None or dev.scope == SINGLE:
+        return
+    sources = {"--peak-tflops": peak, "--bandwidth": bw}
+    given = [flag for flag, q in sources.items() if q.snapshot_label is None]
+    taken = [q.snapshot_label for q in sources.values() if q.snapshot_label]
+    if given and taken:
+        raise ValueError(
+            f"{dev.id} — агрегат {dev.scope} (устройств в агрегате: {dev.device_count}): "
+            f"{given[0]} задан явно, а {taken[0]} берётся из снимка как сумма по "
+            f"{dev.device_count} устройствам: граница смешала бы величины разного "
+            "охвата. Задайте --peak-tflops и --bandwidth вместе или не задавайте ни "
+            "один из них"
+        )
+
+
 @dataclass(frozen=True)
 class _Quantity:
     """Величина для расчёта: значение, входы для отчёта и откуда она взята."""
@@ -940,6 +964,7 @@ def _roofline(args: argparse.Namespace) -> list[Result]:
             f"{error}; только граница по чтению без пика — флаг --memory-only"
         ) from None
     bw = _bandwidth(args, dev)
+    _refuse_mixed_rates(dev, peak, bw)
     notes = _aggregate_note(dev, _labels(peak, bw), RATES_SUFFIX)
     inputs = {"flops": args.flops, "bytes": args.bytes, **peak.inputs, **bw.inputs}
     out = [
@@ -1055,13 +1080,34 @@ def _serving_state(
 def _serving_price(
     args: argparse.Namespace,
     dev: hardware.Device | None,
+    aggregate_rates: bool,
     tp: int,
     throughput: float,
     parallel: dict[str, Any],
 ) -> Result:
-    """Цена миллиона токенов; у агрегата область цены задаётся явно."""
-    aggregate = dev is not None and dev.scope != SINGLE
+    """Цена миллиона токенов; у агрегата область цены задаётся явно.
+
+    Агрегатом цена считается, только когда пик и полоса взяты из записи агрегата:
+    тогда токены в секунду — скорость всей записи. С явными --peak-tflops и
+    --bandwidth скорость описывает заданное устройство, и цена берётся как есть.
+    """
+    on_aggregate = dev is not None and dev.scope != SINGLE
+    aggregate = on_aggregate and aggregate_rates
     scope = args.price_scope
+    if scope == "aggregate" and not aggregate:
+        if on_aggregate:
+            assert dev is not None
+            raise ValueError(
+                f"--price-scope aggregate относится к скорости всей записи {dev.id}, а "
+                "--peak-tflops и --bandwidth заданы явно: токены в секунду описывают "
+                "заданное устройство, и цена за его час берётся как есть — уберите "
+                "--price-scope или укажите card"
+            )
+        raise ValueError(
+            "--price-scope aggregate — только для агрегата из снимка (--device … "
+            "--allow-aggregate): у одиночного устройства цена — за карту, при "
+            "--tp — за все карты экземпляра"
+        )
     if aggregate and scope is None:
         assert dev is not None
         raise ValueError(
@@ -1081,7 +1127,17 @@ def _serving_price(
         notes = (f"цена — за все карты экземпляра, TP = {tp}",)
     else:
         formula = "price_per_hour / 3600 / tok_s × 10^6"
-        notes = ("цена всей записи агрегата как есть",) if aggregate else ()
+        if aggregate:
+            notes = ("цена всей записи агрегата как есть",)
+        elif on_aggregate:
+            notes = (
+                (
+                    "--peak-tflops и --bandwidth заданы явно: цена — за час устройства, "
+                    "которое они описывают, без умножения на число устройств агрегата"
+                ),
+            )
+        else:
+            notes = ()
     return _result(
         "cost_per_million_tokens_lower_bound",
         serving.cost_per_million_tokens(args.price_per_hour * multiplier, throughput),
@@ -1120,6 +1176,11 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             ("--tp", 1),
         ),
     )
+    if args.price_scope is not None and args.price_per_hour is None:
+        raise ValueError(
+            "--price-scope задаёт, к чему относится --price-per-hour; без цены он "
+            "ни на что не влияет — добавьте --price-per-hour или уберите --price-scope"
+        )
     tp = args.tp
     spec = _load_spec(args.config) if args.config is not None else None
     if tp > 1 and spec is None:
@@ -1154,6 +1215,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
         )
     peak = _peak(args, dev)
     bw = _bandwidth(args, dev)
+    _refuse_mixed_rates(dev, peak, bw)
     memory, skipped = _optional_memory(args, dev)
     rate_notes = _aggregate_note(dev, _labels(peak, bw), RATES_SUFFIX)
     if memory_context == context:
@@ -1228,7 +1290,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             ),
             *(
                 ("--reserve резервирует память на весь агрегат, а не на одну карту",)
-                if dev is not None and dev.scope != SINGLE
+                if dev is not None and dev.scope != SINGLE and memory.snapshot_label
                 else ()
             ),
             "верхняя граница: активации, фрагментация и буферы сверх --reserve не учтены",
@@ -1337,7 +1399,9 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             )
         )
     if args.price_per_hour is not None:
-        out.append(_serving_price(args, dev, tp, throughput, parallel))
+        # цена относится к агрегату, только если и скорость (пик, полоса) — его
+        aggregate_rates = bool(_labels(peak, bw)) and dev is not None
+        out.append(_serving_price(args, dev, aggregate_rates, tp, throughput, parallel))
     return out
 
 
@@ -1904,6 +1968,7 @@ def _batch_threshold(args: argparse.Namespace) -> list[Result]:
     dev = _device(args, "--peak-tflops и --bandwidth")
     peak = _peak(args, dev)
     bw = _bandwidth(args, dev)
+    _refuse_mixed_rates(dev, peak, bw)
     rate_notes = _aggregate_note(dev, _labels(peak, bw), RATES_SUFFIX)
     compute_inputs = inputs | {**peak.inputs, **bw.inputs}
     memory_note = (
@@ -2688,14 +2753,15 @@ def _parser() -> argparse.ArgumentParser:
         "--price-per-hour",
         type=float,
         help="$ за час выбранной записи устройства: одной карты или, с "
-        "--price-scope aggregate, всей стойки",
+        "--price-scope aggregate, всей записи агрегата",
     )
     p.add_argument(
         "--price-scope",
         choices=("card", "aggregate"),
         help="к чему относится --price-per-hour: card — за карту (по умолчанию; у "
-        "агрегата умножается на число устройств), aggregate — за всю запись "
-        "агрегата; у агрегата обязателен",
+        "агрегата из снимка умножается на число устройств), aggregate — за всю "
+        "запись агрегата (только агрегат с пиком и полосой из снимка); у такого "
+        "агрегата обязателен, нужен --price-per-hour",
     )
 
     p = command("training", _training, "FLOPs обучения, состояние ZeRO и срок обучения")

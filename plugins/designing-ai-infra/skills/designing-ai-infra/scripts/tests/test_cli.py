@@ -1169,6 +1169,98 @@ class ServingSplitTest(unittest.TestCase):
         tok_s = values(*base)["tokens_per_second_upper_bound"]["value"]
         self.assertAlmostEqual(plain["value"], 2 / 3600 / tok_s * 1e6)
 
+    def test_aggregate_price_follows_where_rates_come_from(self) -> None:
+        # замечание ревью 20a-1: все значения на карту заданы явно, а цена умножалась на
+        # 72; арифметическое тождество — цена карты как есть: 3 / 3600 / tok_s × 10^6
+        user = (
+            "serving", "--device", "gb200-nvl72", "--allow-aggregate",
+            "--memory", "186e9", "--bandwidth", "8e12", "--peak-tflops", "2500",
+            "--weights", "1e9", "--weight-read", "1e9", "--decode-flops", "1e9",
+            "--kv-per-token", "1000", "--context", "10", "--batch", "8",
+            "--price-per-hour", "3",
+        )  # fmt: skip
+        for extra in ((), ("--price-scope", "card")):
+            with self.subTest(extra=extra):
+                v = values(*user, *extra)
+                tok_s = v["tokens_per_second_upper_bound"]["value"]
+                price = v["cost_per_million_tokens_lower_bound"]
+                self.assertAlmostEqual(price["value"], 3 / 3600 / tok_s * 1e6)
+                self.assertIn("заданы явно", " ".join(price["notes"]))
+                # память задана явно: резерв не «на весь агрегат»
+                notes = " ".join(v["max_concurrent_requests"]["notes"])
+                self.assertNotIn("на весь агрегат", notes)
+        message = fails(*user, "--price-scope", "aggregate")
+        self.assertIn("--price-scope aggregate", message)
+
+    def test_reserve_note_only_for_snapshot_memory(self) -> None:
+        # ёмкость из снимка — резерв на всю запись; пики из снимка — цена × 72
+        v = values(*self.AGGREGATE, "--price-per-hour", "3", "--price-scope", "card")
+        self.assertIn(
+            "--reserve резервирует память на весь агрегат",
+            " ".join(v["max_concurrent_requests"]["notes"]),
+        )
+        v = values(
+            *self.AGGREGATE, "--memory", "186e9", "--price-per-hour", "3",
+            "--price-scope", "card",
+        )  # fmt: skip
+        self.assertNotIn(
+            "на весь агрегат", " ".join(v["max_concurrent_requests"]["notes"])
+        )
+        tok_s = v["tokens_per_second_upper_bound"]["value"]
+        self.assertAlmostEqual(
+            v["cost_per_million_tokens_lower_bound"]["value"],
+            3 * 72 / 3600 / tok_s * 1e6,
+        )
+
+    def test_aggregate_rates_are_overridden_together(self) -> None:
+        # пик карты с полосой стойки (или наоборот) смешал бы охваты в одной границе
+        work = {
+            "serving": (
+                "--weights", "1e9", "--weight-read", "1e9", "--decode-flops", "1e9",
+                "--kv-per-token", "1000", "--context", "10",
+            ),
+            "roofline": ("--flops", "1", "--bytes", "1"),
+            "batch-threshold": (
+                "--weight-read", "1e9", "--kv-per-token", "1000", "--context", "10",
+                "--decode-flops", "1e9",
+            ),
+        }  # fmt: skip
+        for command, args in work.items():
+            for rate in (("--peak-tflops", "2500"), ("--bandwidth", "8e12")):
+                with self.subTest(command=command, rate=rate):
+                    message = fails(
+                        command, "--device", "gb200-nvl72", "--allow-aggregate",
+                        *rate, *args,
+                    )  # fmt: skip
+                    self.assertIn("--peak-tflops", message)
+                    self.assertIn("--bandwidth", message)
+                    self.assertIn("вместе", message)
+
+    def test_price_scope_aggregate_needs_an_aggregate(self) -> None:
+        # одиночная карта: aggregate помечал бы цену агрегатом, а считал бы как карту
+        message = fails(
+            *ServingCommandTest.RTX,
+            "--price-per-hour",
+            "2",
+            "--price-scope",
+            "aggregate",
+        )
+        self.assertIn("--price-scope aggregate", message)
+        self.assertIn("агрегат", message)
+
+    def test_price_scope_needs_a_price(self) -> None:
+        message = fails(*ServingCommandTest.RTX, "--price-scope", "card")
+        self.assertIn("--price-scope", message)
+        self.assertIn("--price-per-hour", message)
+
+    def test_price_help_names_the_aggregate_record(self) -> None:
+        # агрегаты снимка — не только стойки: суперчипы, серверы, суперкластеры
+        code, out = call("serving", "--help")
+        self.assertEqual(code, 0)
+        text = " ".join(out.split())
+        self.assertIn("всей записи агрегата", text)
+        self.assertNotIn("всей стойки", text)
+
     def test_mla_serving_note_is_marked_as_derived(self) -> None:
         v = values(
             "serving", "--device", "h100-sxm", "--config", str(CONFIGS / "deepseek-v3.json"),
@@ -1428,10 +1520,8 @@ class ReviewFixesTest(unittest.TestCase):
     def test_aggregate_note_names_only_snapshot_quantities(self) -> None:
         base = ("roofline", "--device", "gb200-nvl72", "--allow-aggregate")
         work = ("--flops", "1", "--bytes", "1")
-        v = values(*base, "--peak-tflops", "2500", *work)
-        note = " ".join(v["step_lower_bound_seconds"]["notes"])
-        self.assertIn("пропускная способность", note)
-        self.assertNotIn("пик", note)
+        # пик задан явно, полоса из снимка — отказ (test_aggregate_rates_are_overridden_together);
+        # оба заданы явно — ни одна величина не из агрегата, примечания нет
         v = values(*base, "--peak-tflops", "2500", "--bandwidth", "8e12", *work)
         self.assertEqual(v["step_lower_bound_seconds"]["notes"], [])
 
