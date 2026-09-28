@@ -197,4 +197,4 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
 
 **Полный текст книги:** `references/source-book/` — `preface.md` и `chapter1.md`…`chapter12.md`, побайтно из перевода на пине `83f26c39ed5fe0e5a16c4f7191e0bebb42c86d94`; рисунков нет, подписи и таблицы остались. К главе обращайся за дословной формулировкой и условиями примера.
 
-**Калькулятор и данные:** `scripts/calc.py` — CLI над пакетом `scripts/infra_calc/` (команды `model`, `roofline`, `serving`, `training`, `checkpoint`, `speculative`, `ring`, `cost`, `edge`, `device`, `units`, `queueing`; справка — `python3 scripts/calc.py --help`) · `data/hardware.json` — снимок ускорителей оригинала: 151 запись, у каждого числа источник и локатор.
+**Калькулятор и данные:** `scripts/calc.py` — CLI над пакетом `scripts/infra_calc/` (команды `model`, `roofline`, `batch-threshold`, `serving`, `training`, `training-state`, `pipeline`, `checkpoint`, `speculative`, `ring`, `allreduce`, `cost`, `edge`, `device`, `units`, `queueing`; справка — `python3 scripts/calc.py --help`) · `data/hardware.json` — снимок ускорителей оригинала: 151 запись, у каждого числа источник и локатор.

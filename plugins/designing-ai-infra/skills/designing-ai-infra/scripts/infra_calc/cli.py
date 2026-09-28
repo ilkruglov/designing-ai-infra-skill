@@ -2692,7 +2692,7 @@ def _parser() -> argparse.ArgumentParser:
     p = command(
         "speculative",
         _speculative,
-        "спекулятивное декодирование: E[N] и безубыточный раунд",
+        "спекулятивное декодирование: E[N], безубыточный раунд, время на токен",
     )
     p.add_argument("--acceptance", type=float, help="доля принятия позиции, [0, 1]")
     p.add_argument("--draft", type=int, help="токенов черновика за раунд")
