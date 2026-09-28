@@ -26,6 +26,7 @@ ANCHORS = (
     "references/source-book/chapter6.md:705",
     "references/source-book/chapter8.md:52",
     "references/source-book/chapter8.md:536",
+    "references/source-book/chapter8.md:598",
     "references/source-book/chapter10.md:151",
     "references/source-book/chapter10.md:322",
     "references/source-book/chapter10.md:553",
@@ -1096,6 +1097,10 @@ COMMANDS = tuple(
             " --decode-capacity 2796 --prefill-capacity 1e5"
             " --arrival-rate 10 --time-in-system 30"
         ),
+        (
+            "queueing --class a=8192:256 --rate a=2 --decode-capacity 2796"
+            " --capacity-upper-bound --anchor ch08"
+        ),
     )
 )
 
@@ -1377,6 +1382,51 @@ class QueueingCommandTest(unittest.TestCase):
         # «Каждая задача занимает среду на 30 секунд» — в среднем 300 сред
         v = values("queueing", "--arrival-rate", "10", "--time-in-system", "30")
         self.assertEqual(v["in_system"]["value"], 300)
+
+    def test_capacity_upper_bound_marks_utilization(self) -> None:
+        # chapter3.md:137: 2,796 шага decode в секунду — предел одной карты из границы
+        # времени шага, то есть верхняя граница мощности; загрузка 4604/2796 ≥ 1.65 —
+        # нижняя граница
+        v = values(
+            "queueing", *self.CLASSES, "--rate", "long_input=2",
+            "--rate", "long_output=2", "--decode-capacity", "2796",
+            "--capacity-upper-bound",
+        )  # fmt: skip
+        item = v["decode_utilization"]
+        self.assertEqual(item["bound"], "lower")
+        self.assertAlmostEqual(item["value"], 4604 / 2796)
+        self.assertIn("верхняя граница", " ".join(item["notes"]))
+        plain = values(
+            "queueing", *self.CLASSES, "--rate", "long_input=2",
+            "--rate", "long_output=2", "--decode-capacity", "2796",
+        )  # fmt: skip
+        self.assertIsNone(plain["decode_utilization"]["bound"])
+
+    def test_anchor_follows_use(self) -> None:
+        args = (*self.CLASSES, "--rate", "long_input=2", "--rate", "long_output=2")
+        little = ("--arrival-rate", "4", "--time-in-system", "0.5")
+        default = values("queueing", *args, *little)
+        self.assertEqual(
+            default["decode_steps_per_second"]["anchor"],
+            "references/source-book/chapter3.md:75",
+        )
+        self.assertEqual(
+            default["in_system"]["anchor"], "references/source-book/chapter11.md:62"
+        )
+        for choice, anchor in (
+            ("ch08", "references/source-book/chapter8.md:598"),
+            ("ch11", "references/source-book/chapter11.md:62"),
+            ("ch03", "references/source-book/chapter3.md:75"),
+        ):
+            with self.subTest(choice=choice):
+                v = values("queueing", *args, *little, "--anchor", choice)
+                self.assertEqual({item["anchor"] for item in v.values()}, {anchor})
+
+    def test_class_errors_agree_in_gender(self) -> None:
+        message = fails("queueing", "--class", "a=1:1", "--rate", "a=-1")
+        self.assertIn("не может быть отрицательной", message)
+        message = fails("queueing", "--class", "a=1:0", "--rate", "a=1")
+        self.assertIn("должны быть не меньше 1", message)
 
     def test_malformed_inputs(self) -> None:
         self.assertIn("long_input", fails("queueing", *self.CLASSES, "--rate", "x=1"))

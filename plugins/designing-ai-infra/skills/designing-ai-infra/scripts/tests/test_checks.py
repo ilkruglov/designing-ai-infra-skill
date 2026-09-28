@@ -83,5 +83,45 @@ class RequireIntAtLeastTest(unittest.TestCase):
         )
 
 
+class GrammaticalFormTest(unittest.TestCase):
+    """Сказуемое согласуется с подлежащим: «интенсивность ... не может быть отрицательной»."""
+
+    def test_feminine(self) -> None:
+        with self.assertRaises(ValueError) as caught:
+            checks.require_non_negative("интенсивность класса 'a'", -1, form="f")
+        self.assertEqual(
+            str(caught.exception),
+            "интенсивность класса 'a' не может быть отрицательной: -1",
+        )
+        with self.assertRaises(ValueError) as caught:
+            checks.require_positive("интенсивность", math.nan, form="f")
+        self.assertIn(
+            "интенсивность должна быть конечным числом", str(caught.exception)
+        )
+
+    def test_plural(self) -> None:
+        cases = (
+            ((2.5, 0), "входные токены должны быть целыми числами: 2.5"),
+            ((-1, 0), "входные токены не могут быть отрицательными: -1"),
+            ((0, 1), "входные токены должны быть не меньше 1: 0"),
+        )
+        for (value, minimum), message in cases:
+            with self.subTest(value=value), self.assertRaises(ValueError) as caught:
+                checks.require_int_at_least("входные токены", value, minimum, form="pl")
+            self.assertEqual(str(caught.exception), message)
+
+    def test_neuter(self) -> None:
+        with self.assertRaises(ValueError) as caught:
+            checks.require_non_negative("время раунда", math.inf, form="n")
+        self.assertIn("время раунда должно быть конечным числом", str(caught.exception))
+        with self.assertRaises(ValueError) as caught:
+            checks.require_positive("время раунда", 0, form="n")
+        self.assertIn("время раунда должно быть больше нуля", str(caught.exception))
+
+    def test_unknown_form(self) -> None:
+        with self.assertRaises(ValueError):
+            checks.require_positive("x", 1, form="dual")
+
+
 if __name__ == "__main__":
     unittest.main()

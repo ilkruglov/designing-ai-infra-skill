@@ -5,6 +5,7 @@ from infra_calc import queueing
 
 ANCHORS = (
     "references/source-book/chapter3.md:75",
+    "references/source-book/chapter8.md:598",
     "references/source-book/chapter11.md:62",
 )
 CLASSES = {"long_input": (8192, 256), "long_output": (1024, 2048)}
@@ -56,6 +57,18 @@ class QueueingTest(unittest.TestCase):
                 self.assertRaises(ValueError),
             ):
                 queueing.demand(arrivals, classes)
+
+    def test_class_messages_agree_in_gender(self) -> None:
+        cases = (
+            (({"a": -1.0}, {"a": (1024, 256)}), "интенсивность класса 'a' не может быть отрицательной"),
+            (({"a": 1.0}, {"a": (-1, 256)}), "входные токены класса 'a' не могут быть отрицательными"),
+            (({"a": 1.0}, {"a": (1024, 0)}), "выходные токены класса 'a' должны быть не меньше 1"),
+            (({"a": 1.0}, {"a": (1024.5, 256)}), "входные токены класса 'a' должны быть целыми числами"),
+        )  # fmt: skip
+        for args, message in cases:
+            with self.subTest(message=message), self.assertRaises(ValueError) as caught:
+                queueing.demand(*args)
+            self.assertIn(message, str(caught.exception))
 
     def test_utilization_rejects_non_positive_capacity(self) -> None:
         for args in ((900, 0), (900, -1000), (-900, 1000)):

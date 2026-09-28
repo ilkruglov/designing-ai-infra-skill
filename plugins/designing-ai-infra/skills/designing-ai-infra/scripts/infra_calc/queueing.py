@@ -22,10 +22,10 @@ def demand(
             raise ValueError(
                 f"неизвестный класс запросов {name!r}; известны: {', '.join(classes)}"
             )
-        require_non_negative(f"интенсивность класса {name!r}", rate)
+        require_non_negative(f"интенсивность класса {name!r}", rate, form="f")
         inputs, outputs = classes[name]
-        require_int_at_least(f"входные токены класса {name!r}", inputs, 0)
-        require_int_at_least(f"выходные токены класса {name!r}", outputs, 1)
+        require_int_at_least(f"входные токены класса {name!r}", inputs, 0, form="pl")
+        require_int_at_least(f"выходные токены класса {name!r}", outputs, 1, form="pl")
     tokens = sum(rate * classes[name][0] for name, rate in arrivals_per_second.items())
     steps = sum(
         rate * (classes[name][1] - 1) for name, rate in arrivals_per_second.items()

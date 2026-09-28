@@ -63,6 +63,7 @@ A_CH6_RING = f"{BOOK}/chapter6.md:473"
 A_CH7_TIME = f"{BOOK}/chapter7.md:938"
 A_CH8_MEM = f"{BOOK}/chapter8.md:52"
 A_CH8_SPEC = f"{BOOK}/chapter8.md:536"
+A_CH8_QUEUE = f"{BOOK}/chapter8.md:598"
 A_CH10_ZERO = f"{BOOK}/chapter10.md:151"
 A_CH10_PIPE = f"{BOOK}/chapter10.md:322"
 A_CH10_CKPT = f"{BOOK}/chapter10.md:553"
@@ -71,6 +72,7 @@ A_CH11_LITTLE = f"{BOOK}/chapter11.md:62"
 A_CH11_CALL = f"{BOOK}/chapter11.md:488"
 A_CH11_TASK = f"{BOOK}/chapter11.md:515"
 A_CH12_EDGE = f"{BOOK}/chapter12.md:11"
+QUEUE_ANCHORS = {"ch03": A_CH3_QUEUE, "ch08": A_CH8_QUEUE, "ch11": A_CH11_LITTLE}
 
 SINGLE = "single_device"
 USER = "задано пользователем"
@@ -2180,6 +2182,8 @@ def _queueing(args: argparse.Namespace) -> list[Result]:
             "укажите --class и --rate (потребность по классам) "
             "или --arrival-rate и --time-in-system (закон Литтла)"
         )
+    demand_anchor = QUEUE_ANCHORS.get(args.anchor, A_CH3_QUEUE)
+    little_anchor = QUEUE_ANCHORS.get(args.anchor, A_CH11_LITTLE)
     out: list[Result] = []
     if rates or classes:
         if not rates or not classes:
@@ -2196,7 +2200,7 @@ def _queueing(args: argparse.Namespace) -> list[Result]:
                 "tok/s",
                 "Σ λ_c · I_c",
                 inputs,
-                A_CH3_QUEUE,
+                demand_anchor,
             ),
             _result(
                 "decode_steps_per_second",
@@ -2204,11 +2208,21 @@ def _queueing(args: argparse.Namespace) -> list[Result]:
                 "step/s",
                 "Σ λ_c · (O_c − 1)",
                 inputs,
-                A_CH3_QUEUE,
+                demand_anchor,
                 notes=("первый выходной токен даёт prefill",),
             ),
         ]
         overload = "больше 1 — очередь растёт, сколько бы ни длилось окно"
+        utilization_bound = "lower" if args.capacity_upper_bound else None
+        utilization_notes: tuple[str, ...] = (overload,)
+        if args.capacity_upper_bound:
+            utilization_notes += (
+                (
+                    "мощность — верхняя граница (например, "
+                    "tokens_per_second_upper_bound из serving), поэтому загрузка — "
+                    "нижняя граница: реальная не меньше"
+                ),
+            )
         for name, demand_key, demand, key, capacity in (
             (
                 "decode_utilization",
@@ -2233,12 +2247,17 @@ def _queueing(args: argparse.Namespace) -> list[Result]:
                         "",
                         "потребность / мощность",
                         {demand_key: demand, key: capacity},
-                        A_CH3_QUEUE,
-                        notes=(overload,),
+                        demand_anchor,
+                        bound=utilization_bound,
+                        notes=utilization_notes,
                     )
                 )
     elif args.decode_capacity is not None or args.prefill_capacity is not None:
         raise ValueError("для загрузки нужны --class и --rate")
+    elif args.capacity_upper_bound:
+        raise ValueError(
+            "--capacity-upper-bound относится к загрузке: нужны --class, --rate и мощность"
+        )
     if any(v is not None for v in little.values()):
         missing = [flag for flag, value in little.items() if value is None]
         if missing:
@@ -2256,7 +2275,7 @@ def _queueing(args: argparse.Namespace) -> list[Result]:
                     "arrival_rate": args.arrival_rate,
                     "time_in_system": args.time_in_system,
                 },
-                A_CH11_LITTLE,
+                little_anchor,
                 notes=("среднее в устойчивом режиме",),
             )
         )
@@ -2786,6 +2805,19 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--prefill-capacity", type=float, help="входных токенов в секунду")
     p.add_argument("--arrival-rate", type=float, help="поступлений в секунду")
     p.add_argument("--time-in-system", type=float, help="секунд в системе")
+    p.add_argument(
+        "--capacity-upper-bound",
+        action="store_true",
+        help="мощность — верхняя граница (из serving): загрузка помечается как "
+        "нижняя граница",
+    )
+    p.add_argument(
+        "--anchor",
+        choices=tuple(QUEUE_ANCHORS),
+        help="глава-якорь всех результатов: ch03 — нагрузка, ch08 — поток запросов "
+        "инференса, ch11 — среды агентов; по умолчанию потребность — ch03, закон "
+        "Литтла — ch11",
+    )
 
     p = command(
         "device",

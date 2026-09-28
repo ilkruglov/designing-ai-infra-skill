@@ -28,9 +28,9 @@ def mean_time_per_token(round_seconds: list[float], round_tokens: list[int]) -> 
             f"{len(round_seconds)} и {len(round_tokens)}"
         )
     for seconds, tokens in zip(round_seconds, round_tokens):
-        require_non_negative("время раунда", seconds)
+        require_non_negative("время раунда", seconds, form="n")
         # раунд всегда даёт хотя бы один проверенный токен целевой модели
-        require_int_at_least("токенов за раунд", tokens, 1)
+        require_int_at_least("число токенов за раунд", tokens, 1, form="n")
     return sum(round_seconds) / sum(round_tokens)
 
 
