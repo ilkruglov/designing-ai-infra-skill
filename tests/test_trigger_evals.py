@@ -21,6 +21,10 @@ FALSE_CATEGORIES = ("near-miss:", "unrelated:")
 # benchmark. Самые близкие пары набора дают около 0,16; пересказ с заменой
 # пары слов даёт больше 0,8. Порог 0,5 ловит пересказ и не мешает общей лексике.
 MAX_BENCHMARK_OVERLAP = 0.5
+# Доля слов запроса, взятых из промпта benchmark (|q ∩ p| / |q|). Jaccard не
+# ловит короткий запрос, вырезанный из длинного промпта: объединение велико.
+# Самая близкая пара набора даёт около 0,37; порог 0,6.
+MAX_BENCHMARK_CONTAINMENT = 0.6
 
 
 def words(text: str) -> set[str]:
@@ -30,6 +34,11 @@ def words(text: str) -> set[str]:
 def overlap(left: str, right: str) -> float:
     a, b = words(left), words(right)
     return len(a & b) / len(a | b)
+
+
+def containment(query: str, prompt: str) -> float:
+    q = words(query)
+    return len(q & words(prompt)) / len(q)
 
 
 def load_queries() -> list[dict]:
@@ -111,6 +120,17 @@ class TriggerSetTests(unittest.TestCase):
                 self.assertNotIn(text.strip(), prompts)
                 for prompt in prompts:
                     self.assertLess(overlap(text, prompt), MAX_BENCHMARK_OVERLAP)
+                    self.assertLess(
+                        containment(text, prompt), MAX_BENCHMARK_CONTAINMENT
+                    )
+
+    def test_containment_catches_a_query_cut_from_a_prompt(self) -> None:
+        # первые слова длинного промпта: Jaccard мал, но весь запрос взят из промпта
+        benchmark = json.loads(BENCHMARK.read_text(encoding="utf-8"))
+        prompt = max((scenario["prompt"] for scenario in benchmark["evals"]), key=len)
+        cut = " ".join(re.findall(r"\w+", prompt)[:12])
+        self.assertLess(overlap(cut, prompt), MAX_BENCHMARK_OVERLAP)
+        self.assertGreaterEqual(containment(cut, prompt), MAX_BENCHMARK_CONTAINMENT)
 
 
 if __name__ == "__main__":
