@@ -477,7 +477,7 @@
 |---|---|
 | Вычисления на карту выше бюджета | больше карт (32 → 48) или выше эффективность на карте (40 → ≈ 47 % для 32 карт) |
 | Канал ZeRO-3 делит одна сетевая карта хоста | срок зависит от перекрытия; отдельная сетевая карта на GPU снимает зависимость |
-| Batch выше `B_noise` | больше карт сокращают только время шага (сильное масштабирование) |
+| Batch значительно выше `B_noise` | выигрыш слабого масштабирования убывает (предел `S/S_min` — 1,64 в примере при batch ≈ 1,57 `B_noise`; 48 → 96 GPU ещё дают 19,4 → 15,7 дня), остаётся сильное масштабирование — сокращение времени шага |
 | Частые сбои или всплески | интервал ≈ `√(2c/λ)`, быстрее запись и восстановление, раньше обнаружение |
 
 ## Заблуждения главы
@@ -533,7 +533,38 @@ python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8
 - входные данные: total_flops=5.26572e+21 FLOP, total_tokens=1e+11 tok, devices=48, mfu=0.4, device=rtx4090, ... peak=1.652e+14 FLOP/s
 ```
 
-4,31·10¹⁴ на последовательность и 5,27·10²¹ всего — как в 10.1.3; ZeRO при d = 8 — 122,05 / 41,96 / 28,61 / 15,26 GiB (таблица 10.2.1). `training_seconds` — только вычисления (≈ 19,2 дня; книга даёт 19,4 с шагом 52,8 s, где добавлены 0,58 s коммуникаций и входа). `--dp 48` и `--dp 32` дают `zero3_state_bytes_per_gpu` 2 730 245 120 и 4 095 367 680 B (≈ 2,5 и 3,8 GiB), `--devices 32` — `2.49022e+06 s` (≈ 28,8 дня против 29,0 книги с шагом 78,9 s). Нижняя граница по H100: `--device h100-sxm --devices 5` — `2.66107e+06 s` (≈ 30,8 дня > 30), `--devices 6` — `2.21756e+06 s` (≈ 25,7 дня), `--devices 2` — `6.65267e+06 s` (≈ 77 дней).
+4,31·10¹⁴ на последовательность и 5,27·10²¹ всего — как в 10.1.3; ZeRO при d = 8 — 122,05 / 41,96 / 28,61 / 15,26 GiB (таблица 10.2.1). `training_seconds` — только вычисления (≈ 19,2 дня; книга даёт 19,4 с шагом 52,8 s, где добавлены 0,58 s коммуникаций и входа). ZeRO-3 на всю группу и 32 карты:
+
+```bash
+python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8b.json --tokens 8192 --dp 48
+python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8b.json --tokens 8192 \
+  --dp 32 --total-tokens 1e11 --devices 32 --device rtx4090 --mfu 0.4
+```
+
+```text
+**zero3_state_bytes_per_gpu**: 2 730 245 120 B
+**zero3_state_bytes_per_gpu**: 4 095 367 680 B
+**training_seconds**: 2.49022e+06 s
+```
+
+≈ 2,5 и 3,8 GiB на карту; ≈ 28,8 дня против 29,0 книги с шагом 78,9 s. Нижняя граница по H100 (5, 6 и 2 GPU):
+
+```bash
+python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8b.json --tokens 8192 \
+  --dp 8 --total-tokens 1e11 --devices 5 --device h100-sxm --mfu 0.4
+python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8b.json --tokens 8192 \
+  --dp 8 --total-tokens 1e11 --devices 6 --device h100-sxm --mfu 0.4
+python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8b.json --tokens 8192 \
+  --dp 8 --total-tokens 1e11 --devices 2 --device h100-sxm --mfu 0.4
+```
+
+```text
+**training_seconds**: 2.66107e+06 s
+**training_seconds**: 2.21756e+06 s
+**training_seconds**: 6.65267e+06 s
+```
+
+≈ 30,8 дня (> 30), ≈ 25,7 и ≈ 77 дней.
 
 Период checkpoint (Meta: 1024 ускорителя, прерывание раз в 7,9 часа; 114 670 295 040 байт при 7 GB/s; r = 120 s) и утилизация конвейера:
 
@@ -549,9 +580,45 @@ python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwi
 **pipeline_utilization**: 0.727273
 ```
 
-`--device-mtbf` = 7,9 × 3600 × 1024 s (≈ 337 дней). `--interval 300 / 900 / 1800` — `0.0640986 / 0.0382438 / 0.0449658` (таблица 6,4 / 3,8 / 4,5 %). Сквозной пример: `--devices 32 --interval 1800` — `0.0102216`, `--devices 48 --interval 1800` — `0.010782`, `--devices 48 --interval 600` — `0.0279947`, оптимум для 48 — `4458.47 s`. `--microbatches 16` — `0.842105`.
+`--device-mtbf` = 7,9 × 3600 × 1024 s (≈ 337 дней). Интервалы 300 / 900 / 1800 s для 1024 ускорителей:
 
-Всплески потерь раз в семь дней отдельного входа не имеют; их можно сложить с аппаратной частотой в эквивалентный MTBF устройства `48/(48/29 122 560 + 1/604 800) ≈ 14 538 203` s — это обходной приём, верный, пока оба потока событий действуют на всё задание и складываются как в `λ_hw + λ_spike`:
+```bash
+python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 1024 \
+  --device-mtbf 29122560 --recovery 120 --interval 300
+python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 1024 \
+  --device-mtbf 29122560 --recovery 120 --interval 900
+python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 1024 \
+  --device-mtbf 29122560 --recovery 120 --interval 1800
+```
+
+```text
+**first_order_loss_at_interval**: 0.0640986
+**first_order_loss_at_interval**: 0.0382438
+**first_order_loss_at_interval**: 0.0449658
+```
+
+Таблица 6,4 / 3,8 / 4,5 %. Сквозной пример (32 и 48 карт при 1800 s, 48 при 600 s) и утилизация при 16 micro-batch:
+
+```bash
+python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 32 \
+  --device-mtbf 29122560 --recovery 120 --interval 1800
+python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 48 \
+  --device-mtbf 29122560 --recovery 120 --interval 1800
+python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 48 \
+  --device-mtbf 29122560 --recovery 120 --interval 600 --stages 4 --microbatches 16
+```
+
+```text
+**first_order_loss_at_interval**: 0.0102216
+**first_order_optimal_interval_seconds**: 4458.47 s
+**first_order_loss_at_interval**: 0.010782
+**first_order_loss_at_interval**: 0.0279947
+**pipeline_utilization**: 0.842105
+```
+
+1,02 %, 1,08 %, 2,80 %, оптимум для 48 — ≈ 4458 s (второй и третий вызов печатают его же).
+
+Всплески потерь раз в семь дней отдельного входа не имеют; их можно сложить с аппаратной частотой в эквивалентный MTBF устройства `48/(48/29 122 560 + 1/604 800) ≈ 14 538 203` s — это обходной приём, верный, пока оба потока событий действуют на всё задание и складываются как в `λ_hw + λ_spike`. Число 14 538 203 годится только с `--devices 48`; при другом N эквивалентный MTBF пересчитывается как `N/(N/29 122 560 + 1/604 800)`:
 
 ```bash
 python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 48 \
@@ -563,7 +630,18 @@ python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwi
 **first_order_loss_at_interval**: 0.0286891
 ```
 
-2,87 % и ≈ 3150 s, как в 10.4.5; `--interval 1800` — `0.0124685` (≈ 1,25 %).
+2,87 % и ≈ 3150 s, как в 10.4.5. Интервал 1800 s:
+
+```bash
+python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwidth 7e9 --devices 48 \
+  --device-mtbf 14538203 --recovery 120 --interval 1800
+```
+
+```text
+**first_order_loss_at_interval**: 0.0124685
+```
+
+≈ 1,25 %.
 
 Шаг fill–drain без передач (CLI его не выводит — функция модуля):
 
@@ -588,9 +666,35 @@ python3 scripts/calc.py ring --devices 4 --message 75497472 --bandwidth 25e9 --a
 **bytes_sent_per_device**: 1.13246e+08 B
 ```
 
-4,55 ms и 108 MiB; `--message 25165824` (24 MiB) — `0.00152995 s`, `--bandwidth 50e9` — `0.00228492 s`. С `--alpha 0.02e-3` (α на раунд) — `0.00464985 s`: другая модель запуска, не ошибка.
+4,55 ms и 108 MiB. Подбуфер 24 MiB, сетевая карта 400 Gbit/s и α на каждый раунд:
 
-Единицы: `units --size '131051765760 B' --to GiB` — `122.051 GiB`; `units --size '80 GB' --to GiB` — `74.5058 GiB` (H100 в 10.5.2).
+```bash
+python3 scripts/calc.py ring --devices 4 --message 25165824 --bandwidth 25e9 --alpha 3.3333e-6
+python3 scripts/calc.py ring --devices 4 --message 75497472 --bandwidth 50e9 --alpha 3.3333e-6
+python3 scripts/calc.py ring --devices 4 --message 75497472 --bandwidth 25e9 --alpha 0.02e-3
+```
+
+```text
+**ring_allreduce_seconds**: 0.00152995 s
+**ring_allreduce_seconds**: 0.00228492 s
+**ring_allreduce_seconds**: 0.00464985 s
+```
+
+1,53 ms (×3 ≈ 4,59), 2,28 ms; последнее — другая модель запуска (α на раунд), не ошибка.
+
+Единицы:
+
+```bash
+python3 scripts/calc.py units --size '131051765760 B' --to GiB
+python3 scripts/calc.py units --size '80 GB' --to GiB
+```
+
+```text
+**size_GiB**: 122.051 GiB
+**size_GiB**: 74.5058 GiB
+```
+
+122,05 GiB постоянного состояния и 74,5 GiB H100 в 10.5.2.
 
 Команд нет для критического batch (`S_min`, `E_min`, слабое/сильное масштабирование), `E[max]` отстающих, `T_c`/`T_g`/`B*` выгрузки, коэффициента ёмкости MoE, событийных моделей конвейера, `r_effective` и порога q асинхронного RL, `T_finish` и Амдала по долям — формулы главы считаются вручную.
 
