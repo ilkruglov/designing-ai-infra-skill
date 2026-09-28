@@ -215,6 +215,16 @@
       "line_text": "## Заблуждения и ловушки",
       "kind": "heading"
     },
+    "chapter2.md:913": {
+      "line_sha256": "8ed7ff87b4753d6ef181a8c15758ade694c3546dced98b8e218c191c9d656a10",
+      "line_text": "## Упражнения и воспроизведение результатов главы",
+      "kind": "heading"
+    },
+    "chapter2.md:935": {
+      "line_sha256": "ed815b691adbb28bdd50aa2e8483c4bb2e98203b8f886987a2b5e073c14724c8",
+      "line_text": "## Справочные таблицы матриц моделей",
+      "kind": "heading"
+    },
     "chapter3.md:13": {
       "line_sha256": "4c447c2224bb99d750250d18bdb4d97553f32c75cf51c827241cfafad93be718",
       "line_text": "### 3.1.1 Prefill и Decode",
@@ -318,6 +328,11 @@
     "chapter3.md:75": {
       "line_sha256": "d875bd8e9ffc8b915f3658bc8bdb61780b7b263788b525b3226e713b45125b8d",
       "line_text": "### 3.1.3 Распределение запросов",
+      "kind": "heading"
+    },
+    "chapter3.md:811": {
+      "line_sha256": "ce8eb7fc4f4558e3e8b9bec6197129ea00583dc4b7c61d484d7efa5548985ea3",
+      "line_text": "## Итоги главы",
       "kind": "heading"
     },
     "preface.md:120": {
