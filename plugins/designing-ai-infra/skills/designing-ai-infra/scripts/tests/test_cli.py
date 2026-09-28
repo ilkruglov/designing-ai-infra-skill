@@ -324,6 +324,25 @@ class TrainingCommandTest(unittest.TestCase):
         ]
         self.assertEqual(gib, [122.1, 42.0, 28.6, 15.3])
 
+    def test_duration_refuses_aggregate_peak_with_device_count(self) -> None:
+        # пик агрегата уже суммирован по 72 GPU; --devices 72 умножил бы его ещё раз
+        message = fails(
+            "training", "--config", QWEN3_8B, "--tokens", "8192", "--total-tokens", "1e9",
+            "--devices", "72", "--mfu", "0.4", "--device", "gb200-nvl72", "--allow-aggregate",
+        )  # fmt: skip
+        self.assertIn("агрегат", message)
+        self.assertIn("--peak-tflops", message)
+        # пик на одну карту, заданный явно, не зависит от агрегата
+        v = values(
+            "training", "--config", QWEN3_8B, "--tokens", "8192", "--total-tokens", "16384",
+            "--devices", "2", "--mfu", "0.5", "--peak-tflops", "1000",
+            "--device", "gb200-nvl72", "--allow-aggregate",
+        )  # fmt: skip
+        per_sequence = v["training_flops_per_sequence"]["value"]
+        self.assertAlmostEqual(
+            v["training_seconds"]["value"], per_sequence / (1e15 * 0.5)
+        )
+
     def test_duration_needs_all_its_inputs(self) -> None:
         message = fails(
             "training", "--config", QWEN3_8B, "--tokens", "8192", "--devices", "8"
@@ -737,6 +756,17 @@ class BatchThresholdCommandTest(unittest.TestCase):
         self.assertIsNone(item["value"])
         self.assertIn("не становится", " ".join(item["notes"]))
 
+    def test_generalisation_is_named(self) -> None:
+        # chapter1.md:305: B_* = b_W·Π/(2β) без KV; с R_KV — обобщение, а не формула книги
+        v = values(
+            "batch-threshold", "--weight-read", "15e9", "--kv-per-token", "1e6",
+            "--context", "1", "--decode-flops", "16e9", "--peak-tflops", "1000",
+            "--bandwidth", "3e12",
+        )  # fmt: skip
+        notes = " ".join(v["compute_bound_batch_threshold"]["notes"])
+        self.assertIn("обобщ", notes)
+        self.assertIn("chapter1.md:305", notes)
+
     def test_moe_config_is_a_lower_bound(self) -> None:
         v = values(
             "batch-threshold", "--config", str(CONFIGS / "qwen3-30b-a3b.json"),
@@ -893,7 +923,7 @@ class ExpertUnionCommandTest(unittest.TestCase):
         )
 
     def test_explicit_union_matches_author(self) -> None:
-        # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --routing balanced
+        # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --tokens 1 --routing balanced
         # (код автора на 56ecb425): expert_union_per_layer 32, weight_read_once_per_operator_bytes
         # 16 955 387 904, из них 4 × 2048 × 2 байта — строки эмбеддингов
         v = values(
@@ -1032,6 +1062,53 @@ class ServingSplitTest(unittest.TestCase):
         self.assertAlmostEqual(
             v["cost_per_million_tokens_lower_bound"]["value"], 1.0, places=3
         )
+
+    def test_tp_refuses_aggregate_device(self) -> None:
+        # агрегат уже суммирует ёмкость и полосу всех карт; деление весов и KV на TP
+        # поверх него считало бы карты дважды (замечание ревью: 3 118 вместо 388)
+        message = fails(
+            "serving", "--device", "gb200-nvl72", "--allow-aggregate",
+            "--config", ModelParallelCommandTest.QWEN3_32B, "--tp", "8",
+            "--weights", "65.52e9", "--weight-read", "63.97e9", "--decode-flops", "0.34e12",
+            "--kv-per-token", "262144", "--context", "131072",
+        )  # fmt: skip
+        self.assertIn("агрегат", message)
+        self.assertIn("--tp", message)
+        self.assertIn("одиночное", message)
+
+    def test_memory_context_shorter_than_context_is_refused(self) -> None:
+        # память считается к концу генерации, шаг — при длине входа; обратное — ошибка
+        message = fails(*self.RTX_12GIB, "--memory-context", "100")
+        self.assertIn("--memory-context", message)
+        self.assertIn("--context", message)
+
+    def test_tp_step_inputs_are_per_device(self) -> None:
+        v = values(
+            "serving", "--device", "h100-sxm", "--config", str(CONFIGS / "qwen3.6-35b-a3b.json"),
+            "--tp", "2", "--weights", "69.32e9", "--weight-read", "0", "--decode-flops", "0",
+            "--kv-per-token", "20480", "--context", "8192",
+        )  # fmt: skip
+        step = v["tpot_lower_bound_seconds"]
+        self.assertIn("kv_request_per_device", step["inputs"])
+        self.assertNotIn("kv_request", step["inputs"])
+        # chapter6.md:1164: ⌊(n·(80 GB − 2 GiB) − W)/S⌋ — состояние S делится на n карт
+        notes = " ".join(v["max_concurrent_requests"]["notes"])
+        self.assertIn("S/TP", notes)
+        self.assertIn("chapter6.md:1164", notes)
+
+    def test_quantized_weights_per_device_keep_lower_bound(self) -> None:
+        # chapter1.md:205: 8-битные веса 73.73 GB против 70.55 GB по формуле
+        config = str(CONFIGS / "deepseek-r1-distill-llama-70b.json")
+        v = values("model", "--config", config, "--weight-dtype", "int8", "--tp", "2")
+        item = v["weight_bytes_per_device"]
+        self.assertEqual(item["bound"], "lower")
+        self.assertIn("73.73", " ".join(item["notes"]))
+
+    def test_mla_note_is_marked_as_derived(self) -> None:
+        v = values("model", "--config", str(CONFIGS / "deepseek-v3.json"))
+        note = " ".join(v["kv_bytes_per_token"]["notes"])
+        self.assertIn("вывод", note)
+        self.assertIn("2.3.2", note)
 
     def test_tp_needs_config(self) -> None:
         message = fails(*self.RTX_12GIB, "--tp", "2")
@@ -1421,6 +1498,14 @@ class QueueingCommandTest(unittest.TestCase):
             with self.subTest(choice=choice):
                 v = values("queueing", *args, *little, "--anchor", choice)
                 self.assertEqual({item["anchor"] for item in v.values()}, {anchor})
+
+    def test_capacity_upper_bound_without_capacity_is_refused(self) -> None:
+        message = fails(
+            "queueing", *self.CLASSES, "--rate", "long_input=2",
+            "--rate", "long_output=2", "--capacity-upper-bound",
+        )  # fmt: skip
+        self.assertIn("--capacity-upper-bound", message)
+        self.assertIn("--decode-capacity", message)
 
     def test_class_errors_agree_in_gender(self) -> None:
         message = fails("queueing", "--class", "a=1:1", "--rate", "a=-1")

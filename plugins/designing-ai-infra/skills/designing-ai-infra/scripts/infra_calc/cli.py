@@ -165,6 +165,7 @@ INPUT_UNITS: dict[str, str] = {
     "memory": "B",
     "reserve": "B",
     "kv_request": "B",
+    "kv_request_per_device": "B",
     "message": "B",
     "upload": "B",
     "download": "B",
@@ -455,8 +456,10 @@ def _kv_tp_note(spec: ModelSpec) -> str:
     """Делится ли KV по TP у этой архитектуры (глава 6.2.2)."""
     if spec.family == "mla_moe":
         return (
-            "латентный KV MLA по TP не делится: одна скрытая переменная на токен "
-            "для всех голов, каждая карта TP хранит её целиком"
+            "вывод из глав 2.3.2 и 6.2.2, числового примера TP для MLA в книге нет: "
+            "латентный KV MLA по TP не делится — одна скрытая переменная на токен "
+            "для всех голов, а TP делит внимание по головам, поэтому каждая карта TP "
+            "хранит её целиком"
         )
     note = (
         f"при TP KV делится по головам KV: на карту kv_bytes_per_token / "
@@ -473,6 +476,8 @@ def _model_tp(
     kb: float,
     weight_bytes: int | None,
     base: dict[str, Any],
+    weight_bound: str | None = None,
+    weight_notes: tuple[str, ...] = (),
 ) -> list[Result]:
     tp = args.tp
     kv_div = accounting.tp_kv_divisor(spec, tp)
@@ -498,12 +503,14 @@ def _model_tp(
                 "weight_bytes / TP",
                 base | {"tp": tp, "weight_dtype": args.weight_dtype},
                 A_CH6_TP,
+                bound=weight_bound,
                 notes=(
                     (
                         "идеальное деление: матрицы по головам и промежуточному "
                         "измерению, эмбеддинги и голова по словарю; нормализации "
                         "копируются"
                     ),
+                    *weight_notes,
                 ),
             )
         )
@@ -806,7 +813,7 @@ def _model(args: argparse.Namespace) -> list[Result]:
             weight_total = int(args.params * wb) + overhead
         else:
             weight_total = None
-        out += _model_tp(spec, args, kb, weight_total, base)
+        out += _model_tp(spec, args, kb, weight_total, base, weight_bound, weight_notes)
     if args.batch is not None or args.experts_per_layer is not None:
         out += _model_batch(spec, args, wb, base)
     return out
@@ -1073,11 +1080,26 @@ def _serving(args: argparse.Namespace) -> list[Result]:
     state_total, state_div, state_notes = _serving_state(args, spec)
     context = args.context
     memory_context = args.memory_context or context
+    if memory_context < context:
+        raise ValueError(
+            f"--memory-context ({memory_context}) короче --context ({context}): "
+            "--context — длина для шага (обычно длина входа), --memory-context — "
+            "длина к концу генерации для бюджета памяти (вход + выход − 1), она не "
+            "может быть меньше"
+        )
     kv_card = args.kv_per_token / kv_div
     state_card = state_total / state_div
     weights_card = args.weights / tp
 
     dev = _device(args, "--peak-tflops, --bandwidth и --memory")
+    if tp > 1 and dev is not None and dev.scope != SINGLE:
+        raise ValueError(
+            f"--tp {tp} с агрегатом {dev.id} ({dev.scope}, устройств в агрегате: "
+            f"{dev.device_count}) посчитал бы карты дважды: ёмкость, полоса и пики агрегата уже "
+            "суммированы по всем картам, а --tp ещё раз делит веса и KV. Выберите "
+            "одиночное устройство из снимка (значения на одну карту) или задайте "
+            "--memory, --bandwidth и --peak-tflops на одну карту без --device"
+        )
     peak = _peak(args, dev)
     bw = _bandwidth(args, dev)
     memory, skipped = _optional_memory(args, dev)
@@ -1112,6 +1134,12 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             f"TP={tp}: веса, их чтение и FLOPs делятся на {tp} идеально, KV на токен "
             f"{split}{dup}; значения — на одну карту"
         )
+        if state_div > 1:
+            tp_notes.append(
+                "фиксированное состояние S делится на TP: S/TP на карту, как в "
+                "⌊(n·(80 GB − 2 GiB) − W)/S⌋ книги "
+                "(references/source-book/chapter6.md:1164)"
+            )
     state = {"fixed_state": state_total} if state_total else {}
 
     w_term = "M_w/TP" if tp > 1 else "M_w"
@@ -1180,7 +1208,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
         "decode_flops": args.decode_flops,
         "weight_read": args.weight_read,
         "context": context,
-        "kv_request": kv_request,
+        ("kv_request_per_device" if tp > 1 else "kv_request"): kv_request,
         **state,
         **parallel,
         **peak.inputs,
@@ -1345,6 +1373,12 @@ def _training(args: argparse.Namespace) -> list[Result]:
                 f"не хватает: {', '.join(missing)}"
             )
         dev = _device(args, "--peak-tflops")
+        if dev is not None and dev.scope != SINGLE and args.peak_tflops is None:
+            raise ValueError(
+                f"пик агрегата {dev.id} уже суммирован по всем его устройствам "
+                f"({dev.device_count}), а --devices умножил бы его ещё раз: выберите одиночное "
+                "устройство или задайте пик одной карты через --peak-tflops"
+            )
         peak = _peak(args, dev)
         whole = total * args.total_tokens / args.tokens
         seconds = training.training_seconds(whole, args.devices, peak.value, args.mfu)
@@ -1859,6 +1893,10 @@ def _batch_threshold(args: argparse.Namespace) -> list[Result]:
     else:
         value = max(1, math.ceil(point))
         why = f"B_* = {point:.4g}; минимальный целый батч — ceil(B_*)"
+    generalisation = (
+        "обобщение B_* = b_W·Π/(2β) книги (references/source-book/chapter1.md:305, "
+        "без KV) на чтение KV каждого запроса; при R_KV = 0 совпадает с ним"
+    )
     out.append(
         _result(
             "compute_bound_batch_threshold",
@@ -1868,7 +1906,7 @@ def _batch_threshold(args: argparse.Namespace) -> list[Result]:
             compute_inputs,
             A_CH1_TIME,
             bound=bound if value is not None else None,
-            notes=(why, memory_note, *notes, *rate_notes),
+            notes=(why, generalisation, memory_note, *notes, *rate_notes),
         )
     )
     return out
@@ -2213,6 +2251,13 @@ def _queueing(args: argparse.Namespace) -> list[Result]:
             ),
         ]
         overload = "больше 1 — очередь растёт, сколько бы ни длилось окно"
+        if args.capacity_upper_bound and (
+            args.decode_capacity is None and args.prefill_capacity is None
+        ):
+            raise ValueError(
+                "--capacity-upper-bound помечает загрузку, а без --decode-capacity "
+                "или --prefill-capacity загрузка не считается"
+            )
         utilization_bound = "lower" if args.capacity_upper_bound else None
         utilization_notes: tuple[str, ...] = (overload,)
         if args.capacity_upper_bound:

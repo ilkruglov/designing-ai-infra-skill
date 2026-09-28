@@ -11,7 +11,8 @@
    числами должна найтись в фактическом выводе блока по порядку — с тем же
    началом строки до первого числа и с теми же числами в том же порядке с
    точностью до округления, показанного в документе. Строки без чисел не
-   сравниваются: это формулы и пояснения.
+   сравниваются: это формулы и пояснения; исключение — строки результата
+   `**name**: …` без чисел («не вычисляется»), они сверяются целиком.
 2. Инлайн-команды. Спан `python3 … calc.py …` вне блоков — полная команда:
    она тоже запускается, сверяется только код возврата, так как вывода
    рядом нет. Шаблоны с подстановкой (`<id>`) запустить нельзя; они
@@ -60,6 +61,7 @@ FRAGMENT = re.compile(
     r"(?<![\w/])(?:scripts/)?calc\.py\s+(?P<command>[a-z][\w-]*)(?P<rest>[^`]*)"
 )
 FLAG = re.compile(r"(?<![\w-])--[a-z][\w-]*")
+NAMED = re.compile(r"^\*\*[\w-]+\*\*")
 # число вне идентификатора: 8 190 735 360, 0.0086154, 1.7652e+24, -1
 NUMBER = re.compile(r"(?<![\w.])[-+]?\d+(?: \d{3})*(?:\.\d+)?(?:[eE][-+]?\d+)?(?![\w])")
 
@@ -234,7 +236,18 @@ def missing_lines(expected: list[str], actual: list[str]) -> list[str]:
     position = 0
     for line in expected:
         first = NUMBER.search(line)
-        if not line.strip() or first is None:
+        if not line.strip():
+            continue
+        if first is None:
+            # строка результата без чисел («**name**: не вычисляется») сверяется
+            # целиком: вместо неё в выводе не должно оказаться числа
+            if NAMED.match(line.strip()):
+                for index in range(position, len(actual)):
+                    if actual[index].strip() == line.strip():
+                        position = index + 1
+                        break
+                else:
+                    missing.append(line)
             continue
         prefix = line[: first.start()].strip()
         for index in range(position, len(actual)):
@@ -360,6 +373,15 @@ class ComparisonTest(unittest.TestCase):
             missing_lines(["**a**: 3 B", "**b**: 2 B"], actual), ["**b**: 2 B"]
         )
         self.assertEqual(missing_lines(["**c**: 1 B"], actual), ["**c**: 1 B"])
+
+    def test_named_lines_without_numbers(self) -> None:
+        # «не вычисляется» в документе, а в выводе число — расхождение
+        actual = ["**x** (нижняя граница): 5 s", "**y**: не вычисляется"]
+        self.assertEqual(
+            missing_lines(["**x** (нижняя граница): не вычисляется"], actual),
+            ["**x** (нижняя граница): не вычисляется"],
+        )
+        self.assertEqual(missing_lines(["**y**: не вычисляется"], actual), [])
 
     def test_commands_are_split_like_bash(self) -> None:
         lines = [

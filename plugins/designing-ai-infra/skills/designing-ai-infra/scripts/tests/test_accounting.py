@@ -184,7 +184,7 @@ class ExpertUnionTest(unittest.TestCase):
         read = accounting.batch_decode_weight_read_bytes(s, 128)
         self.assertEqual(read, 60_442_177_536 - 64 * 2048 * 2)
         self.assertEqual(round(read / 1e9, 2), 60.44)
-        # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --routing balanced
+        # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --tokens 1 --routing balanced
         # (код автора на 56ecb425): expert_union_per_layer 32,
         # weight_read_once_per_operator_bytes 16 955 387 904 — минус 4 строки эмбеддингов
         self.assertEqual(
