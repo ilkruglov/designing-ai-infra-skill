@@ -145,14 +145,14 @@ def _check_tp(spec: ModelSpec, tp: int) -> None:
     require_int_at_least("tp", tp, 1)
     if spec.heads % tp:
         raise ValueError(
-            f"TP={tp} не делит {spec.heads} голов внимания {spec.model_type}: "
+            f"TP={tp} не делит число голов внимания {spec.model_type} ({spec.heads}): "
             "голова — минимальная единица распределения (глава 6.2.2)"
         )
     if spec.family != "mla_moe":
         kv = spec.kv_heads
         if (tp <= kv and kv % tp) or (tp > kv and tp % kv):
             raise ValueError(
-                f"TP={tp} и {kv} голов KV {spec.model_type}: головы KV не "
+                f"TP={tp} не согласуется с числом голов KV {spec.model_type} ({kv}): головы KV не "
                 "распределяются по картам поровну"
             )
     if spec.family == "hybrid_linear":
@@ -162,7 +162,7 @@ def _check_tp(spec: ModelSpec, tp: int) -> None:
         ):
             if count % tp:
                 raise ValueError(
-                    f"TP={tp} не делит {count} {label} {spec.model_type}: состояние "
+                    f"TP={tp} не делит число {label} {spec.model_type} ({count}): состояние "
                     "линейных слоёв не делится по картам поровну"
                 )
 

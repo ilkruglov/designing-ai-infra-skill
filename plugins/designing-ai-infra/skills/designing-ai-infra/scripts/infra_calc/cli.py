@@ -480,8 +480,8 @@ def _model_tp(
     kv_notes = [_kv_tp_note(spec)]
     if spec.family != "mla_moe" and tp > spec.kv_heads:
         kv_notes.append(
-            f"TP={tp} больше {spec.kv_heads} голов KV: каждая голова KV хранится на "
-            f"{tp // spec.kv_heads} картах, KV дублируется"
+            f"TP={tp} больше числа голов KV ({spec.kv_heads}): KV дублируется, копий "
+            f"каждой головы KV: {tp // spec.kv_heads}"
         )
     kv_formula = (
         "kv_bytes_per_token (не делится)"
@@ -1104,7 +1104,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             "не делится (латентный KV MLA)" if kv_div == 1 else f"делится на {kv_div}"
         )
         dup = (
-            f", головы KV дублируются на {tp // spec.kv_heads} картах"
+            f", головы KV дублируются (копий каждой: {tp // spec.kv_heads})"
             if spec.family != "mla_moe" and tp > spec.kv_heads
             else ""
         )
@@ -1266,7 +1266,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
                 },
                 A_CH3_PRICE,
                 bound="lower",
-                notes=(f"оплачиваются все {tp} карты экземпляра",) if tp > 1 else (),
+                notes=(f"цена — за все карты экземпляра, TP = {tp}",) if tp > 1 else (),
             )
         )
     return out
@@ -1755,7 +1755,7 @@ def _batch_threshold(args: argparse.Namespace) -> list[Result]:
         kv = float(accounting.kv_bytes_per_token(spec, kb))
         tokens = min(context, spec.window) if spec.window else context
         if tokens != context:
-            notes.append(f"окно внимания: читается KV {tokens} последних токенов")
+            notes.append(f"окно внимания: читается KV последних токенов: {tokens}")
         try:
             flops_value: float | None = float(
                 flops.forward_matrix_flops(spec, 1, context - 1)
@@ -1887,7 +1887,7 @@ def _allreduce(args: argparse.Namespace) -> list[Result]:
     tree = collectives.tree_allreduce_seconds(n, message, bw, alpha)
     rounds = collectives.tree_allreduce_rounds(n)
     tree_note = (
-        f"несегментированное биномиальное дерево, {rounds} раундов; при n не степени "
+        f"несегментированное биномиальное дерево, раундов: {rounds}; при n не степени "
         "двойки — ceil(log2 n), как tree_collective.py автора"
     )
     if ring > 0:
