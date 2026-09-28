@@ -74,7 +74,8 @@ def parameter_count(spec: ModelSpec, active: bool = False) -> int:
         raise UnsupportedArchitecture(
             spec.model_type,
             ["linear_attention"],
-            "Число параметров гибридной модели возьмите из карточки модели и передайте аргументом --params.",
+            "Число параметров гибридной модели возьмите из карточки модели; "
+            "в CLI передайте его как `calc.py model --params`.",
         )
     total = embedding_parameters(spec) + _head_parameters(spec) + spec.hidden
     for layer in range(spec.layers):
