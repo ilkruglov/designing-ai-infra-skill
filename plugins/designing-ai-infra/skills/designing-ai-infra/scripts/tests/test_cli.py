@@ -1,3 +1,4 @@
+import argparse
 import io
 import json
 import shlex
@@ -771,7 +772,8 @@ class BatchThresholdCommandTest(unittest.TestCase):
         self.assertIn("не становится", " ".join(item["notes"]))
 
     def test_generalisation_is_named(self) -> None:
-        # chapter1.md:305: B_* = b_W·Π/(2β) без KV; с R_KV — обобщение, а не формула книги
+        # chapter1.md:305 (раздел 1.3.2, заголовок chapter1.md:263): B_* = b_W·Π/(2β) без
+        # KV; с R_KV — обобщение, а не формула книги; якорь в примечании — на заголовок
         v = values(
             "batch-threshold", "--weight-read", "15e9", "--kv-per-token", "1e6",
             "--context", "1", "--decode-flops", "16e9", "--peak-tflops", "1000",
@@ -779,7 +781,8 @@ class BatchThresholdCommandTest(unittest.TestCase):
         )  # fmt: skip
         notes = " ".join(v["compute_bound_batch_threshold"]["notes"])
         self.assertIn("обобщ", notes)
-        self.assertIn("chapter1.md:305", notes)
+        self.assertIn("chapter1.md:263", notes)
+        self.assertNotIn("chapter1.md:305", notes)
 
     def test_moe_config_is_a_lower_bound(self) -> None:
         v = values(
@@ -1241,10 +1244,12 @@ class ServingSplitTest(unittest.TestCase):
         step = v["tpot_lower_bound_seconds"]
         self.assertIn("kv_request_per_device", step["inputs"])
         self.assertNotIn("kv_request", step["inputs"])
-        # chapter6.md:1164: ⌊(n·(80 GB − 2 GiB) − W)/S⌋ — состояние S делится на n карт
+        # chapter6.md:1164 (сноска к разделу 6.2.2, заголовок chapter6.md:131):
+        # ⌊(n·(80 GB − 2 GiB) − W)/S⌋ — состояние S делится на n карт
         notes = " ".join(v["max_concurrent_requests"]["notes"])
         self.assertIn("S/TP", notes)
-        self.assertIn("chapter6.md:1164", notes)
+        self.assertIn("chapter6.md:131", notes)
+        self.assertNotIn("chapter6.md:1164", notes)
 
     def test_quantized_weights_per_device_keep_lower_bound(self) -> None:
         # chapter1.md:205: 8-битные веса 73.73 GB против 70.55 GB по формуле
@@ -1956,6 +1961,131 @@ class QueueingCommandTest(unittest.TestCase):
             "--rate", fails("queueing", *self.CLASSES, "--rate", "long_input")
         )
         self.assertIn("--time-in-system", fails("queueing", "--arrival-rate", "1"))
+
+
+class FinalReviewTest(unittest.TestCase):
+    """Замечания финального ревью: I4 и мелкие правки CLI."""
+
+    H100_8B = (
+        "serving", "--device", "h100-sxm", "--weights", "16381470720",
+        "--weight-read", "15136811008", "--decode-flops", "1", "--kv-per-token", "147456",
+        "--context", "4096", "--price-per-hour", "2",
+    )  # fmt: skip
+
+    def test_batch_beyond_capacity_is_flagged(self) -> None:
+        # ⌊(80e9 − 16 381 470 720) / (147 456 × 4096)⌋ = ⌊105.33⌋ = 105 запросов; batch 512
+        # в память не помещается — пропускная способность и цена для него недостижимы
+        v = values(*self.H100_8B, "--batch", "512")
+        self.assertEqual(v["max_concurrent_requests"]["value"], 105)
+        for name in (
+            "tokens_per_second_upper_bound",
+            "cost_per_million_tokens_lower_bound",
+        ):
+            with self.subTest(name=name):
+                notes = " ".join(v[name]["notes"])
+                self.assertIn("не помещается", notes)
+                self.assertIn("105", notes)
+        fits = values(*self.H100_8B, "--batch", "105")
+        for name in (
+            "tokens_per_second_upper_bound",
+            "cost_per_million_tokens_lower_bound",
+        ):
+            self.assertNotIn("не помещается", " ".join(fits[name]["notes"]))
+
+    def test_moe_ttft_reads_only_active_experts_at_least(self) -> None:
+        # нижняя граница чтения весов prefill MoE — эксперты одного токена (U = k): все
+        # токены могут выбрать одних и тех же экспертов. Qwen3-30B-A3B в BF16:
+        # 61 064 245 248 × 3 353 032 704 / 30 532 122 624 = 6 706 065 408 B (2 B на
+        # активный параметр); 6 706 065 408 / 3.35e12 = 2.00181 ms вместо 18.228 ms по M_w
+        moe = values(
+            "serving", "--device", "h100-sxm", "--config", str(CONFIGS / "qwen3-30b-a3b.json"),
+            "--weights", "61064245248", "--weight-read", "6083735552", "--decode-flops", "1",
+            "--prefill-flops", "1e9", "--kv-per-token", "98304", "--context", "16",
+        )  # fmt: skip
+        ttft = moe["ttft_lower_bound_seconds"]
+        self.assertEqual(ttft["bound"], "lower")
+        self.assertAlmostEqual(ttft["value"] * 1e3, 2.001810570, places=6)
+        self.assertEqual(ttft["inputs"]["active_parameters"], 3_353_032_704)
+        self.assertEqual(ttft["inputs"]["parameters"], 30_532_122_624)
+        self.assertIn("U = k", " ".join(ttft["notes"]))
+        # плотная модель и вызов без --config — по-прежнему M_w
+        dense = values(
+            "serving", "--device", "h100-sxm", "--config", QWEN3_8B,
+            "--weights", "16381470720", "--weight-read", "15136811008",
+            "--decode-flops", "1", "--prefill-flops", "1e9", "--kv-per-token", "147456",
+            "--context", "16",
+        )  # fmt: skip
+        self.assertAlmostEqual(
+            dense["ttft_lower_bound_seconds"]["value"], 16381470720 / 3.35e12
+        )
+        # гибридная MoE: активные параметры калькулятор не считает — примечание
+        hybrid = values(
+            "serving", "--device", "h100-sxm", "--config",
+            str(CONFIGS / "qwen3.6-35b-a3b.json"), "--weights", "69.32e9",
+            "--weight-read", "0", "--decode-flops", "0", "--prefill-flops", "1e9",
+            "--kv-per-token", "20480", "--context", "16",
+        )  # fmt: skip
+        item = hybrid["ttft_lower_bound_seconds"]
+        self.assertAlmostEqual(item["value"], 69.32e9 / 3.35e12)
+        self.assertIsNone(item["bound"])
+        self.assertIn("M_w", " ".join(item["notes"]))
+
+    def test_prefill_flops_are_divided_by_tp(self) -> None:
+        # арифметическое тождество: F_prefill/(TP·Π) = 2e12 / (2 × 1e12) = 1 s
+        v = values(
+            "serving", "--peak-tflops", "1", "--bandwidth", "1e12", "--config", QWEN3_8B,
+            "--tp", "2", "--weights", "0", "--weight-read", "0", "--decode-flops", "0",
+            "--prefill-flops", "2e12", "--kv-per-token", "147456", "--context", "1",
+        )  # fmt: skip
+        self.assertAlmostEqual(v["ttft_lower_bound_seconds"]["value"], 1.0)
+
+    def test_training_dp_cannot_exceed_devices(self) -> None:
+        message = fails(
+            "training", "--config", QWEN3_8B, "--tokens", "2048", "--dp", "16",
+            "--total-tokens", "1e9", "--devices", "8", "--mfu", "0.4",
+            "--device", "h100-sxm",
+        )  # fmt: skip
+        self.assertIn("--dp", message)
+        self.assertIn("--devices", message)
+        values(
+            "training", "--config", QWEN3_8B, "--tokens", "2048", "--dp", "8",
+            "--total-tokens", "1e9", "--devices", "8", "--mfu", "0.4",
+            "--device", "h100-sxm",
+        )  # fmt: skip
+
+    @staticmethod
+    def option_help(command: str, flag: str) -> str:
+        parser = cli._parser()
+        sub = next(
+            action
+            for action in parser._actions
+            if isinstance(action, argparse._SubParsersAction)
+        )
+        return sub.choices[command]._option_string_actions[flag].help or ""
+
+    def test_reserve_help_is_per_device(self) -> None:
+        text = self.option_help("serving", "--reserve")
+        self.assertIn("на одно устройство", text)
+        self.assertIn("--tp", text)
+
+    def test_shared_prefix_help_names_both_step_fields(self) -> None:
+        text = self.option_help("serving", "--shared-prefix-tokens")
+        self.assertIn("tpot_lower_bound_seconds", text)
+        self.assertIn("tpot_without_prefix_dedup_seconds", text)
+
+    def test_shared_prefix_note_in_explicit_pool(self) -> None:
+        # агрегат с явным --memory: префикс хранится в заданном пуле, а не на карте и
+        # не во всей памяти агрегата из снимка
+        v = values(
+            "serving", "--device", "gb200-nvl72", "--allow-aggregate", "--memory", "1e12",
+            "--weights", "0", "--weight-read", "1e9", "--decode-flops", "1e9",
+            "--kv-per-token", "147456", "--context", "8192", "--memory-context", "8448",
+            "--shared-prefix-tokens", "6144",
+        )  # fmt: skip
+        notes = " ".join(v["max_concurrent_requests"]["notes"])
+        self.assertIn("B в пуле --memory", notes)
+        self.assertNotIn("на карту", notes)
+        self.assertNotIn("во всём агрегате", notes)
 
 
 if __name__ == "__main__":

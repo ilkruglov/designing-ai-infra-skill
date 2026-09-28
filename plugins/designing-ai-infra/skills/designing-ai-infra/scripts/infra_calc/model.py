@@ -138,6 +138,16 @@ BENIGN_KEYS = RUNTIME_KEYS | GENERATION_KEYS
 # Значения по умолчанию из GENERATION_KEYS, которые, будучи включёнными, меняют
 # архитектуру: кодировщик, перекрёстное внимание, удалённые головы.
 ARCHITECTURAL_WHEN_SET = {"is_encoder_decoder", "add_cross_attention", "pruned_heads"}
+# model_type, для которых есть адаптер
+KNOWN_MODEL_TYPES = {
+    "qwen3",
+    "llama",
+    "mistral",
+    "qwen3_moe",
+    "deepseek_v3",
+    "qwen3_5_moe_text",
+    "qwen3_next",
+}
 
 
 class UnsupportedArchitecture(ValueError):
@@ -217,6 +227,14 @@ def parse_spec(config: dict[str, Any]) -> ModelSpec:
 
 def _parse_text(cfg: dict[str, Any]) -> ModelSpec:
     model_type = str(cfg.get("model_type", ""))
+    if model_type in KNOWN_MODEL_TYPES:
+        # кодировщик, перекрёстное внимание и удалённые головы меняют архитектуру
+        # и у знакомого семейства: такой config не считается как обычный
+        _refuse(
+            model_type,
+            sorted(key for key in ARCHITECTURAL_WHEN_SET if cfg.get(key)),
+            "Кодировщик, перекрёстное внимание и удалённые головы формулой не учтены.",
+        )
     if model_type in {"qwen3", "llama", "mistral"}:
         return _dense(cfg, model_type)
     if model_type == "qwen3_moe":

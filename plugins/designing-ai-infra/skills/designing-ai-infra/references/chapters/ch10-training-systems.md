@@ -551,11 +551,11 @@ python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8
 
 ```bash
 python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8b.json --tokens 8192 \
-  --dp 8 --total-tokens 1e11 --devices 5 --device h100-sxm --mfu 0.4
+  --total-tokens 1e11 --devices 5 --device h100-sxm --mfu 0.4
 python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8b.json --tokens 8192 \
-  --dp 8 --total-tokens 1e11 --devices 6 --device h100-sxm --mfu 0.4
+  --total-tokens 1e11 --devices 6 --device h100-sxm --mfu 0.4
 python3 scripts/calc.py training --config scripts/tests/fixtures/configs/qwen3-8b.json --tokens 8192 \
-  --dp 8 --total-tokens 1e11 --devices 2 --device h100-sxm --mfu 0.4
+  --total-tokens 1e11 --devices 2 --device h100-sxm --mfu 0.4
 ```
 
 ```text

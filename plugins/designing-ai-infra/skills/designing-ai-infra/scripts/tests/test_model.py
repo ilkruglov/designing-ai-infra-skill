@@ -150,6 +150,29 @@ class ParseSpecTest(unittest.TestCase):
         )
         self.assertIsNone(full.window)
 
+    def test_known_adapter_refuses_encoder_decoder_flags(self) -> None:
+        # is_encoder_decoder, add_cross_attention и pruned_heads меняют архитектуру:
+        # незнакомую архитектуру отвергают с перечнем полей — и знакомый адаптер тоже
+        base = model.load_config(CONFIGS / "qwen3-8b.json")
+        for key, value in (
+            ("is_encoder_decoder", True),
+            ("add_cross_attention", True),
+            ("pruned_heads", {"0": [1]}),
+        ):
+            with self.subTest(key=key):
+                with self.assertRaises(model.UnsupportedArchitecture) as caught:
+                    model.parse_spec(base | {key: value})
+                self.assertEqual(caught.exception.fields, [key])
+        # значения по умолчанию архитектуру не меняют
+        spec = model.parse_spec(
+            base | {"is_encoder_decoder": False, "add_cross_attention": False,
+                    "pruned_heads": {}}
+        )  # fmt: skip
+        self.assertEqual(spec.model_type, "qwen3")
+        moe = model.load_config(CONFIGS / "qwen3-30b-a3b.json")
+        with self.assertRaises(model.UnsupportedArchitecture):
+            model.parse_spec(moe | {"is_encoder_decoder": True})
+
     def test_qwen3_partial_window_is_refused(self) -> None:
         # use_sliding_window у qwen3 включает окно только на части слоёв (max_window_layers)
         config = model.load_config(CONFIGS / "qwen3-8b.json") | {

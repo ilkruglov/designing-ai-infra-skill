@@ -1141,6 +1141,7 @@ def _serving_price(
     tp: int,
     throughput: float,
     parallel: dict[str, Any],
+    extra_notes: Sequence[str] = (),
 ) -> Result:
     """Цена миллиона токенов; у агрегата область цены задаётся явно.
 
@@ -1208,8 +1209,42 @@ def _serving_price(
         },
         A_CH3_PRICE,
         bound="lower",
-        notes=notes,
+        notes=(*notes, *extra_notes),
     )
+
+
+def _prefill_read(
+    spec: ModelSpec | None, weights_card: float
+) -> tuple[float, str, dict[str, Any], str | None, tuple[str, ...]]:
+    """Чтение весов prefill для TTFT: байты, член формулы, входы, граница, примечания.
+
+    У MoE все токены входа могут выбрать одних и тех же k экспертов, поэтому
+    нижняя граница чтения — активные параметры одного токена (U = k), а не все
+    веса M_w.
+    """
+    if spec is None or not spec.experts:
+        return weights_card, "M_w", {}, "lower", ()
+    try:
+        total = accounting.parameter_count(spec)
+        active = accounting.parameter_count(spec, active=True)
+    except UnsupportedArchitecture:
+        note = (
+            f"MoE ({spec.model_type}): активные параметры этой архитектуры калькулятор "
+            "не считает, поэтому чтение весов prefill взято как все веса M_w; короткий "
+            "вход затрагивает не каждого эксперта, и значение может быть выше "
+            "настоящего минимума — это не нижняя граница"
+        )
+        return weights_card, "M_w", {}, None, (note,)
+    note = (
+        "MoE: нижняя граница чтения весов prefill — эксперты одного токена "
+        "(U = k), M_w·N_active/N: все токены входа могут выбрать одних и тех же "
+        "экспертов. Доля взята по числу параметров; если эксперты квантизованы "
+        "сильнее остальных весов, граница остаётся нижней. При равномерной "
+        "маршрутизации n токенов затрагивают в среднем E·[1 − (1 − k/E)^n] "
+        "экспертов слоя — это оценка, а не граница"
+    )
+    inputs = {"parameters": total, "active_parameters": active}
+    return weights_card * active / total, "M_w·N_active/N", inputs, "lower", (note,)
 
 
 def _serving(args: argparse.Namespace) -> list[Result]:
@@ -1330,7 +1365,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             tp_notes.append(
                 "фиксированное состояние S делится на TP: S/TP на карту, как в "
                 "⌊(n·(80 GB − 2 GiB) − W)/S⌋ книги "
-                "(references/source-book/chapter6.md:1164)"
+                "(references/source-book/chapter6.md:131)"
             )
     state = {"fixed_state": state_total} if state_total else {}
 
@@ -1510,6 +1545,16 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             "не учтена, граница остаётся нижней"
         )
     throughput = serving.tokens_per_second(args.batch, step)
+    fit_notes: tuple[str, ...] = ()
+    if capacity.value is not None and args.batch > capacity.value:
+        fit_notes = (
+            (
+                f"batch B = {args.batch} не помещается в память: "
+                f"max_concurrent_requests (верхняя граница) = "
+                f"{format_number(capacity.value)} — конфигурация не выполнима, "
+                "пропускная способность и цена для неё недостижимы"
+            ),
+        )
     out = [
         capacity,
         _result(
@@ -1530,7 +1575,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             step_inputs,
             A_CH1_TIME,
             bound="upper",
-            notes=(*step_notes, *prefix_step_notes),
+            notes=(*fit_notes, *step_notes, *prefix_step_notes),
         ),
     ]
     if prefix:
@@ -1558,34 +1603,42 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             )
         )
     if args.prefill_flops is not None:
+        prefill_read, read_term, moe_inputs, ttft_bound, moe_notes = _prefill_read(
+            spec, weights_card
+        )
         ttft = serving.ttft_lower_bound_seconds(
-            args.prefill_flops / tp, weights_card, peak.value, bw.value
+            args.prefill_flops / tp, prefill_read, peak.value, bw.value
         )
         out.append(
             _result(
                 "ttft_lower_bound_seconds",
                 ttft,
                 "s",
-                "max(F_prefill/(TP·Π), M_w/(TP·β))"
+                f"max(F_prefill/(TP·Π), {read_term}/(TP·β))"
                 if tp > 1
-                else "max(F_prefill/Π, M_w/β)",
+                else f"max(F_prefill/Π, {read_term}/β)",
                 {
                     **arch,
                     "prefill_flops": args.prefill_flops,
                     "weights": args.weights,
+                    **moe_inputs,
                     **parallel,
                     **peak.inputs,
                     **bw.inputs,
                 },
                 A_CH1_REF,
-                bound="lower",
-                notes=(*rate_notes, *tp_notes),
+                bound=ttft_bound,
+                notes=(*rate_notes, *tp_notes, *moe_notes),
             )
         )
     if args.price_per_hour is not None:
         # цена относится к агрегату, только если и скорость (пик, полоса) — его
         aggregate_rates = bool(_labels(peak, bw)) and dev is not None
-        out.append(_serving_price(args, dev, aggregate_rates, tp, throughput, parallel))
+        out.append(
+            _serving_price(
+                args, dev, aggregate_rates, tp, throughput, parallel, fit_notes
+            )
+        )
     return out
 
 
@@ -1596,6 +1649,11 @@ def _training(args: argparse.Namespace) -> list[Result]:
         at_least=(("--tokens", 1), ("--dp", 1), ("--devices", 1)),
     )
     _check_fraction("--mfu", args.mfu, zero_allowed=False)
+    if args.dp is not None and args.devices is not None and args.dp > args.devices:
+        raise ValueError(
+            f"--dp ({args.dp}) больше --devices ({args.devices}): группа шардирования "
+            "ZeRO состоит из ускорителей задания и не может быть больше их числа"
+        )
     spec = _load_spec(args.config)
     wrapper = _wrapper_notes(spec)
     _, _, total = flops.training_matrix_flops(spec, args.tokens)
@@ -2190,7 +2248,7 @@ def _batch_threshold(args: argparse.Namespace) -> list[Result]:
         value = max(1, math.ceil(point))
         why = f"B_* = {point:.4g}; минимальный целый батч — ceil(B_*)"
     generalisation = (
-        "обобщение B_* = b_W·Π/(2β) книги (references/source-book/chapter1.md:305, "
+        "обобщение B_* = b_W·Π/(2β) книги (references/source-book/chapter1.md:263, "
         "без KV) на чтение KV каждого запроса; при R_KV = 0 совпадает с ним"
     )
     out.append(
@@ -2911,7 +2969,9 @@ def _parser() -> argparse.ArgumentParser:
         type=int,
         help="общий префикс запросов, токенов (начало входа, в блоках KV): его KV "
         "хранится в пуле один раз, на запрос — --memory-context минус префикс; шаг "
-        "по-прежнему при --context",
+        "при --context печатается двумя полями: tpot_lower_bound_seconds читает "
+        "префикс один раз на batch, tpot_without_prefix_dedup_seconds — каждым "
+        "запросом",
     )
     p.add_argument("--batch", type=int, default=1, help="запросов в шаге decode")
     p.add_argument(
@@ -2921,7 +2981,12 @@ def _parser() -> argparse.ArgumentParser:
         "оценивается",
     )
     p.add_argument(
-        "--reserve", type=float, default=0, help="байт резерва среды выполнения"
+        "--reserve",
+        type=float,
+        default=0,
+        help="байт резерва среды выполнения на одно устройство, как --memory: на "
+        "карту (с --tp — на каждую карту экземпляра); у агрегата из снимка — на всю "
+        "запись",
     )
     p.add_argument(
         "--fixed-state-bytes",
