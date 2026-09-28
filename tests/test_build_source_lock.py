@@ -52,6 +52,10 @@ class BuildLockTests(unittest.TestCase):
             "56ecb425b07ea6d16e891cba87bf7db416927d09",
             lock["book"]["upstream_commit"],
         )
+        self.assertEqual(
+            "83f26c39ed5fe0e5a16c4f7191e0bebb42c86d94",
+            lock["book"]["translation_commit"],
+        )
 
     def test_committed_lock_matches_generated_lock(self) -> None:
         generated = build_source_lock.build_lock(ROOT)

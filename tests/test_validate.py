@@ -28,6 +28,21 @@ def run_validator(root: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
+def rebuild_lock(root: Path) -> None:
+    """Пересобрать lock копии: новый якорь фикстуры иначе дал бы вторую ошибку,
+    «anchor missing from lock», и тест проверял бы не одну причину отказа."""
+    subprocess.run(
+        [sys.executable, str(root / "scripts" / "build_source_lock.py")],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+
+
+def error_lines(result: subprocess.CompletedProcess[str]) -> list[str]:
+    return [line for line in result.stdout.splitlines() if line.startswith("ERROR:")]
+
+
 @contextmanager
 def repository_copy() -> Iterator[Path]:
     TEMP_ROOT.mkdir(parents=True, exist_ok=True)
@@ -596,11 +611,13 @@ class SourceLockTests(unittest.TestCase):
                 + "\n\nИсточник: `references/source-book/chapter1.md:11-99999`.\n",
                 encoding="utf-8",
             )
+            rebuild_lock(copied_root)
 
             result = run_validator(copied_root)
 
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("source anchor out of range", result.stdout)
+        errors = error_lines(result)
+        self.assertEqual(1, len(errors), result.stdout)
+        self.assertIn("source anchor out of range", errors[0])
 
 
 class ChapterQuoteTests(unittest.TestCase):
@@ -645,11 +662,13 @@ class ChapterQuoteTests(unittest.TestCase):
                 "`references/source-book/chapter1.md:11`\n",
                 encoding="utf-8",
             )
+            rebuild_lock(copied_root)
 
             result = run_validator(copied_root)
 
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("quote not found in anchor section", result.stdout)
+        errors = error_lines(result)
+        self.assertEqual(1, len(errors), result.stdout)
+        self.assertIn("quote not found in anchor section", errors[0])
 
     def test_accepts_quote_present_in_anchor_section(self) -> None:
         with repository_copy() as copied_root:
@@ -683,11 +702,13 @@ class ChapterQuoteTests(unittest.TestCase):
                 "отсутствует» — `references/source-book/chapter1.md:11`\n",
                 encoding="utf-8",
             )
+            rebuild_lock(copied_root)
 
             result = run_validator(copied_root)
 
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("quote not found in anchor section", result.stdout)
+        errors = error_lines(result)
+        self.assertEqual(1, len(errors), result.stdout)
+        self.assertIn("quote not found in anchor section", errors[0])
 
     def test_rejects_chapter_summary_without_quotes(self) -> None:
         with repository_copy() as copied_root:
@@ -700,11 +721,20 @@ class ChapterQuoteTests(unittest.TestCase):
             )
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("# Пустой конспект\n\nБез цитат.\n", encoding="utf-8")
+            # конспект указан в SKILL.md, иначе сработала бы и проверка маршрутизации
+            skill_path = copied_root / SKILL_DIRECTORY / "SKILL.md"
+            skill_path.write_text(
+                skill_path.read_text(encoding="utf-8")
+                + f"\n- [{path.name}](references/chapters/{path.name})\n",
+                encoding="utf-8",
+            )
+            rebuild_lock(copied_root)
 
             result = run_validator(copied_root)
 
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("chapter summary without verified quotes", result.stdout)
+        errors = error_lines(result)
+        self.assertEqual(1, len(errors), result.stdout)
+        self.assertIn("chapter summary without verified quotes", errors[0])
 
     def test_rejects_quote_line_that_does_not_parse(self) -> None:
         with repository_copy() as copied_root:
@@ -714,11 +744,13 @@ class ChapterQuoteTests(unittest.TestCase):
                 + "\n> «цитата без ссылки на источник»\n",
                 encoding="utf-8",
             )
+            rebuild_lock(copied_root)
 
             result = run_validator(copied_root)
 
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("unparsed chapter quote", result.stdout)
+        errors = error_lines(result)
+        self.assertEqual(1, len(errors), result.stdout)
+        self.assertIn("unparsed chapter quote", errors[0])
 
     def test_rejects_quote_taken_from_a_neighbouring_section(self) -> None:
         with repository_copy() as copied_root:
@@ -734,11 +766,13 @@ class ChapterQuoteTests(unittest.TestCase):
                 + f"\n> «{foreign[:60]}» — `references/source-book/chapter1.md:11`\n",
                 encoding="utf-8",
             )
+            rebuild_lock(copied_root)
 
             result = run_validator(copied_root)
 
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("quote not found in anchor section", result.stdout)
+        errors = error_lines(result)
+        self.assertEqual(1, len(errors), result.stdout)
+        self.assertIn("quote not found in anchor section", errors[0])
 
 
 class SkillRoutingTests(unittest.TestCase):
