@@ -1203,18 +1203,38 @@ def _check_author_clone_pin(root: Path, errors: list[str]) -> None:
     """Хеши результатов автора имеют смысл только для клона на пине оригинала.
 
     HEAD читается файлом, без вызова git: у отсоединённого клона в нём sha
-    коммита. Клон без .git (распакованный архив) не проверяется.
+    коммита, у клона на ветке — «ref: refs/heads/…», и sha берётся из
+    .git/<ref> или из .git/packed-refs. Клон без .git (распакованный архив)
+    не проверяется.
     """
-    head = root / AUTHOR_CLONE / ".git" / "HEAD"
+    git = root / AUTHOR_CLONE / ".git"
+    head = git / "HEAD"
     if not head.is_file():
         return
-    current = head.read_text(encoding="utf-8").strip()
+    current = _resolve_head(git, head.read_text(encoding="utf-8").strip())
     if current != UPSTREAM_COMMIT:
         errors.append(
             f"local author clone is not at pin {UPSTREAM_COMMIT[:8]}: "
-            f"{AUTHOR_CLONE.as_posix()}/.git/HEAD is {current!r}; hashes of "
-            "calculations/results would be checked against another commit"
+            f"{AUTHOR_CLONE.as_posix()}/.git/HEAD resolves to {current!r}; hashes "
+            "of calculations/results would be checked against another commit"
         )
+
+
+def _resolve_head(git: Path, head: str) -> str:
+    """sha коммита HEAD; для неразрешимой ссылки — сама ссылка."""
+    if not head.startswith("ref:"):
+        return head
+    ref = head.removeprefix("ref:").strip()
+    loose = git / ref
+    if loose.is_file():
+        return loose.read_text(encoding="utf-8").strip()
+    packed = git / "packed-refs"
+    if packed.is_file():
+        for line in packed.read_text(encoding="utf-8").splitlines():
+            parts = line.split()
+            if len(parts) == 2 and parts[1] == ref and not line.startswith("#"):
+                return parts[0]
+    return head
 
 
 def validate_calculator_coverage(root: Path, errors: list[str]) -> None:
