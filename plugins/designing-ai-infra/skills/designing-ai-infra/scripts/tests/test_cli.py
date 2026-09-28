@@ -1,5 +1,6 @@
 import io
 import json
+import shlex
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -11,17 +12,22 @@ from infra_calc.result import Result
 
 ANCHORS = (
     "references/source-book/chapter1.md:152",
+    "references/source-book/chapter1.md:189",
     "references/source-book/chapter1.md:263",
     "references/source-book/chapter1.md:450",
+    "references/source-book/chapter3.md:75",
     "references/source-book/chapter3.md:384",
     "references/source-book/chapter3.md:442",
+    "references/source-book/chapter3.md:611",
     "references/source-book/chapter6.md:473",
     "references/source-book/chapter6.md:705",
     "references/source-book/chapter8.md:536",
     "references/source-book/chapter10.md:151",
     "references/source-book/chapter10.md:553",
+    "references/source-book/chapter11.md:62",
     "references/source-book/chapter11.md:515",
     "references/source-book/chapter12.md:11",
+    "calculations/results/qwen3-30b-a3b-decode-b1-s8192.json#sha256=fbf0b07f78bd8d7ab3765f6fc9ad5f6992cc95192449c2f8f1ee0fd01b5bc75b",
     "calculations/results/checkpoint-interval-book.json#sha256=e986d06ba47b7d0c13b54a99cc2abde1744d674eb470b26d9cf00e417ac0c6ad",
 )
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -160,7 +166,7 @@ class RooflineCommandTest(unittest.TestCase):
         )
         self.assertEqual(code, 0)
         self.assertIn("(нижняя граница)", out)
-        self.assertIn("56ecb425", out)
+        self.assertIn("56ecb425 (2026-09-26)", out)
         self.assertIn("references/source-book/chapter1.md:263", out)
         # входы — в том же виде, что и значения, а не 140000000000.0
         self.assertIn("flops=1.4e+11", out)
@@ -550,89 +556,330 @@ class ResultTest(unittest.TestCase):
         self.assertIn("8 190 735 360", text)
 
 
+# Все команды с корректными входами: для проверок якорей и единиц, а не чисел книги
+COMMANDS = tuple(
+    shlex.split(line)
+    for line in (
+        f"model --config {QWEN3_8B} --context 2048",
+        f"model --config {QWEN3_8B} --context 2048 --weight-dtype int8",
+        f"model --config {CONFIGS / 'qwen3.5-397b-a17b.json'} --params 397e9",
+        f"model --config {CONFIGS / 'qwen3-30b-a3b.json'} --context 64",
+        "roofline --device h100-sxm --flops 1 --bytes 1",
+        "roofline --device gb200-nvl72 --allow-aggregate --flops 1 --bytes 1",
+        " ".join(ServingCommandTest.RTX) + " --price-per-hour 2",
+        (
+            f"training --config {QWEN3_8B} --tokens 8192 --dp 8 --total-tokens 1e12"
+            " --devices 8 --mfu 0.4 --device h100-sxm"
+        ),
+        (
+            "checkpoint --checkpoint-bytes 1e9 --save-bandwidth 1e9 --devices 8"
+            " --device-mtbf 1e6 --stages 4 --microbatches 8"
+        ),
+        "speculative --acceptance 0.5 --draft 4 --plain-step 0.01",
+        "ring --devices 8 --message 1 --bandwidth 1 --alpha 0",
+        "cost --input-tokens 1 --input-price 1",
+        (
+            "edge --upload '1 MB' --download '1 MB' --up-mbps 1 --down-mbps 1"
+            " --rtt 0 --compute 0"
+        ),
+        "device --device gb200-nvl72",
+        "units --size '141.11 GB' --to GiB --to MiB --mbps 400000 --dtype int8",
+        (
+            "queueing --class a=8192:256 --class b=1024:2048 --rate a=2 --rate b=2"
+            " --decode-capacity 2796 --prefill-capacity 1e5"
+            " --arrival-rate 10 --time-in-system 30"
+        ),
+    )
+)
+
+
 class AnchorTest(unittest.TestCase):
     def test_every_result_anchor_is_a_heading(self) -> None:
-        commands = (
-            ("model", "--config", QWEN3_8B, "--context", "2048"),
-            ("model", "--config", str(CONFIGS / "qwen3.5-397b-a17b.json")),
-            ("roofline", "--device", "h100-sxm", "--flops", "1", "--bytes", "1"),
-            (*ServingCommandTest.RTX, "--price-per-hour", "2"),
-            (
-                "training",
-                "--config",
-                QWEN3_8B,
-                "--tokens",
-                "8192",
-                "--dp",
-                "8",
-                "--total-tokens",
-                "1e12",
-                "--devices",
-                "8",
-                "--mfu",
-                "0.4",
-                "--device",
-                "h100-sxm",
-            ),
-            (
-                "checkpoint",
-                "--checkpoint-bytes",
-                "1e9",
-                "--save-bandwidth",
-                "1e9",
-                "--devices",
-                "8",
-                "--device-mtbf",
-                "1e6",
-                "--stages",
-                "4",
-                "--microbatches",
-                "8",
-            ),
-            (
-                "speculative",
-                "--acceptance",
-                "0.5",
-                "--draft",
-                "4",
-                "--plain-step",
-                "0.01",
-            ),
-            (
-                "ring",
-                "--devices",
-                "8",
-                "--message",
-                "1",
-                "--bandwidth",
-                "1",
-                "--alpha",
-                "0",
-            ),
-            ("cost", "--input-tokens", "1", "--input-price", "1"),
-            (
-                "edge",
-                "--upload",
-                "1 MB",
-                "--download",
-                "1 MB",
-                "--up-mbps",
-                "1",
-                "--down-mbps",
-                "1",
-                "--rtt",
-                "0",
-                "--compute",
-                "0",
-            ),
-            ("device", "--device", "gb200-nvl72"),
-        )
-        for argv in commands:
+        for argv in COMMANDS:
             for item in run(*argv)["results"]:
                 with self.subTest(command=argv[0], result=item["name"]):
                     path, line = item["anchor"].rsplit(":", 1)
                     lines = (SKILL / path).read_text(encoding="utf-8").splitlines()
                     self.assertTrue(lines[int(line) - 1].startswith("#"))
+
+
+class InputUnitsTest(unittest.TestCase):
+    def test_every_input_has_a_unit(self) -> None:
+        # безразмерное число допустимо только из явного списка cli.DIMENSIONLESS
+        for argv in COMMANDS:
+            for item in run(*argv)["results"]:
+                with self.subTest(command=argv[0], result=item["name"]):
+                    units = item["input_units"]
+                    self.assertEqual(set(item["inputs"]), set(units))
+                    for key, value in item["inputs"].items():
+                        numeric = isinstance(value, (int, float)) and not isinstance(
+                            value, bool
+                        )
+                        if numeric and units[key] == "":
+                            self.assertIn(key, cli.DIMENSIONLESS)
+
+    def test_markdown_prints_input_units(self) -> None:
+        code, out = call(
+            "roofline", "--device", "h100-sxm", "--flops", "140e9", "--bytes", "70e9"
+        )
+        self.assertEqual(code, 0)
+        self.assertIn("peak=9.894e+14 FLOP/s", out)
+        self.assertIn("bandwidth=3.35e+12 B/s", out)
+        self.assertIn("flops=1.4e+11 FLOP", out)
+
+    def test_result_requires_unit_for_every_input(self) -> None:
+        with self.assertRaises(ValueError):
+            Result("x", 1.0, "s", "F/Π", {"flops": 1.0}, "a")
+
+
+class UsageErrorTest(unittest.TestCase):
+    def test_missing_argument_json(self) -> None:
+        message = fails("roofline", "--flops", "1")
+        self.assertIn("--bytes", message)
+        self.assertIn("обязательн", message)
+
+    def test_missing_argument_markdown(self) -> None:
+        code, out = call("roofline", "--flops", "1")
+        self.assertEqual(code, 2)
+        self.assertTrue(out.startswith("Ошибка:"), out)
+        self.assertIn("--bytes", out)
+
+    def test_invalid_number_and_choice(self) -> None:
+        message = fails("roofline", "--flops", "много", "--bytes", "1")
+        self.assertIn("--flops", message)
+        self.assertIn("много", message)
+        message = fails(
+            "roofline", "--sparsity", "unspecified", "--flops", "1", "--bytes", "1"
+        )
+        self.assertIn("--sparsity", message)
+        self.assertIn("dense", message)
+
+    def test_unknown_command(self) -> None:
+        self.assertIn("model", fails("modle"))
+
+    def test_messages_name_cli_flags(self) -> None:
+        # ошибка входа называет флаг CLI, а не имя параметра функции
+        serving = " ".join(ServingCommandTest.RTX)
+        for line, flag in (
+            (f"model --config {QWEN3_8B} --context -1", "--context"),
+            ("roofline --device h100-sxm --flops -1 --bytes 1", "--flops"),
+            ("roofline --device h100-sxm --flops 1 --bytes -1", "--bytes"),
+            (serving.replace("147456", "0"), "--kv-per-token"),
+            (serving + " --batch 0", "--batch"),
+            (serving + " --memory -1", "--memory"),
+            (serving + " --reserve -1", "--reserve"),
+            (serving + " --price-per-hour -1", "--price-per-hour"),
+            (f"training --config {QWEN3_8B} --tokens 0", "--tokens"),
+            (f"training --config {QWEN3_8B} --tokens 8 --dp 0", "--dp"),
+            (
+                (
+                    f"training --config {QWEN3_8B} --tokens 8 --total-tokens 1e9"
+                    " --devices 8 --mfu 1.5 --peak-tflops 1"
+                ),
+                "--mfu",
+            ),
+            (
+                (
+                    "checkpoint --checkpoint-bytes 1e9 --save-bandwidth 1e9 --devices 8"
+                    " --device-mtbf 1e6 --recovery -1"
+                ),
+                "--recovery",
+            ),
+            (
+                (
+                    "checkpoint --checkpoint-bytes 0 --save-bandwidth 1e9 --devices 8"
+                    " --device-mtbf 1e6"
+                ),
+                "--checkpoint-bytes",
+            ),
+            ("speculative --acceptance 2 --draft 4 --plain-step 0.01", "--acceptance"),
+            ("speculative --acceptance 0.5 --draft -1 --plain-step 0.01", "--draft"),
+            ("ring --devices 0 --message 1 --bandwidth 1 --alpha 0", "--devices"),
+            ("ring --devices 8 --message 1 --bandwidth 0 --alpha 0", "--bandwidth"),
+            ("cost --input-tokens -1 --input-price 1", "--input-tokens"),
+            ("cost --input-tokens 1 --input-price nan", "--input-price"),
+            ("cost --input-tokens 1 --input-price 1 --success 0", "--success"),
+            (
+                (
+                    "edge --upload '1 MB' --download '1 MB' --up-mbps 0 --down-mbps 1"
+                    " --rtt 0 --compute 0"
+                ),
+                "--up-mbps",
+            ),
+            ("units --mbps -1", "--mbps"),
+            ("queueing --arrival-rate -1 --time-in-system 1", "--arrival-rate"),
+            (
+                "queueing --class a=1:1 --rate a=1 --decode-capacity 0",
+                "--decode-capacity",
+            ),
+        ):
+            with self.subTest(line=line):
+                self.assertIn(flag, fails(*shlex.split(line)))
+
+
+class ReviewFixesTest(unittest.TestCase):
+    def test_six_nd_uses_active_parameters_for_moe(self) -> None:
+        # chapter3.md:631: «Общий объём весов влияет на ёмкость, а активные параметры
+        # дают лишь грубую оценку объёма вычислений»; активные параметры qwen3-30b-a3b —
+        # parameters − routed_expert_total + routed_expert_active_per_token
+        # (qwen3-30b-a3b-decode-b1-s8192.json, как в test_accounting)
+        active = 30_532_122_624 - 28_991_029_248 + 1_811_939_328
+        v = values(
+            "training", "--config", str(CONFIGS / "qwen3-30b-a3b.json"),
+            "--tokens", "4096", "--dp", "8",
+        )  # fmt: skip
+        six_nd = v["six_nd_flops_per_sequence"]
+        self.assertEqual(six_nd["value"], 6 * active * 4096)
+        self.assertEqual(six_nd["inputs"]["active_parameters"], active)
+        self.assertIn("ёмкост", " ".join(six_nd["notes"]))
+        # состояние ZeRO хранит все параметры, а не активные
+        self.assertEqual(v["zero0_state_bytes_per_gpu"]["value"], 16 * 30_532_122_624)
+
+    def test_concurrency_is_an_upper_bound(self) -> None:
+        v = values(*ServingCommandTest.RTX)
+        self.assertEqual(v["max_concurrent_requests"]["bound"], "upper")
+
+    def test_aggregate_note_names_only_snapshot_quantities(self) -> None:
+        base = ("roofline", "--device", "gb200-nvl72", "--allow-aggregate")
+        work = ("--flops", "1", "--bytes", "1")
+        v = values(*base, "--peak-tflops", "2500", *work)
+        note = " ".join(v["step_lower_bound_seconds"]["notes"])
+        self.assertIn("пропускная способность", note)
+        self.assertNotIn("пик", note)
+        v = values(*base, "--peak-tflops", "2500", "--bandwidth", "8e12", *work)
+        self.assertEqual(v["step_lower_bound_seconds"]["notes"], [])
+
+    def test_aggregate_memory_note_reads_correctly(self) -> None:
+        v = values(
+            "serving", "--device", "gb200-nvl72", "--allow-aggregate",
+            "--weights", "1e9", "--weight-read", "1e9", "--decode-flops", "1e9",
+            "--kv-per-token", "1000", "--context", "10",
+        )  # fmt: skip
+        notes = " ".join(v["max_concurrent_requests"]["notes"])
+        self.assertIn("сумма по 72 устройствам", notes)
+        self.assertIn("ёмкость памяти", notes)
+        self.assertNotIn("суммированы", notes)
+
+    def test_user_parameters_of_wrapper_are_not_annotated_as_text_only(self) -> None:
+        config = str(CONFIGS / "qwen3.5-397b-a17b.json")
+        v = values("model", "--config", config, "--params", "1000")
+        notes = " ".join(v["parameters"]["notes"])
+        self.assertNotIn("не учтены", notes)
+        self.assertNotIn("передайте", notes)
+        self.assertIn("--params", notes)
+        self.assertIn("карточк", notes)
+
+    def test_quantized_weights_are_a_lower_bound(self) -> None:
+        # chapter1.md:205: «в 8-битной схеме занимают около 73.73 GB»; chapter1.md:209:
+        # BF16 «141.11 GB», половина — «около 70.55 GB»: параметры × 1 байт не учитывают
+        # scale и части модели в BF16
+        config = str(CONFIGS / "deepseek-r1-distill-llama-70b.json")
+        v = values("model", "--config", config, "--weight-dtype", "int8")
+        weights = v["weight_bytes"]
+        self.assertEqual(round(weights["value"] / 1e9, 2), 70.55)
+        self.assertEqual(weights["bound"], "lower")
+        self.assertIn("73.73", " ".join(weights["notes"]))
+        self.assertEqual(v["decode_weight_read_bytes"]["bound"], "lower")
+        bf16 = values("model", "--config", config)["weight_bytes"]
+        self.assertIsNone(bf16["bound"])
+        # накладные расходы квантизации, известные пользователю, прибавляются явно
+        v = values(
+            "model", "--config", config, "--weight-dtype", "int8",
+            "--quant-overhead-bytes", "3.18e9",
+        )  # fmt: skip
+        self.assertEqual(round(v["weight_bytes"]["value"] / 1e9, 2), 73.73)
+        self.assertIsNone(v["weight_bytes"]["bound"])
+        self.assertIn(
+            "--quant-overhead-bytes", fails("model", "--config", config,
+            "--quant-overhead-bytes", "1")
+        )  # fmt: skip
+
+    def test_training_seconds_identity(self) -> None:
+        # Арифметическое тождество, не число книги: две последовательности на двух
+        # устройствах при 1000 TFLOP/s и MFU 0.5 — F_seq / (1e15 · 0.5)
+        v = values(
+            "training", "--config", QWEN3_8B, "--tokens", "8192",
+            "--total-tokens", "16384", "--devices", "2",
+            "--peak-tflops", "1000", "--mfu", "0.5",
+        )  # fmt: skip
+        per_sequence = v["training_flops_per_sequence"]["value"]
+        self.assertAlmostEqual(
+            v["training_seconds"]["value"], per_sequence / (1e15 * 0.5)
+        )
+
+    def test_cost_per_million_tokens_identity(self) -> None:
+        # Арифметическое тождество, не число книги: шаг 1 ms (10^6 байт при 1 GB/s)
+        # даёт 1000 токенов/с, 3.6 $/ч = 0.001 $/с — миллион токенов за 1 $
+        v = values(
+            "serving", "--peak-tflops", "1", "--bandwidth", "1e9", "--memory", "1e9",
+            "--weights", "0", "--weight-read", "999999", "--decode-flops", "0",
+            "--kv-per-token", "1", "--context", "1", "--price-per-hour", "3.6",
+        )  # fmt: skip
+        self.assertAlmostEqual(v["tokens_per_second_upper_bound"]["value"], 1000)
+        price = v["cost_per_million_tokens_lower_bound"]
+        self.assertAlmostEqual(price["value"], 1.0)
+        self.assertEqual(price["bound"], "lower")
+
+
+class UnitsCommandTest(unittest.TestCase):
+    def test_book_conversions(self) -> None:
+        v = values(
+            "units", "--size", "141.11 GB", "--to", "GiB", "--mbps", "400000",
+            "--dtype", "int8",
+        )  # fmt: skip
+        self.assertEqual(v["size_bytes"]["value"], 141.11e9)
+        # chapter1.md:199: «141.11 GB — это примерно 131.42 GiB»
+        self.assertEqual(round(v["size_GiB"]["value"], 2), 131.42)
+        # chapter1.md:221: «ConnectX-7 с пропускной способностью 400 Gbit/s ... равна 50 GB/s»
+        self.assertEqual(v["link_bytes_per_second"]["value"], 50e9)
+        self.assertEqual(v["dtype_bytes"]["value"], 1)
+
+    def test_size_without_unit_is_refused(self) -> None:
+        self.assertIn("единиц", fails("units", "--size", "141.11"))
+
+    def test_something_to_convert_is_required(self) -> None:
+        self.assertIn("--size", fails("units"))
+
+
+class QueueingCommandTest(unittest.TestCase):
+    CLASSES = ("--class", "long_input=8192:256", "--class", "long_output=1024:2048")
+
+    def test_example_3_1(self) -> None:
+        # chapter3.md:89: «| Равномерная смесь | 18,432 | 4,604 |»
+        v = values(
+            "queueing", *self.CLASSES, "--rate", "long_input=2",
+            "--rate", "long_output=2", "--decode-capacity", "2796",
+        )  # fmt: skip
+        self.assertEqual(v["input_tokens_per_second"]["value"], 18_432)
+        self.assertEqual(v["decode_steps_per_second"]["value"], 4_604)
+        # chapter3.md:137: «одна карта может выполнять не более приблизительно 2,796 шага
+        # decode в секунду, что ниже средней потребности равномерной смеси в 4,604 шага»
+        self.assertGreater(v["decode_utilization"]["value"], 1)
+
+    def test_second_minute_of_changing_mix(self) -> None:
+        # chapter3.md:91: «| Изменяющаяся во времени смесь, вторая минута | 6,963.2 | 7,471.2 |»
+        v = values(
+            "queueing", *self.CLASSES, "--rate", "long_input=0.4",
+            "--rate", "long_output=3.6",
+        )  # fmt: skip
+        self.assertAlmostEqual(v["input_tokens_per_second"]["value"], 6_963.2)
+        self.assertAlmostEqual(v["decode_steps_per_second"]["value"], 7_471.2)
+
+    def test_littles_law(self) -> None:
+        # chapter11.md:76: «каждую секунду использовать среду начинают 10 задач»,
+        # «Каждая задача занимает среду на 30 секунд» — в среднем 300 сред
+        v = values("queueing", "--arrival-rate", "10", "--time-in-system", "30")
+        self.assertEqual(v["in_system"]["value"], 300)
+
+    def test_malformed_inputs(self) -> None:
+        self.assertIn("long_input", fails("queueing", *self.CLASSES, "--rate", "x=1"))
+        self.assertIn(
+            "--class", fails("queueing", "--class", "a=8192", "--rate", "a=1")
+        )
+        self.assertIn(
+            "--rate", fails("queueing", *self.CLASSES, "--rate", "long_input")
+        )
+        self.assertIn("--time-in-system", fails("queueing", "--arrival-rate", "1"))
 
 
 if __name__ == "__main__":

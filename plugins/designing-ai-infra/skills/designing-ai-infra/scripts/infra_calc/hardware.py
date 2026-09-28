@@ -26,11 +26,15 @@ from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 from types import MappingProxyType
+from typing import cast
 
 from .checks import require_int_at_least
 
 DATA = Path(__file__).resolve().parents[2] / "data" / "hardware.json"
-SNAPSHOT = "bojieli/ai-infra-book@56ecb425, calculations/configs/hardware.json"
+# дата — дата коммита 56ecb425 в репозитории оригинала
+SNAPSHOT = (
+    "bojieli/ai-infra-book@56ecb425 (2026-09-26), calculations/configs/hardware.json"
+)
 _CAPACITY_UNITS = {"GB": 10**9, "GiB": 2**30}
 _SCOPE_COUNTS = {
     "single_device": None,
@@ -70,8 +74,9 @@ def _parse_device(entry: dict) -> Device:
     count_field = _SCOPE_COUNTS[scope]
     count = 1
     if count_field is not None:
-        count = entry.get(count_field)
-        require_int_at_least(f"{count_field} у {device_id}", count, 2)
+        raw_count = entry.get(count_field)
+        require_int_at_least(f"{count_field} у {device_id}", raw_count, 2)
+        count = cast(int, raw_count)  # целое ≥ 2 проверено строкой выше
     capacity = memory.get("nominal_capacity")
     return Device(
         id=device_id,

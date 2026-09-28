@@ -28,7 +28,8 @@ def require_non_negative(name: str, value: float) -> None:
         raise ValueError(f"{name} не может быть отрицательным: {value}")
 
 
-def require_int_at_least(name: str, value: int, minimum: int) -> None:
+def require_int_at_least(name: str, value: object, minimum: int) -> None:
+    # value: object — проверяется любой вход, в том числе из JSON снимка
     if isinstance(value, bool) or not isinstance(value, int):
         # ValueError, а не TypeError: все отказы входа калькуляторы сообщают одним типом
         raise ValueError(f"{name} должен быть целым числом: {value!r}")  # noqa: TRY004

@@ -111,6 +111,10 @@ class HardwareTest(unittest.TestCase):
     def test_snapshot_is_named(self) -> None:
         self.assertIn("56ecb425", hardware.SNAPSHOT)
 
+    def test_snapshot_is_dated(self) -> None:
+        # дата коммита 56ecb425: git -C .tmp/upcalc log -1 --format=%cs 56ecb425
+        self.assertIn("2026-09-26", hardware.SNAPSHOT)
+
 
 class ScopeTest(unittest.TestCase):
     def test_single_device_scope(self) -> None:

@@ -1,9 +1,10 @@
 """CLI калькуляторов. Вывод: JSON или Markdown с формулой, входами и якорем.
 
-Каждый результат несёт формулу, входные данные, тип границы и якорь на
-заголовок книги. Если число взято из снимка железа, вывод называет снимок;
-стойка или сервер из снимка берутся только с флагом --allow-aggregate.
-Ошибка входа завершает команду с кодом 2 и сообщением на русском.
+Каждый результат несёт формулу, входные данные с единицами, тип границы и
+якорь на заголовок книги. Если число взято из снимка железа, вывод называет
+снимок; стойка или сервер из снимка берутся только с флагом --allow-aggregate.
+Ошибка входа — и разбора аргументов, и проверки значений — завершает команду
+с кодом 2 и сообщением на русском, которое называет флаг CLI.
 
 collectives.all_to_all_phase и collectives.tp_step_seconds вызываются из
 Python: матрицу назначений неудобно передавать аргументами.
@@ -14,10 +15,12 @@ from __future__ import annotations
 import argparse
 import json
 import math
-from collections.abc import Callable, Sequence
+import re
+import sys
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 from . import (
     accounting,
@@ -26,22 +29,30 @@ from . import (
     edge,
     flops,
     hardware,
+    queueing,
     roofline,
     serving,
     speculative,
     training,
     units,
 )
-from .checks import require_int_at_least, require_non_negative, require_positive
+from .checks import (
+    require_finite,
+    require_int_at_least,
+    require_non_negative,
+    require_positive,
+)
 from .model import ModelSpec, UnsupportedArchitecture, load_config, parse_spec
 from .result import Result
 
 BOOK = "references/source-book"
 A_CH1_KEYS = f"{BOOK}/chapter1.md:152"
+A_CH1_UNITS = f"{BOOK}/chapter1.md:189"
 A_CH1_TIME = f"{BOOK}/chapter1.md:263"
 A_CH1_REF = f"{BOOK}/chapter1.md:450"
 A_CH2_MEM = f"{BOOK}/chapter2.md:236"
 A_CH2_HYBRID = f"{BOOK}/chapter2.md:418"
+A_CH3_QUEUE = f"{BOOK}/chapter3.md:75"
 A_CH3_PRICE = f"{BOOK}/chapter3.md:209"
 A_CH3_STATE = f"{BOOK}/chapter3.md:384"
 A_CH3_TRAIN = f"{BOOK}/chapter3.md:442"
@@ -52,18 +63,193 @@ A_CH8_SPEC = f"{BOOK}/chapter8.md:536"
 A_CH10_ZERO = f"{BOOK}/chapter10.md:151"
 A_CH10_PIPE = f"{BOOK}/chapter10.md:322"
 A_CH10_CKPT = f"{BOOK}/chapter10.md:553"
+A_CH11_LITTLE = f"{BOOK}/chapter11.md:62"
 A_CH11_CALL = f"{BOOK}/chapter11.md:488"
 A_CH11_TASK = f"{BOOK}/chapter11.md:515"
 A_CH12_EDGE = f"{BOOK}/chapter12.md:11"
 
 SINGLE = "single_device"
+USER = "задано пользователем"
+BF16_BYTES = 2.0
 ZERO_FORMULAS = (
     "P × (2 + 2 + 12)",
     "P × (2 + 2 + 12/N)",
     "P × (2 + (2 + 12)/N)",
     "P × (2 + 2 + 12) / N",
 )
-USER = "задано пользователем"
+QUANT_NOTE = (
+    "квантизованные веса: parameters × bytes не учитывает scale групп и части "
+    "модели, оставленные в BF16; для 8-битной DeepSeek-R1-Distill-Llama-70B книга "
+    "даёт 73.73 GB против 70.55 GB по этой формуле (глава 1.2.3); известные "
+    "накладные расходы передайте через --quant-overhead-bytes"
+)
+QUANT_READ_NOTE = (
+    "квантизованные веса: scale групп и части модели в BF16 в чтение не включены"
+)
+RATES_SUFFIX = "; граница предполагает идеальное деление работы между устройствами"
+
+# Единица каждого входа результата. Пустая строка у числа допустима только для
+# безразмерных величин из DIMENSIONLESS; у строк и флагов это метка.
+DIMENSIONLESS = frozenset(
+    {
+        "params",
+        "parameters",
+        "active_parameters",
+        "device_count",
+        "batch",
+        "dp",
+        "stage",
+        "devices",
+        "mfu",
+        "stages",
+        "microbatches",
+        "acceptance",
+        "calls",
+        "success",
+    }
+)
+LABELS = frozenset(
+    {
+        "config",
+        "model_type",
+        "wrapper_model_type",
+        "weight_dtype",
+        "kv_dtype",
+        "device",
+        "name",
+        "scope",
+        "shared_with_cpu",
+        "precision",
+        "accumulator",
+        "sparsity",
+        "peak_source",
+        "bandwidth_source",
+        "memory_source",
+        "size_text",
+        "dtype",
+        "classes",
+        "rates",
+    }
+)
+INPUT_UNITS: dict[str, str] = {
+    **dict.fromkeys(DIMENSIONLESS | LABELS, ""),
+    "context": "tok",
+    "tokens": "tok",
+    "total_tokens": "tok",
+    "draft": "tok",
+    "input": "tok",
+    "output": "tok",
+    "cached": "tok",
+    "cache_write": "tok",
+    "flops": "FLOP",
+    "decode_flops": "FLOP",
+    "prefill_flops": "FLOP",
+    "total_flops": "FLOP",
+    "bytes": "B",
+    "weights": "B",
+    "weight_read": "B",
+    "memory": "B",
+    "reserve": "B",
+    "kv_request": "B",
+    "message": "B",
+    "upload": "B",
+    "download": "B",
+    "size_bytes": "B",
+    "quant_overhead": "B",
+    "kv_per_token": "B/tok",
+    "peak": "FLOP/s",
+    "bandwidth": "B/s",
+    "tokens_per_second": "tok/s",
+    "prefill_capacity": "tok/s",
+    "input_tokens_per_second": "tok/s",
+    "decode_capacity": "step/s",
+    "decode_steps_per_second": "step/s",
+    "price_per_hour": "$/h",
+    "cost_per_call": "$",
+    "input_price": "$/Mtok",
+    "output_price": "$/Mtok",
+    "cache_read_price": "$/Mtok",
+    "cache_write_price": "$/Mtok",
+    "save_seconds": "s",
+    "recovery": "s",
+    "interval": "s",
+    "plain_step": "s",
+    "alpha": "s",
+    "rtt": "s",
+    "compute": "s",
+    "time_in_system": "s",
+    "failure_rate": "1/s",
+    "arrival_rate": "1/s",
+    "mbps": "Mbit/s",
+    "up_mbps": "Mbit/s",
+    "down_mbps": "Mbit/s",
+}
+
+
+def _result(
+    name: str,
+    value: float | None,
+    unit: str,
+    formula: str,
+    inputs: dict[str, Any],
+    anchor: str,
+    *,
+    bound: str | None = None,
+    notes: Iterable[str] = (),
+) -> Result:
+    unknown = sorted(key for key in inputs if key not in INPUT_UNITS)
+    if unknown:
+        # ошибка программы, а не входа: не превращается в код 2
+        raise RuntimeError(f"нет единицы для входов {unknown} результата {name}")
+    return Result(
+        name,
+        value,
+        unit,
+        formula,
+        inputs,
+        anchor,
+        bound=bound,
+        notes=tuple(notes),
+        input_units={key: INPUT_UNITS[key] for key in inputs},
+    )
+
+
+# --- проверка входов по флагам ----------------------------------------------
+
+
+def _attribute(flag: str) -> str:
+    return flag.lstrip("-").replace("-", "_")
+
+
+def _check(
+    args: argparse.Namespace,
+    *,
+    positive: Sequence[str] = (),
+    non_negative: Sequence[str] = (),
+    at_least: Sequence[tuple[str, int]] = (),
+) -> None:
+    """Проверить заданные флаги до вызова калькулятора, чтобы ошибка называла флаг."""
+    for flag in positive:
+        value = getattr(args, _attribute(flag))
+        if value is not None:
+            require_positive(flag, value)
+    for flag in non_negative:
+        value = getattr(args, _attribute(flag))
+        if value is not None:
+            require_non_negative(flag, value)
+    for flag, minimum in at_least:
+        value = getattr(args, _attribute(flag))
+        if value is not None:
+            require_int_at_least(flag, value, minimum)
+
+
+def _check_fraction(flag: str, value: float | None, zero_allowed: bool) -> None:
+    if value is None:
+        return
+    require_finite(flag, value)
+    if not 0 <= value <= 1 or (value == 0 and not zero_allowed):
+        interval = "[0, 1]" if zero_allowed else "(0, 1]"
+        raise ValueError(f"{flag} должен лежать в {interval}: {value}")
 
 
 # --- общие части ------------------------------------------------------------
@@ -104,11 +290,18 @@ def _wrapper_notes(spec: ModelSpec) -> tuple[str, ...]:
     return (note,)
 
 
-def _aggregate_note(dev: hardware.Device, what: str) -> str:
+def _aggregate_note(
+    dev: hardware.Device | None, labels: Sequence[str], suffix: str = ""
+) -> tuple[str, ...]:
+    """Примечание об агрегате: только для величин, взятых из снимка."""
+    if dev is None or dev.scope == SINGLE or not labels:
+        return ()
+    n = dev.device_count
     return (
-        f"{dev.id} — агрегат {dev.scope} из {dev.device_count} устройств: "
-        f"{what} суммированы по {dev.device_count} устройствам, "
-        "а не значения одной карты"
+        (
+            f"{dev.id} — агрегат {dev.scope} из {n} устройств; сумма по {n} "
+            f"устройствам, а не значение одной карты: {', '.join(labels)}{suffix}"
+        ),
     )
 
 
@@ -142,78 +335,123 @@ def _snapshot_peak(dev: hardware.Device, args: argparse.Namespace) -> float:
 
 
 @dataclass(frozen=True)
-class _Rates:
-    peak: float | None
-    bandwidth: float | None
+class _Quantity:
+    """Величина для расчёта: значение, входы для отчёта и откуда она взята."""
+
+    value: float
     inputs: dict[str, Any]
-    notes: tuple[str, ...]
-    device: hardware.Device | None
+    snapshot_label: str | None = None
+    notes: tuple[str, ...] = ()
 
 
-def _rates(
-    args: argparse.Namespace, per_device: str, need_bandwidth: bool = True
-) -> _Rates:
-    """Пик и пропускная способность: явные аргументы важнее снимка."""
-    dev = _device(args, per_device)
-    peak_given = args.peak_tflops is not None
-    bandwidth_given = need_bandwidth and args.bandwidth is not None
-    if dev is None and not (peak_given and (bandwidth_given or not need_bandwidth)):
-        needed = "--peak-tflops и --bandwidth" if need_bandwidth else "--peak-tflops"
-        raise ValueError(f"укажите --device или {needed}")
-    inputs: dict[str, Any] = {}
-    notes: list[str] = []
-    if dev is not None:
-        inputs["device"] = dev.id
-    if peak_given:
+def _labels(*quantities: _Quantity) -> list[str]:
+    return [q.snapshot_label for q in quantities if q.snapshot_label]
+
+
+def _peak(args: argparse.Namespace, dev: hardware.Device | None) -> _Quantity:
+    if args.peak_tflops is not None:
         require_positive("--peak-tflops", args.peak_tflops)
         peak = args.peak_tflops * 1e12
-        inputs["peak_source"] = USER
-    else:
-        peak = _snapshot_peak(dev, args)
-        inputs |= {
-            "precision": args.precision,
-            "accumulator": args.accumulator,
-            "sparsity": args.sparsity,
-        }
-    inputs["peak"] = peak
-    bandwidth = None
-    if bandwidth_given:
+        return _Quantity(peak, {"peak": peak, "peak_source": USER})
+    if dev is None:
+        raise ValueError("укажите --device или --peak-tflops")
+    peak = _snapshot_peak(dev, args)
+    inputs = {
+        "device": dev.id,
+        "precision": args.precision,
+        "accumulator": args.accumulator,
+        "sparsity": args.sparsity,
+        "peak": peak,
+    }
+    return _Quantity(peak, inputs, "пик")
+
+
+def _bandwidth(args: argparse.Namespace, dev: hardware.Device | None) -> _Quantity:
+    if args.bandwidth is not None:
         require_positive("--bandwidth", args.bandwidth)
-        bandwidth = args.bandwidth
-        inputs["bandwidth_source"] = USER
-    elif need_bandwidth:
-        bandwidth = hardware.bandwidth(dev)
-    if need_bandwidth:
-        inputs["bandwidth"] = bandwidth
-    from_snapshot = not peak_given or (need_bandwidth and not bandwidth_given)
-    if dev is not None and dev.scope != SINGLE and from_snapshot:
-        notes.append(
-            _aggregate_note(dev, "пик и пропускная способность")
-            + "; граница предполагает идеальное деление работы между ними"
+        return _Quantity(
+            args.bandwidth, {"bandwidth": args.bandwidth, "bandwidth_source": USER}
         )
-    return _Rates(peak, bandwidth, inputs, tuple(notes), dev)
+    if dev is None:
+        raise ValueError("укажите --device или --bandwidth")
+    value = hardware.bandwidth(dev)
+    return _Quantity(
+        value, {"device": dev.id, "bandwidth": value}, "пропускная способность памяти"
+    )
+
+
+def _memory(args: argparse.Namespace, dev: hardware.Device | None) -> _Quantity:
+    if args.memory is not None:
+        return _Quantity(args.memory, {"memory": args.memory, "memory_source": USER})
+    if dev is None:
+        raise ValueError(
+            "укажите --memory (байт памяти одного устройства) или --device"
+        )
+    if dev.memory_bytes is None:
+        raise ValueError(
+            f"у {dev.id} ёмкость памяти не опубликована в снимке {hardware.SNAPSHOT}; "
+            "передайте --memory"
+        )
+    notes = [
+        (
+            "номинальная ёмкость по этикетке, а не доступный среде выполнения объём; "
+            "резерв среды выполнения задайте через --reserve"
+        )
+    ]
+    if dev.shared_with_cpu:
+        notes.append("память общая с CPU и ОС: модели доступна только её часть")
+    return _Quantity(
+        dev.memory_bytes,
+        {"memory": dev.memory_bytes, "memory_source": dev.id},
+        "ёмкость памяти",
+        tuple(notes),
+    )
 
 
 # --- команды -------------------------------------------------------------------
 
 
+def _weight_estimate(
+    args: argparse.Namespace, bytes_per_param: float
+) -> tuple[int, str | None, tuple[str, ...]]:
+    """Добавка к «параметры × байты», тип границы и примечания для квантизации."""
+    quantized = bytes_per_param < BF16_BYTES
+    overhead = args.quant_overhead_bytes
+    if overhead is not None and not quantized:
+        raise ValueError(
+            "--quant-overhead-bytes задаёт scale и части модели в высокой точности "
+            f"квантизованных весов; с --weight-dtype {args.weight_dtype} он не нужен"
+        )
+    if not quantized:
+        return 0, None, ()
+    if overhead is None:
+        return 0, "lower", (QUANT_NOTE,)
+    note = f"прибавлены накладные расходы квантизации из --quant-overhead-bytes: {overhead:.6g} B"
+    return int(overhead), None, (note,)
+
+
 def _model(args: argparse.Namespace) -> list[Result]:
+    _check(args, non_negative=("--quant-overhead-bytes",), at_least=(("--context", 0),))
     spec = _load_spec(args.config)
     wb = units.dtype_bytes(args.weight_dtype)
     kb = units.dtype_bytes(args.kv_dtype)
     wrapper = _wrapper_notes(spec)
+    overhead, weight_bound, weight_notes = _weight_estimate(args, wb)
     base: dict[str, Any] = {
         "config": Path(args.config).name,
         "model_type": spec.model_type,
     }
     if spec.wrapper_model_type:
         base["wrapper_model_type"] = spec.wrapper_model_type
+    weights = {**base, "weight_dtype": args.weight_dtype}
+    if args.quant_overhead_bytes is not None:
+        weights["quant_overhead"] = args.quant_overhead_bytes
     out: list[Result] = []
     try:
         params: int | None = accounting.parameter_count(spec)
-        refusal = ""
+        refusal: UnsupportedArchitecture | None = None
     except UnsupportedArchitecture as error:
-        params, refusal = None, str(error)
+        params, refusal = None, error
 
     if params is not None:
         if args.params is not None:
@@ -221,14 +459,15 @@ def _model(args: argparse.Namespace) -> list[Result]:
                 "--params нужен только для архитектур, где калькулятор не считает "
                 f"параметры; для {spec.model_type} по config.json получено {params}"
             )
-        weights = {**base, "weight_dtype": args.weight_dtype}
         read_notes = wrapper
         if spec.experts:
             read_notes += (
                 "эксперты одного токена; при батче читается объединение экспертов",
             )
+        if weight_bound == "lower" or overhead:
+            read_notes += (QUANT_READ_NOTE,)
         out += [
-            Result(
+            _result(
                 "parameters",
                 params,
                 "",
@@ -237,7 +476,7 @@ def _model(args: argparse.Namespace) -> list[Result]:
                 A_CH3_STATE,
                 notes=wrapper,
             ),
-            Result(
+            _result(
                 "active_parameters",
                 accounting.parameter_count(spec, active=True),
                 "",
@@ -246,57 +485,75 @@ def _model(args: argparse.Namespace) -> list[Result]:
                 A_CH2_MEM,
                 notes=wrapper,
             ),
-            Result(
+            _result(
                 "weight_bytes",
-                accounting.weight_bytes(spec, wb),
+                accounting.weight_bytes(spec, wb) + overhead,
                 "B",
-                "parameters × bytes_per_param",
+                "parameters × bytes_per_param"
+                + (" + quant_overhead" if overhead else ""),
                 weights,
-                A_CH1_REF,
-                notes=wrapper,
+                A_CH1_UNITS,
+                bound=weight_bound,
+                notes=(*wrapper, *weight_notes),
             ),
-            Result(
+            _result(
                 "decode_weight_read_bytes",
                 accounting.decode_weight_read_bytes(spec, wb),
                 "B",
                 "(active_parameters − таблица эмбеддингов без общих весов) × bytes_per_param",
-                weights,
+                {k: v for k, v in weights.items() if k != "quant_overhead"},
                 A_CH2_MEM,
+                bound="lower" if wb < BF16_BYTES else None,
                 notes=read_notes,
             ),
         ]
-    elif args.params is not None:
+    elif args.params is not None and refusal is not None:
         given = {**base, "params": args.params}
+        param_notes: tuple[str, ...] = (
+            (
+                f"калькулятор не считает параметры {refusal.model_type} "
+                f"(поля: {', '.join(refusal.fields) or '—'}); значение взято из --params как есть"
+            ),
+        )
+        if spec.wrapper_model_type:
+            param_notes += (
+                (
+                    "включает ли число веса энкодеров обёртки "
+                    f"{spec.wrapper_model_type}, определяет карточка модели"
+                ),
+            )
         out += [
-            Result(
+            _result(
                 "parameters",
                 args.params,
                 "",
                 f"{USER} (--params)",
                 given,
                 A_CH3_STATE,
-                notes=(refusal, *wrapper),
+                notes=param_notes,
             ),
-            Result(
+            _result(
                 "weight_bytes",
-                int(args.params * wb),
+                int(args.params * wb) + overhead,
                 "B",
-                f"parameters ({USER}) × bytes_per_param",
-                given | {"weight_dtype": args.weight_dtype},
-                A_CH1_REF,
-                notes=wrapper,
+                f"parameters ({USER}) × bytes_per_param"
+                + (" + quant_overhead" if overhead else ""),
+                given | {k: v for k, v in weights.items() if k not in base},
+                A_CH1_UNITS,
+                bound=weight_bound,
+                notes=(*param_notes[1:], *weight_notes),
             ),
         ]
     else:
         out.append(
-            Result(
+            _result(
                 "parameters",
                 None,
                 "",
                 "не вычисляется",
                 base,
                 A_CH3_STATE,
-                notes=(refusal, *wrapper),
+                notes=(str(refusal), *wrapper),
             )
         )
 
@@ -306,7 +563,7 @@ def _model(args: argparse.Namespace) -> list[Result]:
     }.get(spec.family, "2 × layers × kv_heads × head_dim × bytes")
     kv_inputs = {**base, "kv_dtype": args.kv_dtype}
     out.append(
-        Result(
+        _result(
             "kv_bytes_per_token",
             accounting.kv_bytes_per_token(spec, kb),
             "B",
@@ -319,7 +576,7 @@ def _model(args: argparse.Namespace) -> list[Result]:
         resident = accounting.kv_resident_bytes(spec, args.context, kb)
         window = f"min(context, {spec.window})" if spec.window else "context"
         out.append(
-            Result(
+            _result(
                 "kv_resident_bytes",
                 resident,
                 "B",
@@ -331,7 +588,7 @@ def _model(args: argparse.Namespace) -> list[Result]:
     recurrent, conv = accounting.fixed_state_bytes(spec)
     if recurrent or conv:
         out.append(
-            Result(
+            _result(
                 "fixed_state_bytes",
                 recurrent + conv,
                 "B",
@@ -351,7 +608,7 @@ def _forward_flops(spec: ModelSpec, context: int, base: dict[str, Any]) -> list[
         decode = flops.forward_matrix_flops(spec, 1, context - 1)
     except UnsupportedArchitecture as error:
         return [
-            Result(
+            _result(
                 "prefill_flops",
                 None,
                 "FLOP",
@@ -362,7 +619,7 @@ def _forward_flops(spec: ModelSpec, context: int, base: dict[str, Any]) -> list[
             )
         ]
     return [
-        Result(
+        _result(
             "prefill_flops",
             prefill,
             "FLOP",
@@ -370,7 +627,7 @@ def _forward_flops(spec: ModelSpec, context: int, base: dict[str, Any]) -> list[
             base | {"tokens": context},
             A_CH1_REF,
         ),
-        Result(
+        _result(
             "decode_step_flops",
             decode,
             "FLOP",
@@ -382,44 +639,47 @@ def _forward_flops(spec: ModelSpec, context: int, base: dict[str, Any]) -> list[
 
 
 def _roofline(args: argparse.Namespace) -> list[Result]:
-    rates = _rates(args, "--peak-tflops и --bandwidth")
-    peak, bw = rates.peak, rates.bandwidth
-    inputs = {"flops": args.flops, "bytes": args.bytes, **rates.inputs}
+    _check(args, non_negative=("--flops", "--bytes"))
+    dev = _device(args, "--peak-tflops и --bandwidth")
+    peak = _peak(args, dev)
+    bw = _bandwidth(args, dev)
+    notes = _aggregate_note(dev, _labels(peak, bw), RATES_SUFFIX)
+    inputs = {"flops": args.flops, "bytes": args.bytes, **peak.inputs, **bw.inputs}
     out = [
-        Result(
+        _result(
             "step_lower_bound_seconds",
-            roofline.lower_bound_seconds(args.flops, args.bytes, peak, bw),
+            roofline.lower_bound_seconds(args.flops, args.bytes, peak.value, bw.value),
             "s",
             "max(F/Π, R/β)",
             inputs,
             A_CH1_TIME,
             bound="lower",
-            notes=rates.notes,
+            notes=notes,
         ),
-        Result(
+        _result(
             "compute_seconds",
-            roofline.compute_seconds(args.flops, peak),
+            roofline.compute_seconds(args.flops, peak.value),
             "s",
             "F/Π",
             inputs,
             A_CH1_TIME,
             bound="lower",
-            notes=rates.notes,
+            notes=notes,
         ),
-        Result(
+        _result(
             "memory_seconds",
-            roofline.memory_seconds(args.bytes, bw),
+            roofline.memory_seconds(args.bytes, bw.value),
             "s",
             "R/β",
             inputs,
             A_CH1_TIME,
             bound="lower",
-            notes=rates.notes,
+            notes=notes,
         ),
     ]
     if args.bytes > 0:
         out.append(
-            Result(
+            _result(
                 "arithmetic_intensity",
                 roofline.arithmetic_intensity(args.flops, args.bytes),
                 "FLOP/B",
@@ -429,83 +689,87 @@ def _roofline(args: argparse.Namespace) -> list[Result]:
             )
         )
     out.append(
-        Result(
+        _result(
             "ridge_point",
-            roofline.ridge_point(peak, bw),
+            roofline.ridge_point(peak.value, bw.value),
             "FLOP/B",
             "Π/β",
             inputs,
             A_CH1_TIME,
-            notes=rates.notes,
+            notes=notes,
         )
     )
     return out
 
 
 def _serving(args: argparse.Namespace) -> list[Result]:
-    rates = _rates(args, "--peak-tflops, --bandwidth и --memory")
-    peak, bw, dev = rates.peak, rates.bandwidth, rates.device
-    memory_notes: list[str] = []
-    if args.memory is not None:
-        memory = args.memory
-        memory_source = USER
-    elif dev is None:
-        raise ValueError(
-            "укажите --memory (байт памяти одного устройства) или --device"
-        )
-    elif dev.memory_bytes is None:
-        raise ValueError(
-            f"у {dev.id} ёмкость памяти не опубликована в снимке {hardware.SNAPSHOT}; "
-            "передайте --memory"
-        )
-    else:
-        memory = dev.memory_bytes
-        memory_source = dev.id
-        memory_notes.append(
-            "номинальная ёмкость по этикетке, а не доступный среде выполнения объём; "
-            "резерв среды выполнения задайте через --reserve"
-        )
-        if dev.scope != SINGLE:
-            memory_notes.append(
-                _aggregate_note(dev, "ёмкость памяти")
-                + "; веса и KV считаются размещёнными во всём агрегате"
-            )
-        if dev.shared_with_cpu:
-            memory_notes.append(
-                "память общая с CPU и ОС: модели доступна только её часть"
-            )
+    _check(
+        args,
+        positive=("--kv-per-token",),
+        non_negative=(
+            "--weights",
+            "--weight-read",
+            "--decode-flops",
+            "--prefill-flops",
+            "--memory",
+            "--reserve",
+            "--price-per-hour",
+        ),
+        at_least=(("--context", 1), ("--batch", 1)),
+    )
+    dev = _device(args, "--peak-tflops, --bandwidth и --memory")
+    peak = _peak(args, dev)
+    bw = _bandwidth(args, dev)
+    memory = _memory(args, dev)
+    rate_notes = _aggregate_note(dev, _labels(peak, bw), RATES_SUFFIX)
+    memory_notes = (
+        *memory.notes,
+        *_aggregate_note(
+            dev,
+            _labels(memory),
+            "; веса и KV считаются размещёнными во всём агрегате",
+        ),
+        "верхняя граница: активации, фрагментация и буферы сверх --reserve не учтены",
+    )
     kv_request = args.kv_per_token * args.context
     memory_inputs = {
-        "memory": memory,
-        "memory_source": memory_source,
+        **memory.inputs,
         "weights": args.weights,
-        "kv_request": kv_request,
+        "kv_per_token": args.kv_per_token,
+        "context": args.context,
         "reserve": args.reserve,
     }
     step = serving.tpot_lower_bound_seconds(
-        args.batch, args.decode_flops, args.weight_read, kv_request, peak, bw
+        args.batch,
+        args.decode_flops,
+        args.weight_read,
+        kv_request,
+        peak.value,
+        bw.value,
     )
     step_inputs = {
         "batch": args.batch,
         "decode_flops": args.decode_flops,
         "weight_read": args.weight_read,
-        "kv_read_per_request": kv_request,
-        **rates.inputs,
+        "kv_request": kv_request,
+        **peak.inputs,
+        **bw.inputs,
     }
     throughput = serving.tokens_per_second(args.batch, step)
     out = [
-        Result(
+        _result(
             "max_concurrent_requests",
             serving.max_concurrent_requests(
-                memory, args.weights, kv_request, args.reserve
+                memory.value, args.weights, kv_request, args.reserve
             ),
             "",
             "floor((C − M_w − reserve) / (kv_per_token × context))",
             memory_inputs,
             A_CH8_MEM,
-            notes=tuple(memory_notes),
+            bound="upper",
+            notes=memory_notes,
         ),
-        Result(
+        _result(
             "tpot_lower_bound_seconds",
             step,
             "s",
@@ -513,9 +777,9 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             step_inputs,
             A_CH1_TIME,
             bound="lower",
-            notes=rates.notes,
+            notes=rate_notes,
         ),
-        Result(
+        _result(
             "tokens_per_second_upper_bound",
             throughput,
             "tok/s",
@@ -523,15 +787,15 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             step_inputs,
             A_CH1_TIME,
             bound="upper",
-            notes=rates.notes,
+            notes=rate_notes,
         ),
     ]
     if args.prefill_flops is not None:
         ttft = serving.ttft_lower_bound_seconds(
-            args.prefill_flops, args.weights, peak, bw
+            args.prefill_flops, args.weights, peak.value, bw.value
         )
         out.append(
-            Result(
+            _result(
                 "ttft_lower_bound_seconds",
                 ttft,
                 "s",
@@ -539,17 +803,18 @@ def _serving(args: argparse.Namespace) -> list[Result]:
                 {
                     "prefill_flops": args.prefill_flops,
                     "weights": args.weights,
-                    **rates.inputs,
+                    **peak.inputs,
+                    **bw.inputs,
                 },
                 A_CH1_REF,
                 bound="lower",
-                notes=rates.notes,
+                notes=rate_notes,
             )
         )
     if args.price_per_hour is not None:
         price = serving.cost_per_million_tokens(args.price_per_hour, throughput)
         out.append(
-            Result(
+            _result(
                 "cost_per_million_tokens_lower_bound",
                 price,
                 "$",
@@ -566,13 +831,29 @@ def _serving(args: argparse.Namespace) -> list[Result]:
 
 
 def _training(args: argparse.Namespace) -> list[Result]:
+    _check(
+        args,
+        positive=("--total-tokens",),
+        at_least=(("--tokens", 1), ("--dp", 1), ("--devices", 1)),
+    )
+    _check_fraction("--mfu", args.mfu, zero_allowed=False)
     spec = _load_spec(args.config)
     wrapper = _wrapper_notes(spec)
     _, _, total = flops.training_matrix_flops(spec, args.tokens)
     params = accounting.parameter_count(spec)
+    active = accounting.parameter_count(spec, active=True)
     base = {"model_type": spec.model_type, "tokens": args.tokens}
+    six_nd_notes = wrapper
+    if active != params:
+        six_nd_notes += (
+            (
+                f"MoE: N — {active} активных параметров из {params}; все параметры "
+                "определяют ёмкость (веса, состояние ZeRO), активные — лишь грубую "
+                "оценку вычислений"
+            ),
+        )
     out = [
-        Result(
+        _result(
             "training_flops_per_sequence",
             total,
             "FLOP",
@@ -581,14 +862,14 @@ def _training(args: argparse.Namespace) -> list[Result]:
             A_CH3_TRAIN,
             notes=wrapper,
         ),
-        Result(
+        _result(
             "six_nd_flops_per_sequence",
-            flops.six_nd_flops(params, args.tokens),
+            flops.six_nd_flops(active, args.tokens),
             "FLOP",
-            "6 × N × D",
-            base | {"parameters": params},
+            "6 × N_active × D",
+            base | {"active_parameters": active},
             A_CH3_TRAIN,
-            notes=wrapper,
+            notes=six_nd_notes,
         ),
     ]
     if args.dp is not None:
@@ -599,7 +880,7 @@ def _training(args: argparse.Namespace) -> list[Result]:
         for stage, formula in enumerate(ZERO_FORMULAS):
             state = training.sharded_state_bytes_per_device(params, args.dp, stage)
             out.append(
-                Result(
+                _result(
                     f"zero{stage}_state_bytes_per_gpu",
                     state,
                     "B",
@@ -621,37 +902,48 @@ def _training(args: argparse.Namespace) -> list[Result]:
                 "для срока обучения нужны --total-tokens, --devices и --mfu; "
                 f"не хватает: {', '.join(missing)}"
             )
-        require_positive("--total-tokens", args.total_tokens)
-        rates = _rates(args, "--peak-tflops", need_bandwidth=False)
+        dev = _device(args, "--peak-tflops")
+        peak = _peak(args, dev)
         whole = total * args.total_tokens / args.tokens
-        seconds = training.training_seconds(whole, args.devices, rates.peak, args.mfu)
+        seconds = training.training_seconds(whole, args.devices, peak.value, args.mfu)
         inputs = {
             "total_flops": whole,
             "total_tokens": args.total_tokens,
             "devices": args.devices,
             "mfu": args.mfu,
-            **rates.inputs,
+            **peak.inputs,
         }
         note = f"FLOPs последовательности длиной {args.tokens} линейно масштабированы на все токены"
         out.append(
-            Result(
+            _result(
                 "training_seconds",
                 seconds,
                 "s",
                 "F_total / (N · Π · MFU)",
                 inputs,
                 A_CH7_TIME,
-                notes=(note, *rates.notes, *wrapper),
+                notes=(note, *_aggregate_note(dev, _labels(peak)), *wrapper),
             )
         )
     return out
 
 
 def _checkpoint(args: argparse.Namespace) -> list[Result]:
-    require_non_negative("--checkpoint-bytes", args.checkpoint_bytes)
-    require_positive("--save-bandwidth", args.save_bandwidth)
-    require_int_at_least("--devices", args.devices, 1)
-    require_positive("--device-mtbf", args.device_mtbf)
+    _check(
+        args,
+        positive=(
+            "--checkpoint-bytes",
+            "--save-bandwidth",
+            "--device-mtbf",
+            "--interval",
+        ),
+        non_negative=("--recovery",),
+        at_least=(("--devices", 1), ("--stages", 1), ("--microbatches", 1)),
+    )
+    if (args.stages is None) != (args.microbatches is None):
+        raise ValueError(
+            "для утилизации конвейера нужны оба значения: --stages и --microbatches"
+        )
     save = args.checkpoint_bytes / args.save_bandwidth
     rate = args.devices / args.device_mtbf
     inputs = {"save_seconds": save, "failure_rate": rate, "recovery": args.recovery}
@@ -663,7 +955,7 @@ def _checkpoint(args: argparse.Namespace) -> list[Result]:
         else ("τ — оптимум первого порядка; другой интервал задайте --interval",)
     )
     out = [
-        Result(
+        _result(
             "first_order_optimal_interval_seconds",
             first,
             "s",
@@ -671,7 +963,7 @@ def _checkpoint(args: argparse.Namespace) -> list[Result]:
             inputs,
             A_CH10_CKPT,
         ),
-        Result(
+        _result(
             "poisson_optimal_interval_seconds",
             training.checkpoint_poisson_optimal_interval(save, rate),
             "s",
@@ -679,7 +971,7 @@ def _checkpoint(args: argparse.Namespace) -> list[Result]:
             inputs,
             A_CH10_CKPT,
         ),
-        Result(
+        _result(
             "first_order_loss_at_interval",
             training.checkpoint_first_order_loss(interval, save, rate, args.recovery),
             "",
@@ -689,14 +981,10 @@ def _checkpoint(args: argparse.Namespace) -> list[Result]:
             notes=loss_notes,
         ),
     ]
-    if (args.stages is None) != (args.microbatches is None):
-        raise ValueError(
-            "для утилизации конвейера нужны оба значения: --stages и --microbatches"
-        )
     if args.stages is not None:
         utilization = training.pipeline_utilization(args.stages, args.microbatches)
         out.append(
-            Result(
+            _result(
                 "pipeline_utilization",
                 utilization,
                 "",
@@ -710,10 +998,12 @@ def _checkpoint(args: argparse.Namespace) -> list[Result]:
 
 
 def _speculative(args: argparse.Namespace) -> list[Result]:
+    _check_fraction("--acceptance", args.acceptance, zero_allowed=True)
+    _check(args, positive=("--plain-step",), at_least=(("--draft", 0),))
     tokens = speculative.expected_tokens_per_round(args.acceptance, args.draft)
     inputs = {"acceptance": args.acceptance, "draft": args.draft}
     return [
-        Result(
+        _result(
             "expected_tokens_per_round",
             tokens,
             "tok",
@@ -722,7 +1012,7 @@ def _speculative(args: argparse.Namespace) -> list[Result]:
             A_CH8_SPEC,
             notes=("позиции черновика принимаются независимо",),
         ),
-        Result(
+        _result(
             "breakeven_round_seconds",
             speculative.breakeven_round_seconds(tokens, args.plain_step),
             "s",
@@ -736,6 +1026,12 @@ def _speculative(args: argparse.Namespace) -> list[Result]:
 
 
 def _ring(args: argparse.Namespace) -> list[Result]:
+    _check(
+        args,
+        positive=("--bandwidth",),
+        non_negative=("--message", "--alpha"),
+        at_least=(("--devices", 1),),
+    )
     inputs = {
         "devices": args.devices,
         "message": args.message,
@@ -743,7 +1039,7 @@ def _ring(args: argparse.Namespace) -> list[Result]:
         "alpha": args.alpha,
     }
     return [
-        Result(
+        _result(
             "ring_allreduce_seconds",
             collectives.ring_allreduce_seconds(
                 args.devices, args.message, args.bandwidth, args.alpha
@@ -753,7 +1049,7 @@ def _ring(args: argparse.Namespace) -> list[Result]:
             inputs,
             A_CH6_RING,
         ),
-        Result(
+        _result(
             "bytes_sent_per_device",
             collectives.ring_bytes_sent_per_device(args.devices, args.message),
             "B",
@@ -765,6 +1061,21 @@ def _ring(args: argparse.Namespace) -> list[Result]:
 
 
 def _cost(args: argparse.Namespace) -> list[Result]:
+    _check(
+        args,
+        positive=("--calls",),
+        non_negative=(
+            "--input-tokens",
+            "--output-tokens",
+            "--cached-tokens",
+            "--cache-write-tokens",
+            "--input-price",
+            "--output-price",
+            "--cache-read-price",
+            "--cache-write-price",
+        ),
+    )
+    _check_fraction("--success", args.success, zero_allowed=False)
     per_call = cost.call_cost(
         args.input_tokens,
         args.output_tokens,
@@ -775,7 +1086,6 @@ def _cost(args: argparse.Namespace) -> list[Result]:
         args.cache_write_tokens,
         args.cache_write_price,
     )
-    require_positive("--calls", args.calls)
     tokens = {
         "input": args.input_tokens,
         "output": args.output_tokens,
@@ -789,7 +1099,7 @@ def _cost(args: argparse.Namespace) -> list[Result]:
         "cache_write_price": args.cache_write_price,
     }
     return [
-        Result(
+        _result(
             "cost_per_call",
             per_call,
             "$",
@@ -800,7 +1110,7 @@ def _cost(args: argparse.Namespace) -> list[Result]:
                 "input — только некэшированный вход; хранение кэша и инструменты не входят",
             ),
         ),
-        Result(
+        _result(
             "cost_per_accepted_task",
             cost.cost_per_accepted_task(per_call * args.calls, args.success),
             "$",
@@ -812,13 +1122,16 @@ def _cost(args: argparse.Namespace) -> list[Result]:
 
 
 def _edge(args: argparse.Namespace) -> list[Result]:
+    _check(
+        args, positive=("--up-mbps", "--down-mbps"), non_negative=("--rtt", "--compute")
+    )
     up = units.megabits_per_second_to_bytes(args.up_mbps)
     down = units.megabits_per_second_to_bytes(args.down_mbps)
     upload = units.parse_bytes(args.upload)
     download = units.parse_bytes(args.download)
     inputs = {
-        "upload": args.upload,
-        "download": args.download,
+        "upload": upload,
+        "download": download,
         "up_mbps": args.up_mbps,
         "down_mbps": args.down_mbps,
         "rtt": args.rtt,
@@ -826,7 +1139,7 @@ def _edge(args: argparse.Namespace) -> list[Result]:
     }
     seconds = edge.serial_seconds(upload, up, args.rtt, args.compute, download, down)
     return [
-        Result(
+        _result(
             "serial_seconds",
             seconds,
             "s",
@@ -835,6 +1148,202 @@ def _edge(args: argparse.Namespace) -> list[Result]:
             A_CH12_EDGE,
         )
     ]
+
+
+def _units(args: argparse.Namespace) -> list[Result]:
+    _check(args, non_negative=("--mbps",))
+    if args.size is None and args.mbps is None and args.dtype is None:
+        raise ValueError("укажите хотя бы одно: --size, --mbps или --dtype")
+    if args.to and args.size is None:
+        raise ValueError("--to переводит объём из --size; укажите --size")
+    out: list[Result] = []
+    if args.size is not None:
+        size = units.parse_bytes(args.size)
+        out.append(
+            _result(
+                "size_bytes",
+                size,
+                "B",
+                "число × множитель единицы (GB = 10^9 B, GiB = 2^30 B)",
+                {"size_text": args.size},
+                A_CH1_UNITS,
+            )
+        )
+        for unit in args.to or ():
+            out.append(
+                _result(
+                    f"size_{unit}",
+                    units.to_unit(size, unit),
+                    unit,
+                    f"size_bytes / {units.UNITS[unit]}",
+                    {"size_bytes": size},
+                    A_CH1_UNITS,
+                )
+            )
+    if args.mbps is not None:
+        out.append(
+            _result(
+                "link_bytes_per_second",
+                units.megabits_per_second_to_bytes(args.mbps),
+                "B/s",
+                "Mbit/s × 10^6 / 8",
+                {"mbps": args.mbps},
+                A_CH1_UNITS,
+            )
+        )
+    if args.dtype is not None:
+        out.append(
+            _result(
+                "dtype_bytes",
+                units.dtype_bytes(args.dtype),
+                "B",
+                "байт на один элемент",
+                {"dtype": args.dtype},
+                A_CH1_UNITS,
+            )
+        )
+    return out
+
+
+def _pairs(values: Sequence[str] | None, flag: str, example: str) -> dict[str, str]:
+    pairs: dict[str, str] = {}
+    for text in values or ():
+        name, sep, value = text.partition("=")
+        if not sep or not name or not value:
+            raise ValueError(
+                f"{flag} ожидает имя=значение, например {example}: {text!r}"
+            )
+        pairs[name] = value
+    return pairs
+
+
+def _classes(values: Sequence[str] | None) -> dict[str, tuple[int, int]]:
+    classes: dict[str, tuple[int, int]] = {}
+    example = "long_input=8192:256"
+    for name, value in _pairs(values, "--class", example).items():
+        inputs, sep, outputs = value.partition(":")
+        try:
+            if not sep:
+                raise ValueError(value)
+            classes[name] = (int(inputs), int(outputs))
+        except ValueError:
+            raise ValueError(
+                f"--class ожидает имя=входные:выходные токены, например {example}: "
+                f"{name}={value!r}"
+            ) from None
+    return classes
+
+
+def _rates(values: Sequence[str] | None) -> dict[str, float]:
+    rates: dict[str, float] = {}
+    for name, value in _pairs(values, "--rate", "long_input=2").items():
+        try:
+            rates[name] = float(value)
+        except ValueError:
+            raise ValueError(
+                f"--rate ожидает интенсивность в запросах/с: {name}={value!r}"
+            ) from None
+    return rates
+
+
+def _queueing(args: argparse.Namespace) -> list[Result]:
+    _check(
+        args,
+        positive=("--decode-capacity", "--prefill-capacity"),
+        non_negative=("--arrival-rate", "--time-in-system"),
+    )
+    classes = _classes(args.classes)
+    rates = _rates(args.rates)
+    little = {
+        "--arrival-rate": args.arrival_rate,
+        "--time-in-system": args.time_in_system,
+    }
+    if not rates and not classes and all(v is None for v in little.values()):
+        raise ValueError(
+            "укажите --class и --rate (потребность по классам) "
+            "или --arrival-rate и --time-in-system (закон Литтла)"
+        )
+    out: list[Result] = []
+    if rates or classes:
+        if not rates or not classes:
+            raise ValueError("потребность считается по --class и --rate вместе")
+        tokens, steps = queueing.demand(rates, classes)
+        inputs = {
+            "classes": ", ".join(f"{k}={i}:{o}" for k, (i, o) in classes.items()),
+            "rates": ", ".join(f"{k}={v:g}" for k, v in rates.items()),
+        }
+        out += [
+            _result(
+                "input_tokens_per_second",
+                tokens,
+                "tok/s",
+                "Σ λ_c · I_c",
+                inputs,
+                A_CH3_QUEUE,
+            ),
+            _result(
+                "decode_steps_per_second",
+                steps,
+                "step/s",
+                "Σ λ_c · (O_c − 1)",
+                inputs,
+                A_CH3_QUEUE,
+                notes=("первый выходной токен даёт prefill",),
+            ),
+        ]
+        overload = "больше 1 — очередь растёт, сколько бы ни длилось окно"
+        for name, demand_key, demand, key, capacity in (
+            (
+                "decode_utilization",
+                "decode_steps_per_second",
+                steps,
+                "decode_capacity",
+                args.decode_capacity,
+            ),
+            (
+                "prefill_utilization",
+                "input_tokens_per_second",
+                tokens,
+                "prefill_capacity",
+                args.prefill_capacity,
+            ),
+        ):
+            if capacity is not None:
+                out.append(
+                    _result(
+                        name,
+                        queueing.utilization(demand, capacity),
+                        "",
+                        "потребность / мощность",
+                        {demand_key: demand, key: capacity},
+                        A_CH3_QUEUE,
+                        notes=(overload,),
+                    )
+                )
+    elif args.decode_capacity is not None or args.prefill_capacity is not None:
+        raise ValueError("для загрузки нужны --class и --rate")
+    if any(v is not None for v in little.values()):
+        missing = [flag for flag, value in little.items() if value is None]
+        if missing:
+            raise ValueError(
+                "для закона Литтла нужны --arrival-rate и --time-in-system; "
+                f"не хватает: {', '.join(missing)}"
+            )
+        out.append(
+            _result(
+                "in_system",
+                queueing.littles_law_in_system(args.arrival_rate, args.time_in_system),
+                "",
+                "L = λ · W",
+                {
+                    "arrival_rate": args.arrival_rate,
+                    "time_in_system": args.time_in_system,
+                },
+                A_CH11_LITTLE,
+                notes=("среднее в устойчивом режиме",),
+            )
+        )
+    return out
 
 
 def _peak_label(peak: dict[str, Any]) -> str:
@@ -853,10 +1362,11 @@ def _device_info(args: argparse.Namespace) -> list[Result]:
         "device_count": dev.device_count,
         "shared_with_cpu": dev.shared_with_cpu,
     }
-    scope: tuple[str, ...] = ()
-    if dev.scope != SINGLE:
-        note = _aggregate_note(dev, "ёмкость, пропускная способность и пики")
-        scope = (note + "; на одно устройство снимок их не делит",)
+    scope = _aggregate_note(
+        dev,
+        ["ёмкость памяти", "пропускная способность памяти", "пики"],
+        "; на одно устройство снимок их не делит",
+    )
     memory_notes = [
         *scope,
         "номинальная ёмкость по этикетке, а не доступный среде выполнения объём",
@@ -879,7 +1389,7 @@ def _device_info(args: argparse.Namespace) -> list[Result]:
         _peak_label(p) for p in dev.peaks if p.get("tera_ops_per_second") is not None
     ]
     return [
-        Result(
+        _result(
             "device_count",
             dev.device_count,
             "",
@@ -888,37 +1398,90 @@ def _device_info(args: argparse.Namespace) -> list[Result]:
             A_CH1_KEYS,
             notes=scope,
         ),
-        Result(
+        _result(
             "memory_bytes",
             dev.memory_bytes,
             "B",
             "nominal_capacity × единица ёмкости",
             info,
             A_CH1_KEYS,
-            notes=tuple(memory_notes),
+            notes=memory_notes,
         ),
-        Result(
+        _result(
             "bandwidth",
             dev.bandwidth,
             "B/s",
             "bandwidth_bytes_per_second",
             info,
             A_CH1_KEYS,
-            notes=tuple(bandwidth_notes),
+            notes=bandwidth_notes,
         ),
-        Result(
+        _result(
             "peak_flops",
             peak,
             "FLOP/s",
             "BF16 / накопление FP32 / tensor / dense; все пики снимка — в примечаниях (вход/накопление/блок/sparsity)",
             info,
             A_CH1_KEYS,
-            notes=tuple(peak_notes),
+            notes=peak_notes,
         ),
     ]
 
 
 # --- разбор аргументов ---------------------------------------------------------
+
+
+class _UsageError(Exception):
+    """Ошибка разбора аргументов: сообщение уже переведено."""
+
+
+_USAGE_MESSAGES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (
+        re.compile(r"the following arguments are required: (?P<a>.+)"),
+        "не заданы обязательные аргументы: {a}",
+    ),
+    (re.compile(r"unrecognized arguments: (?P<a>.+)"), "неизвестные аргументы: {a}"),
+    (
+        re.compile(r"ambiguous option: (?P<a>\S+) could match (?P<b>.+)"),
+        "неоднозначный флаг {a}: подходят {b}",
+    ),
+)
+_ARGUMENT_MESSAGES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (
+        re.compile(r"invalid choice: (?P<a>.+?) \(choose from (?P<b>.+)\)"),
+        "недопустимое значение {a}; допустимы: {b}",
+    ),
+    (
+        re.compile(r"invalid \w+ value: (?P<a>.+)"),
+        "ожидается число, получено {a}",
+    ),
+    (re.compile(r"expected one argument"), "нужно значение"),
+)
+
+
+def _translate(message: str) -> str:
+    """Сообщения argparse — на русском; неизвестные передаются как есть."""
+    argument = re.fullmatch(
+        r"argument (?P<name>[^:]+): (?P<rest>.+)", message, re.DOTALL
+    )
+    if argument:
+        rest = argument["rest"]
+        for pattern, template in _ARGUMENT_MESSAGES:
+            match = pattern.fullmatch(rest)
+            if match:
+                rest = template.format(**match.groupdict())
+                break
+        return f"аргумент {argument['name']}: {rest}"
+    for pattern, template in _USAGE_MESSAGES:
+        match = pattern.fullmatch(message)
+        if match:
+            return template.format(**match.groupdict())
+    return f"ошибка аргументов: {message}"
+
+
+class _Parser(argparse.ArgumentParser):
+    def error(self, message: str) -> NoReturn:
+        raise _UsageError(_translate(message))
 
 
 def _count(text: str) -> int:
@@ -933,14 +1496,14 @@ def _count(text: str) -> int:
 
 
 def _parser() -> argparse.ArgumentParser:
-    fmt = argparse.ArgumentParser(add_help=False)
+    fmt = _Parser(add_help=False)
     fmt.add_argument(
         "--format",
         choices=("json", "md"),
         default=argparse.SUPPRESS,
         help="вывод: md (по умолчанию) или json",
     )
-    parser = argparse.ArgumentParser(
+    parser = _Parser(
         prog="calc.py",
         description="Калькуляторы по книге «AI Infra in Depth». Каждый результат — "
         "с формулой, входными данными и якорем на книгу.",
@@ -954,7 +1517,9 @@ def _parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True, metavar="команда")
 
     def command(
-        name: str, handler: Callable[[argparse.Namespace], list[Result]], help_text: str
+        name: str,
+        handler: Callable[[argparse.Namespace], list[Result]],
+        help_text: str,
     ) -> argparse.ArgumentParser:
         p = sub.add_parser(name, parents=[fmt], help=help_text, description=help_text)
         p.set_defaults(handler=handler)
@@ -995,6 +1560,11 @@ def _parser() -> argparse.ArgumentParser:
         "--params",
         type=_count,
         help="число параметров из карточки модели, если калькулятор его не считает (гибридные модели)",
+    )
+    p.add_argument(
+        "--quant-overhead-bytes",
+        type=float,
+        help="байт scale и частей в высокой точности сверх параметров × байты (квантизация)",
     )
 
     p = command("roofline", _roofline, "нижняя граница времени шага: max(F/Π, R/β)")
@@ -1074,7 +1644,10 @@ def _parser() -> argparse.ArgumentParser:
         "--draft", type=int, required=True, help="токенов черновика за раунд"
     )
     p.add_argument(
-        "--plain-step", type=float, required=True, help="секунд на обычный шаг decode"
+        "--plain-step",
+        type=float,
+        required=True,
+        help="секунд на обычный шаг decode",
     )
 
     p = command("ring", _ring, "кольцевой AllReduce")
@@ -1117,6 +1690,37 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--rtt", type=float, required=True, help="секунд")
     p.add_argument("--compute", type=float, required=True, help="секунд работы модели")
 
+    p = command("units", _units, "перевод объёмов, скоростей канала и типов данных")
+    p.add_argument("--size", help="объём с явной единицей, например '141.11 GB'")
+    p.add_argument(
+        "--to",
+        action="append",
+        choices=tuple(units.UNITS),
+        help="в какую единицу перевести --size (можно несколько раз)",
+    )
+    p.add_argument("--mbps", type=float, help="скорость канала, Mbit/s")
+    p.add_argument("--dtype", help="тип данных: bf16, fp8, int4, …")
+
+    p = command(
+        "queueing", _queueing, "потребность по классам запросов, загрузка, закон Литтла"
+    )
+    p.add_argument(
+        "--class",
+        dest="classes",
+        action="append",
+        help="класс запросов имя=входные:выходные токены, например long_input=8192:256",
+    )
+    p.add_argument(
+        "--rate",
+        dest="rates",
+        action="append",
+        help="интенсивность класса имя=запросов/с, например long_input=2",
+    )
+    p.add_argument("--decode-capacity", type=float, help="шагов decode в секунду")
+    p.add_argument("--prefill-capacity", type=float, help="входных токенов в секунду")
+    p.add_argument("--arrival-rate", type=float, help="поступлений в секунду")
+    p.add_argument("--time-in-system", type=float, help="секунд в системе")
+
     p = command(
         "device",
         _device_info,
@@ -1133,28 +1737,43 @@ def _error_text(error: Exception) -> str:
     return str(error)
 
 
+def _requested_json(argv: Sequence[str]) -> bool:
+    """Формат вывода для ошибки разбора, когда argparse ещё не вернул аргументы."""
+    for index, item in enumerate(argv):
+        if item == "--format=json":
+            return True
+        if item == "--format" and index + 1 < len(argv) and argv[index + 1] == "json":
+            return True
+    return False
+
+
+def _print_error(message: str, as_json: bool, command: str | None) -> None:
+    if as_json:
+        print(json.dumps({"command": command, "error": message}, ensure_ascii=False))
+    else:
+        print(f"Ошибка: {message}")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    raw = list(sys.argv[1:] if argv is None else argv)
     parser = _parser()
     try:
-        args = parser.parse_args(argv)
+        args = parser.parse_args(raw)
+    except _UsageError as error:
+        hint = "" if _requested_json(raw) else ". Справка: calc.py <команда> --help"
+        _print_error(f"{error}{hint}", _requested_json(raw), None)
+        return 2
     except SystemExit as stop:
-        # argparse уже напечатал справку или ошибку разбора
-        return stop.code if isinstance(stop.code, int) else 2
+        # --help: argparse уже напечатал справку
+        return stop.code if isinstance(stop.code, int) else 0
+    as_json = args.format == "json"
     try:
         results = args.handler(args)
     except (ValueError, KeyError) as error:
-        message = _error_text(error)
-        if args.format == "json":
-            print(
-                json.dumps(
-                    {"command": args.command, "error": message}, ensure_ascii=False
-                )
-            )
-        else:
-            print(f"Ошибка: {message}")
+        _print_error(_error_text(error), as_json, args.command)
         return 2
     snapshot = hardware.SNAPSHOT if getattr(args, "device", None) else None
-    if args.format == "json":
+    if as_json:
         payload = {
             "command": args.command,
             "hardware_snapshot": snapshot,
