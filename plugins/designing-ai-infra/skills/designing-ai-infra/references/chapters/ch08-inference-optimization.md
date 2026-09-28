@@ -426,7 +426,7 @@ python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --memory 12884
 **max_concurrent_requests** (верхняя граница): 37
 ```
 
-`--context 8448` — 10; общий префикс — `--memory 11979177984` (12 GiB минус 864 MiB) и `--context 2304` — 35. Остальные поля этого вызова относятся к шагу decode.
+`--context 8448` — 10; общий префикс — `--memory 11978932224` (12 GiB минус 864 MiB) и `--context 2304` — 35. Остальные поля этого вызова относятся к шагу decode.
 
 Нижняя граница раунда decode (строка «при 1792 GB/s» таблицы 8.6.3):
 
@@ -486,4 +486,5 @@ python3 scripts/calc.py roofline --device rtx-pro6000-blackwell-ws --flops 96485
 - MFU, MBU и расхождение прогноза с измерением (1.2.2, 1.3.4): `references/chapters/ch01-ai-infra-basics.md`; KV на токен, GQA/MLA, KDA, CED и V4.1: `references/chapters/ch02-model-architecture.md`; классы запросов, SLO и очередь: `references/chapters/ch03-workloads.md`.
 - Веса в ROM и пример 8K (выигрыш batch исчезает): `references/chapters/ch04-accelerators.md`; CUDA Graph, формы, накладные расходы хоста (vLLM v0.6.0): `references/chapters/ch05-operators-runtime.md`.
 - Многокарточный экземпляр и TP: `references/chapters/ch06-supernodes.md`; слоты коммуникационных запросов и перенос состояния V4.1 между экземплярами: `references/chapters/ch07-datacenter-network.md`.
+- История и дальнейшее чтение (8.7 книги): Orca (приём запросов на каждой итерации), PagedAttention и SGLang (страничное внимание, префиксное дерево), Sarathi-Serve и NanoFlow (блоки, конвейер, перекрытие ресурсов), Punica и S-LoRA (несколько адаптеров), Marconi (восстановление гибридного состояния) — `references/source-book/chapter8.md:713`.
 - Размещение вычислений и состояния, PD, вычисления экспертов на CPU (9.3), компактное состояние MLA (9.2.2), масштаб сервиса — глава 9 (`references/chapters/ch09-distributed-inference.md`).
