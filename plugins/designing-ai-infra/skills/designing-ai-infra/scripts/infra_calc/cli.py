@@ -141,6 +141,7 @@ LABELS = frozenset(
         "classes",
         "rates",
         "rounds",
+        "price_scope",
     }
 )
 INPUT_UNITS: dict[str, str] = {
@@ -1048,6 +1049,53 @@ def _serving_state(
     return total, divisor, notes
 
 
+def _serving_price(
+    args: argparse.Namespace,
+    dev: hardware.Device | None,
+    tp: int,
+    throughput: float,
+    parallel: dict[str, Any],
+) -> Result:
+    """Цена миллиона токенов; у агрегата область цены задаётся явно."""
+    aggregate = dev is not None and dev.scope != SINGLE
+    scope = args.price_scope
+    if aggregate and scope is None:
+        assert dev is not None
+        raise ValueError(
+            f"{dev.id} — агрегат (устройств в агрегате: {dev.device_count}): "
+            "неясно, за что --price-per-hour — за час одной карты или всей записи. "
+            "Укажите --price-scope card (цена карты × число устройств агрегата) "
+            "или --price-scope aggregate (цена всей записи как есть)"
+        )
+    scope = scope or "card"
+    cards = dev.device_count if aggregate and scope == "card" and dev else 1
+    multiplier = tp * cards
+    if cards > 1:
+        formula = f"{cards} × price_per_hour / 3600 / tok_s × 10^6"
+        notes: tuple[str, ...] = (f"цена за карту × устройств в агрегате ({cards})",)
+    elif tp > 1:
+        formula = "TP × price_per_hour / 3600 / tok_s × 10^6"
+        notes = (f"цена — за все карты экземпляра, TP = {tp}",)
+    else:
+        formula = "price_per_hour / 3600 / tok_s × 10^6"
+        notes = ("цена всей записи агрегата как есть",) if aggregate else ()
+    return _result(
+        "cost_per_million_tokens_lower_bound",
+        serving.cost_per_million_tokens(args.price_per_hour * multiplier, throughput),
+        "$",
+        formula,
+        {
+            "price_per_hour": args.price_per_hour,
+            "price_scope": scope,
+            "tokens_per_second": throughput,
+            **parallel,
+        },
+        A_CH3_PRICE,
+        bound="lower",
+        notes=notes,
+    )
+
+
 def _serving(args: argparse.Namespace) -> list[Result]:
     _check(
         args,
@@ -1074,7 +1122,8 @@ def _serving(args: argparse.Namespace) -> list[Result]:
     if tp > 1 and spec is None:
         raise ValueError(
             "для --tp нужен --config: деление KV между картами зависит от "
-            "архитектуры (GQA — по головам KV, латентный KV MLA не делится)"
+            "архитектуры (GQA — по головам KV, латентный KV MLA не делится — вывод "
+            "из 2.3.2 и 6.2.2)"
         )
     kv_div = accounting.tp_kv_divisor(spec, tp) if spec is not None else 1
     state_total, state_div, state_notes = _serving_state(args, spec)
@@ -1123,7 +1172,9 @@ def _serving(args: argparse.Namespace) -> list[Result]:
     if tp > 1:
         assert spec is not None  # проверено выше: --tp > 1 требует --config
         split = (
-            "не делится (латентный KV MLA)" if kv_div == 1 else f"делится на {kv_div}"
+            "не делится (латентный KV MLA; вывод из 2.3.2 и 6.2.2)"
+            if kv_div == 1
+            else f"делится на {kv_div}"
         )
         dup = (
             f", головы KV дублируются (копий каждой: {tp // spec.kv_heads})"
@@ -1171,6 +1222,11 @@ def _serving(args: argparse.Namespace) -> list[Result]:
                 dev,
                 _labels(memory),
                 "; веса и KV считаются размещёнными во всём агрегате",
+            ),
+            *(
+                ("--reserve резервирует память на весь агрегат, а не на одну карту",)
+                if dev is not None and dev.scope != SINGLE
+                else ()
             ),
             "верхняя граница: активации, фрагментация и буферы сверх --reserve не учтены",
             lengths,
@@ -1278,25 +1334,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             )
         )
     if args.price_per_hour is not None:
-        price = serving.cost_per_million_tokens(args.price_per_hour * tp, throughput)
-        out.append(
-            _result(
-                "cost_per_million_tokens_lower_bound",
-                price,
-                "$",
-                "TP × price_per_hour / 3600 / tok_s × 10^6"
-                if tp > 1
-                else "price_per_hour / 3600 / tok_s × 10^6",
-                {
-                    "price_per_hour": args.price_per_hour,
-                    "tokens_per_second": throughput,
-                    **parallel,
-                },
-                A_CH3_PRICE,
-                bound="lower",
-                notes=(f"цена — за все карты экземпляра, TP = {tp}",) if tp > 1 else (),
-            )
-        )
+        out.append(_serving_price(args, dev, tp, throughput, parallel))
     return out
 
 
@@ -1373,7 +1411,12 @@ def _training(args: argparse.Namespace) -> list[Result]:
                 f"не хватает: {', '.join(missing)}"
             )
         dev = _device(args, "--peak-tflops")
-        if dev is not None and dev.scope != SINGLE and args.peak_tflops is None:
+        if (
+            dev is not None
+            and dev.scope != SINGLE
+            and args.peak_tflops is None
+            and args.devices > 1
+        ):
             raise ValueError(
                 f"пик агрегата {dev.id} уже суммирован по всем его устройствам "
                 f"({dev.device_count}), а --devices умножил бы его ещё раз: выберите одиночное "
@@ -2637,7 +2680,19 @@ def _parser() -> argparse.ArgumentParser:
         help="карт тензорного параллелизма; --weights, --weight-read, FLOPs и KV "
         "задаются для всей модели и делятся по картам (нужен --config)",
     )
-    p.add_argument("--price-per-hour", type=float, help="$ за час устройства")
+    p.add_argument(
+        "--price-per-hour",
+        type=float,
+        help="$ за час выбранной записи устройства: одной карты или, с "
+        "--price-scope aggregate, всей стойки",
+    )
+    p.add_argument(
+        "--price-scope",
+        choices=("card", "aggregate"),
+        help="к чему относится --price-per-hour: card — за карту (по умолчанию; у "
+        "агрегата умножается на число устройств), aggregate — за всю запись "
+        "агрегата; у агрегата обязателен",
+    )
 
     p = command("training", _training, "FLOPs обучения, состояние ZeRO и срок обучения")
     device_options(p, bandwidth=False)

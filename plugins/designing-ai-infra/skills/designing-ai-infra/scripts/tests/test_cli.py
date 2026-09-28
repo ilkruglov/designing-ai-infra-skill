@@ -343,6 +343,18 @@ class TrainingCommandTest(unittest.TestCase):
             v["training_seconds"]["value"], per_sequence / (1e15 * 0.5)
         )
 
+    def test_duration_on_whole_aggregate_is_allowed(self) -> None:
+        # одна стойка — один пик агрегата: N·Π = Π_агрегата, пик не умножается повторно
+        agg = values("device", "--device", "gb200-nvl72")["peak_flops"]["value"]
+        v = values(
+            "training", "--config", QWEN3_8B, "--tokens", "8192", "--total-tokens", "16384",
+            "--devices", "1", "--mfu", "0.4", "--device", "gb200-nvl72", "--allow-aggregate",
+        )  # fmt: skip
+        item = v["training_seconds"]
+        per_sequence = v["training_flops_per_sequence"]["value"]
+        self.assertAlmostEqual(item["value"], 2 * per_sequence / (agg * 0.4))
+        self.assertIn("72", " ".join(item["notes"]))
+
     def test_duration_needs_all_its_inputs(self) -> None:
         message = fails(
             "training", "--config", QWEN3_8B, "--tokens", "8192", "--devices", "8"
@@ -1109,6 +1121,63 @@ class ServingSplitTest(unittest.TestCase):
         note = " ".join(v["kv_bytes_per_token"]["notes"])
         self.assertIn("вывод", note)
         self.assertIn("2.3.2", note)
+
+    AGGREGATE = (
+        "serving", "--device", "gb200-nvl72", "--allow-aggregate",
+        "--weights", "1e9", "--weight-read", "1e9", "--decode-flops", "1e9",
+        "--kv-per-token", "1000", "--context", "10", "--batch", "8",
+    )  # fmt: skip
+
+    def test_aggregate_price_needs_scope(self) -> None:
+        # цена за час карты против цены за час стойки различается в 72 раза
+        message = fails(*self.AGGREGATE, "--price-per-hour", "3")
+        self.assertIn("--price-scope", message)
+        self.assertIn("72", message)
+
+    def test_aggregate_price_scopes(self) -> None:
+        # арифметическое тождество: card — цена × 72 карты, aggregate — как задано
+        card = values(*self.AGGREGATE, "--price-per-hour", "3", "--price-scope", "card")
+        rack = values(
+            *self.AGGREGATE, "--price-per-hour", "216", "--price-scope", "aggregate"
+        )
+        tok_s = card["tokens_per_second_upper_bound"]["value"]
+        expected = 3 * 72 / 3600 / tok_s * 1e6
+        for v in (card, rack):
+            self.assertAlmostEqual(
+                v["cost_per_million_tokens_lower_bound"]["value"], expected
+            )
+        self.assertEqual(
+            card["cost_per_million_tokens_lower_bound"]["inputs"]["price_scope"], "card"
+        )
+        self.assertEqual(
+            rack["cost_per_million_tokens_lower_bound"]["inputs"]["price_scope"],
+            "aggregate",
+        )
+        # --reserve на агрегате резервирует память всей стойки
+        notes = " ".join(card["max_concurrent_requests"]["notes"])
+        self.assertIn("--reserve", notes)
+
+    def test_single_device_price_unchanged(self) -> None:
+        # без --price-scope одиночное устройство считает цену за карту, как раньше
+        base = (*ServingCommandTest.RTX, "--price-per-hour", "2")
+        plain = values(*base)["cost_per_million_tokens_lower_bound"]
+        card = values(*base, "--price-scope", "card")[
+            "cost_per_million_tokens_lower_bound"
+        ]
+        self.assertEqual(plain["value"], card["value"])
+        tok_s = values(*base)["tokens_per_second_upper_bound"]["value"]
+        self.assertAlmostEqual(plain["value"], 2 / 3600 / tok_s * 1e6)
+
+    def test_mla_serving_note_is_marked_as_derived(self) -> None:
+        v = values(
+            "serving", "--device", "h100-sxm", "--config", str(CONFIGS / "deepseek-v3.json"),
+            "--tp", "8", "--weights", "1e9", "--weight-read", "1e9", "--decode-flops", "1e9",
+            "--kv-per-token", "70272", "--context", "8192",
+        )  # fmt: skip
+        notes = " ".join(v["tpot_lower_bound_seconds"]["notes"])
+        self.assertIn("вывод из 2.3.2 и 6.2.2", notes)
+        message = fails(*self.RTX_12GIB, "--tp", "2")
+        self.assertIn("вывод из 2.3.2 и 6.2.2", message)
 
     def test_tp_needs_config(self) -> None:
         message = fails(*self.RTX_12GIB, "--tp", "2")
