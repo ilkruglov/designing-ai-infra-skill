@@ -30,8 +30,16 @@ def _require_standard_attention(spec: ModelSpec) -> None:
         )
 
 
+def _check_tokens(new_tokens: int, history: int) -> None:
+    if new_tokens < 1:
+        raise ValueError(f"new_tokens должен быть не меньше 1: {new_tokens}")
+    if history < 0:
+        raise ValueError(f"history не может быть отрицательным: {history}")
+
+
 def attention_matrix_flops(spec: ModelSpec, new_tokens: int, history: int = 0) -> int:
     _require_standard_attention(spec)
+    _check_tokens(new_tokens, history)
     pairs = new_tokens * history + new_tokens * (new_tokens + 1) // 2
     return spec.layers * 4 * spec.heads * spec.head_dim * pairs
 
@@ -44,6 +52,9 @@ def forward_matrix_flops(
     output_head: str = "last",
 ) -> int:
     _require_standard_attention(spec)
+    _check_tokens(new_tokens, history)
+    if batch < 1:
+        raise ValueError(f"batch должен быть не меньше 1: {batch}")
     if output_head not in HEAD_TOKENS:
         raise ValueError(f"output_head должен быть одним из {', '.join(HEAD_TOKENS)}")
     per_token = sum(

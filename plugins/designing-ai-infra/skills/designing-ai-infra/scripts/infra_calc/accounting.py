@@ -64,6 +64,11 @@ def _layer_extra(spec: ModelSpec, layer: int) -> int:
 
 
 def parameter_count(spec: ModelSpec, active: bool = False) -> int:
+    """Логические параметры основной модели по config.json.
+
+    Слои MTP (num_nextn_predict_layers) не считаются: DeepSeek-V3 даёт 671B,
+    как logical_base_parameters автора, хотя чекпойнт с MTP весит около 685B.
+    """
     if spec.family == "hybrid_linear":
         raise UnsupportedArchitecture(
             spec.model_type,
@@ -95,6 +100,10 @@ def kv_bytes_per_token(spec: ModelSpec, kv_bytes: float = 2.0) -> int:
 def kv_resident_bytes(
     spec: ModelSpec, context_tokens: int, kv_bytes: float = 2.0
 ) -> int:
+    if context_tokens < 0:
+        raise ValueError(
+            f"context_tokens не может быть отрицательным: {context_tokens}"
+        )
     tokens = min(context_tokens, spec.window) if spec.window else context_tokens
     return kv_bytes_per_token(spec, kv_bytes) * tokens
 
@@ -121,11 +130,12 @@ def fixed_state_bytes(
 def decode_weight_read_bytes(spec: ModelSpec, bytes_per_param: float = 2.0) -> int:
     """Чтение весов за один шаг decode одного запроса.
 
-    Таблица эмбеддингов читается одной строкой на токен, поэтому исключена.
+    Без общих весов таблица эмбеддингов читается одной строкой на токен и
+    исключается, а словарная голова читается целиком. При общих весах
+    (tie_word_embeddings) это одна матрица: голова читает её целиком на каждом
+    шаге, поэтому она остаётся в чтении и объём равен случаю без общих весов.
     Для MoE учитываются активные эксперты одного токена; при батче читается
     объединение экспертов, которое эта функция не моделирует.
     """
-    return int(
-        (parameter_count(spec, active=True) - embedding_parameters(spec))
-        * bytes_per_param
-    )
+    lookup_only = 0 if spec.tied_embeddings else embedding_parameters(spec)
+    return int((parameter_count(spec, active=True) - lookup_only) * bytes_per_param)
