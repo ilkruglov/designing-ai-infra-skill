@@ -91,15 +91,19 @@ python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --memory 12884
   --weight-read 15136811008 --decode-flops 19968032768 --kv-per-token 147456 --context 8192 --memory-context 8448
 python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --memory 12884901888 --weights 0 \
   --weight-read 15136811008 --decode-flops 19968032768 --kv-per-token 147456 --context 8192 --memory-context 8448 \
-  --shared-prefix-tokens 6144
+  --shared-prefix-tokens 6144 --batch 16
 ```
 
 ```text
 **max_concurrent_requests** (верхняя граница): 10
 **max_concurrent_requests** (верхняя граница): 35
+**tpot_lower_bound_seconds** (нижняя граница): 0.0116488 s
+**tpot_without_prefix_dedup_seconds**: 0.0192322 s
 ```
 
-`--shared-prefix-tokens` вычитает KV префикса из пула один раз, а на запрос оставляет 8448 − 6144 = 2304 собственных токена, как в 8.3.2 (`864 + 324b` MiB). `--memory-context` остаётся полной длиной запроса, шаг по-прежнему считается при `--context 8192`: каждый запрос читает KV всего контекста. **Измерение:** фактический размер пула KV, который движок сообщает после запуска (после захвата графов и выделения рабочей области), заменяет 12 GiB.
+`--shared-prefix-tokens` вычитает KV префикса из пула один раз, а на запрос оставляет 8448 − 6144 = 2304 собственных токена, как в 8.3.2 (`864 + 324b` MiB); `--memory-context` остаётся полной длиной запроса.
+
+Шаг при batch 16 (вариант B раздела 8.6.3) калькулятор печатает двумя полями, потому что как ядро внимания читает общий префикс, книга не описывает. `tpot_lower_bound_seconds` — 11,65 ms: префикс читается один раз на batch, это нижняя граница при любом ядре. `tpot_without_prefix_dedup_seconds` — 19,23 ms: каждый запрос читает KV всех 8192 токенов; нижняя граница это только при допущении, что ядро читает префикс каждым запросом. Измеренный раунд варианта B — 27,35 ms (`references/source-book/chapter8.md:642`), выше обоих значений. **Измерение:** фактический размер пула KV, который движок сообщает после запуска (после захвата графов и выделения рабочей области), заменяет 12 GiB.
 
 ### 4. Нижние границы prefill и decode
 

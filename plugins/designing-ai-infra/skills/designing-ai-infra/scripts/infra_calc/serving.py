@@ -46,14 +46,23 @@ def tpot_lower_bound_seconds(
     kv_read_bytes_per_request: float,
     peak: float,
     bandwidth: float,
+    *,
+    shared_read_bytes: float = 0,
 ) -> float:
+    """Нижняя граница шага decode; shared_read_bytes читается один раз на batch.
+
+    shared_read_bytes — KV общего префикса, если он не входит в
+    kv_read_bytes_per_request: минимальное чтение, когда ядро внимания читает
+    префикс один раз для всех запросов batch.
+    """
     require_int_at_least("batch", batch, 1)
     require_non_negative("decode_flops_per_request", decode_flops_per_request)
     require_non_negative("weight_read_bytes", weight_read_bytes)
     require_non_negative("kv_read_bytes_per_request", kv_read_bytes_per_request)
+    require_non_negative("shared_read_bytes", shared_read_bytes)
     return lower_bound_seconds(
         batch * decode_flops_per_request,
-        weight_read_bytes + batch * kv_read_bytes_per_request,
+        weight_read_bytes + shared_read_bytes + batch * kv_read_bytes_per_request,
         peak,
         bandwidth,
     )

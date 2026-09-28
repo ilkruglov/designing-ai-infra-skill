@@ -1004,12 +1004,58 @@ class ServingSplitTest(unittest.TestCase):
         self.assertEqual(capacity["anchor"], "references/source-book/chapter8.md:268")
         self.assertIn("shared_prefix", capacity["formula"])
         self.assertIn("один раз", " ".join(capacity["notes"]))
-        # шаг читает весь контекст запроса: граница TPOT — при --context, как без префикса
-        step = shared["tpot_lower_bound_seconds"]
-        self.assertEqual(step["inputs"]["context"], 8192)
+        # при batch 1 чтение префикса один раз на batch и каждым запросом совпадает
         self.assertEqual(
-            step["value"], independent["tpot_lower_bound_seconds"]["value"]
+            shared["tpot_lower_bound_seconds"]["value"],
+            independent["tpot_lower_bound_seconds"]["value"],
         )
+
+    def test_shared_prefix_step_reads_prefix_once_per_batch(self) -> None:
+        # вариант B главы 8.6.3 (chapter8.md:666): batch 16, вход 8192, первые 6144 общие.
+        # Как ядро читает общий префикс, книга не говорит, поэтому нижняя граница
+        # читает его один раз на batch; вывод вручную:
+        # (15 136 811 008 + 6144·147 456 + 16·2048·147 456) / 1.792e12 = 11.6488 ms.
+        # Без дедупликации — (15 136 811 008 + 16·8192·147 456) / 1.792e12 = 19.2322 ms,
+        # как «19.23 ms» при 1792 GB/s для 34,46 GB (chapter8.md:655, 675) и без префикса
+        batch = ("--batch", "16")
+        independent = values(*self.LONG, *batch)
+        shared = values(*self.LONG, *batch, "--shared-prefix-tokens", "6144")
+        step = shared["tpot_lower_bound_seconds"]
+        self.assertEqual(step["bound"], "lower")
+        self.assertAlmostEqual(step["value"] * 1e3, 11.648782857, places=6)
+        self.assertEqual(step["inputs"]["context"], 8192)
+        self.assertIn("один раз на batch", " ".join(step["notes"]))
+        full = shared["tpot_without_prefix_dedup_seconds"]
+        self.assertIsNone(full["bound"])
+        self.assertEqual(
+            full["value"], independent["tpot_lower_bound_seconds"]["value"]
+        )
+        self.assertEqual(round(full["value"] * 1e3, 2), 19.23)
+        self.assertIn("каждым запросом", " ".join(full["notes"]))
+        self.assertEqual(step["input_units"]["kv_shared_prefix"], "B")
+        self.assertNotIn("kv_shared_prefix", full["inputs"])
+        # пропускная способность — от нижней границы шага, поэтому верхняя граница
+        self.assertAlmostEqual(
+            shared["tokens_per_second_upper_bound"]["value"], 16 / step["value"]
+        )
+        # без префикса отдельного поля нет
+        self.assertNotIn("tpot_without_prefix_dedup_seconds", independent)
+
+    def test_shared_prefix_note_names_where_it_is_stored(self) -> None:
+        # «на карту» — только для одиночного устройства и TP; память агрегата — вся запись
+        single = values(*self.LONG, "--shared-prefix-tokens", "6144")
+        self.assertIn(
+            "B на карту", " ".join(single["max_concurrent_requests"]["notes"])
+        )
+        rack = values(
+            "serving", "--device", "gb200-nvl72", "--allow-aggregate",
+            "--weights", "0", "--weight-read", "1e9", "--decode-flops", "1e9",
+            "--kv-per-token", "147456", "--context", "8192", "--memory-context", "8448",
+            "--shared-prefix-tokens", "6144",
+        )  # fmt: skip
+        notes = " ".join(rack["max_concurrent_requests"]["notes"])
+        self.assertIn("B во всём агрегате", notes)
+        self.assertNotIn("на карту", notes)
 
     def test_shared_prefix_limits(self) -> None:
         # префикс — часть входа: не длиннее --context; --memory-context по-прежнему

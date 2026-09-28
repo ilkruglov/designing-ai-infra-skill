@@ -58,6 +58,22 @@ class ServingTest(unittest.TestCase):
         # видеопамяти одной H100 SXM» — ноль запросов, а не отрицательное число
         self.assertEqual(serving.max_concurrent_requests(80e9, 141.11e9, 1e9), 0)
 
+    def test_tpot_reads_shared_prefix_once(self) -> None:
+        # вариант B главы 8.6.3 (chapter8.md:666): 16 запросов, общий префикс 6144 токена;
+        # вывод вручную: префикс один раз на batch —
+        # (15 136 811 008 + 6144·147 456 + 16·2048·147 456) / 1.792e12 ≈ 11.65 ms
+        kv = 147_456
+        step = serving.tpot_lower_bound_seconds(
+            16, 19_968_032_768, 15_136_811_008, 2048 * kv, 503.8e12, 1.792e12,
+            shared_read_bytes=6144 * kv,
+        )  # fmt: skip
+        self.assertAlmostEqual(step * 1e3, 11.648782857, places=6)
+        for bad in (-1.0, math.nan):
+            with self.subTest(shared=bad), self.assertRaises(ValueError):
+                serving.tpot_lower_bound_seconds(
+                    1, 0, 0, 0, 1e12, 1e12, shared_read_bytes=bad
+                )
+
     def test_tpot_bound_batch_eight(self) -> None:
         # chapter1.md:268: чтение весов «\approx20{,}90\ \mathrm{ms}»;
         # chapter1.md:293: восемь запросов делят одно чтение, граница «по-прежнему равна 20,90 мс»

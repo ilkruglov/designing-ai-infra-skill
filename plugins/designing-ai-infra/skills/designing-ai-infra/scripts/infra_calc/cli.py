@@ -169,6 +169,7 @@ INPUT_UNITS: dict[str, str] = {
     "reserve": "B",
     "kv_request": "B",
     "kv_request_per_device": "B",
+    "kv_shared_prefix": "B",
     "message": "B",
     "upload": "B",
     "download": "B",
@@ -1292,10 +1293,18 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             f"floor((C − {w_term} − reserve − {kv_term} × shared_prefix) / "
             f"({kv_term} × (memory_context − shared_prefix){s_term}))"
         )
+        if dev is not None and dev.scope != SINGLE:
+            where = (
+                "во всём агрегате"
+                if memory is not None and memory.snapshot_label
+                else "в пуле --memory"
+            )
+        else:
+            where = "на карту"
         prefix_notes: tuple[str, ...] = (
             (
                 f"общий префикс shared_prefix = {prefix} ток. хранится в пуле один раз "
-                f"({format_number(round(kv_card * prefix))} B на карту), на запрос — "
+                f"({format_number(round(kv_card * prefix))} B {where}), на запрос — "
                 f"memory_context − shared_prefix = {own} собственных ток.; один раз "
                 "хранятся заполненные блоки префикса, неполный хвостовой блок каждый "
                 "запрос копирует при записи (8.3.2) — задавайте префикс кратным блоку KV"
@@ -1353,22 +1362,35 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             notes=memory_notes,
         )
 
-    kv_request = kv_card * context + state_card
-    step = serving.tpot_lower_bound_seconds(
-        args.batch,
-        args.decode_flops / tp,
-        args.weight_read / tp,
-        kv_request,
-        peak.value,
-        bw.value,
-    )
+    kv_key = "kv_request_per_device" if tp > 1 else "kv_request"
+    kv_full = kv_card * context + state_card
+    # с общим префиксом нижняя граница читает его один раз на batch: как ядро
+    # внимания читает префикс, книга не описывает, а меньше этого прочитать нельзя
+    shared_read = kv_card * prefix
+    kv_request = kv_full - shared_read
+
+    def step_seconds(per_request: float, shared: float) -> float:
+        return serving.tpot_lower_bound_seconds(
+            args.batch,
+            args.decode_flops / tp,
+            args.weight_read / tp,
+            per_request,
+            peak.value,
+            bw.value,
+            shared_read_bytes=shared,
+        )
+
+    step = step_seconds(kv_request, shared_read)
     step_inputs = {
         **arch,
         "batch": args.batch,
         "decode_flops": args.decode_flops,
         "weight_read": args.weight_read,
         "context": context,
-        ("kv_request_per_device" if tp > 1 else "kv_request"): kv_request,
+        **(
+            {"shared_prefix": prefix, "kv_shared_prefix": shared_read} if prefix else {}
+        ),
+        kv_key: kv_request,
         **state,
         **parallel,
         **peak.inputs,
@@ -1378,12 +1400,22 @@ def _serving(args: argparse.Namespace) -> list[Result]:
     r_term = "R_W/TP" if tp > 1 else "R_W"
     kv_read = "R_KV/d_KV" if kv_div > 1 else "R_KV"
     kv_read = f"({kv_read}{s_term})" if state_total else kv_read
-    step_notes = [*rate_notes, lengths, *tp_notes]
+    step_formula = f"max(B·{f_term}, ({r_term} + B·{kv_read})/β)"
     if prefix:
-        step_notes.append(
-            "общий префикс шаг не сокращает: каждый запрос читает KV всего context, "
-            "включая префикс (допущение: ядро внимания не читает общий префикс один "
-            "раз на batch)"
+        # префикс — один раз на batch, собственная часть и состояние — каждым запросом
+        own_read = f"{kv_term} × (context − shared_prefix){s_term}"
+        step_formula = (
+            f"max(B·{f_term}, ({r_term} + {kv_term} × shared_prefix + "
+            f"B·({own_read}))/β)"
+        )
+    step_notes = [*rate_notes, lengths, *tp_notes]
+    prefix_step_notes: list[str] = []
+    if prefix:
+        prefix_step_notes.append(
+            "общий префикс читается один раз на batch — нижняя граница при любом ядре "
+            "внимания; как ядро читает общий префикс, книга (8.3) не описывает. Если "
+            "каждый запрос читает KV префикса сам, шаг не меньше "
+            "tpot_without_prefix_dedup_seconds"
         )
     if tp > 1:
         step_notes.append(
@@ -1401,11 +1433,11 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             "tpot_lower_bound_seconds",
             step,
             "s",
-            f"max(B·{f_term}, ({r_term} + B·{kv_read})/β)",
+            step_formula,
             step_inputs,
             A_CH1_TIME,
             bound="lower",
-            notes=step_notes,
+            notes=(*step_notes, *prefix_step_notes),
         ),
         _result(
             "tokens_per_second_upper_bound",
@@ -1415,9 +1447,32 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             step_inputs,
             A_CH1_TIME,
             bound="upper",
-            notes=step_notes,
+            notes=(*step_notes, *prefix_step_notes),
         ),
     ]
+    if prefix:
+        out.append(
+            _result(
+                "tpot_without_prefix_dedup_seconds",
+                step_seconds(kv_full, 0),
+                "s",
+                f"max(B·{f_term}, ({r_term} + B·{kv_read})/β)",
+                {
+                    **{k: v for k, v in step_inputs.items() if k != "kv_shared_prefix"},
+                    kv_key: kv_full,
+                },
+                A_CH1_TIME,
+                notes=(
+                    *step_notes,
+                    (
+                        "без дедупликации префикса: каждый запрос читает KV всего "
+                        "context, включая общий префикс; нижняя граница шага, только "
+                        "если ядро внимания читает префикс каждым запросом — это "
+                        "допущение о ядре, книга (8.3) его не описывает"
+                    ),
+                ),
+            )
+        )
     if args.prefill_flops is not None:
         ttft = serving.ttft_lower_bound_seconds(
             args.prefill_flops / tp, weights_card, peak.value, bw.value

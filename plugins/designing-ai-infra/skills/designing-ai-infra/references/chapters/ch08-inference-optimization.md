@@ -431,12 +431,16 @@ python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --memory 12884
 ```bash
 python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --memory 12884901888 --weights 0 \
   --weight-read 15136811008 --decode-flops 19968032768 --kv-per-token 147456 --context 8192 --memory-context 8448 \
-  --shared-prefix-tokens 6144
+  --shared-prefix-tokens 6144 --batch 16
 ```
 
 ```text
 **max_concurrent_requests** (верхняя граница): 35
+**tpot_lower_bound_seconds** (нижняя граница): 0.0116488 s
+**tpot_without_prefix_dedup_seconds**: 0.0192322 s
 ```
+
+Шаг варианта B (batch 16) — двумя полями: как ядро внимания читает общий префикс, 8.3 не описывает. 11,65 ms — префикс читается один раз на batch (нижняя граница при любом ядре); 19,23 ms — каждый запрос читает KV всех 8192 токенов (граница только при таком ядре — допущение). Измеренный раунд — 27,35 ms.
 
 Нижняя граница раунда decode (строка «при 1792 GB/s» таблицы 8.6.3):
 
