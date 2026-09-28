@@ -135,8 +135,9 @@ class ModelCommandTest(unittest.TestCase):
         self.assertEqual(v["weight_bytes"]["value"], 2000)
 
     def test_params_for_countable_model_is_refused(self) -> None:
+        # chapter2-model-comparison.json: Qwen3-8B total_parameters 8 190 735 360
         message = fails("model", "--config", QWEN3_8B, "--params", "1000")
-        self.assertIn("8190735360", message)
+        self.assertIn("получено 8 190 735 360", message)
 
 
 class RooflineCommandTest(unittest.TestCase):
@@ -1392,6 +1393,33 @@ class ReviewFixesTest(unittest.TestCase):
         self.assertIn("ёмкост", " ".join(six_nd["notes"]))
         # состояние ZeRO хранит все параметры, а не активные
         self.assertEqual(v["zero0_state_bytes_per_gpu"]["value"], 16 * 30_532_122_624)
+
+    def test_moe_note_groups_digits(self) -> None:
+        # qwen3-30b-a3b-decode-b1-s8192.json: 30 532 122 624 параметров, из них активных
+        # 30 532 122 624 − 28 991 029 248 + 1 811 939 328 = 3 353 032 704; целые в
+        # примечаниях — с разрядами через пробел, как в значениях результатов
+        v = values(
+            "training", "--config", str(CONFIGS / "qwen3-30b-a3b.json"),
+            "--tokens", "4096", "--dp", "8",
+        )  # fmt: skip
+        notes = " ".join(v["six_nd_flops_per_sequence"]["notes"])
+        self.assertIn("3 353 032 704 активных параметров из 30 532 122 624", notes)
+
+    def test_fixed_state_notes_group_digits(self) -> None:
+        # chapter2.md:422: фиксированное состояние Qwen3.6 — 64 880 640 байт на запрос
+        base = (
+            "serving", "--peak-tflops", "1", "--bandwidth", "1e12", "--memory", "12884901888",
+            "--weights", "0", "--weight-read", "0", "--decode-flops", "0",
+            "--kv-per-token", "20480", "--context", "8192",
+            "--config", str(CONFIGS / "qwen3.6-35b-a3b.json"),
+        )  # fmt: skip
+        auto = " ".join(values(*base)["max_concurrent_requests"]["notes"])
+        self.assertIn("64 880 640 B на запрос", auto)
+        given = values(*base, "--fixed-state-bytes", "1000")
+        self.assertIn(
+            "64 880 640 B на запрос",
+            " ".join(given["max_concurrent_requests"]["notes"]),
+        )
 
     def test_concurrency_is_an_upper_bound(self) -> None:
         v = values(*ServingCommandTest.RTX)

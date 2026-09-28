@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 from types import MappingProxyType
-from typing import cast
+from typing import Any, cast
 
 from .checks import require_int_at_least
 
@@ -50,10 +50,20 @@ class Device:
     name: str
     memory_bytes: int | None
     bandwidth: float | None
-    peaks: tuple[dict, ...]
+    # записи пиков только для чтения: снимок кэшируется load_devices()
+    peaks: tuple[Mapping[str, Any], ...]
     scope: str = "single_device"
     device_count: int = 1
     shared_with_cpu: bool = False
+
+
+def _freeze(value: Any) -> Any:
+    """Глубокая копия JSON только для чтения: dict — MappingProxyType, list — tuple."""
+    if isinstance(value, dict):
+        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, list):
+        return tuple(_freeze(item) for item in value)
+    return value
 
 
 def _parse_device(entry: dict) -> Device:
@@ -85,7 +95,7 @@ def _parse_device(entry: dict) -> Device:
             int(capacity * _CAPACITY_UNITS[unit_name]) if capacity is not None else None
         ),
         bandwidth=memory.get("bandwidth_bytes_per_second"),
-        peaks=tuple(entry.get("peak_rates", [])),
+        peaks=tuple(_freeze(peak) for peak in entry.get("peak_rates", [])),
         scope=scope,
         device_count=count,
         shared_with_cpu=bool(memory.get("shared_with_cpu", False)),
@@ -123,7 +133,7 @@ def device(device_id: str, allow_aggregate: bool = False) -> Device:
     return dev
 
 
-def _label(peak: dict) -> str:
+def _label(peak: Mapping[str, Any]) -> str:
     return "/".join(
         str(peak.get(field))
         for field in (

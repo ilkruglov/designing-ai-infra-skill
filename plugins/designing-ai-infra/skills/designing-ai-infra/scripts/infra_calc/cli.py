@@ -17,7 +17,7 @@ import json
 import math
 import re
 import sys
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NoReturn
@@ -43,7 +43,7 @@ from .checks import (
     require_positive,
 )
 from .model import ModelSpec, UnsupportedArchitecture, load_config, parse_spec
-from .result import Result
+from .result import Result, format_number
 
 BOOK = "references/source-book"
 A_CH1_KEYS = f"{BOOK}/chapter1.md:152"
@@ -664,7 +664,8 @@ def _model(args: argparse.Namespace) -> list[Result]:
         if args.params is not None:
             raise ValueError(
                 "--params нужен только для архитектур, где калькулятор не считает "
-                f"параметры; для {spec.model_type} по config.json получено {params}"
+                f"параметры; для {spec.model_type} по config.json получено "
+                f"{format_number(params)}"
             )
         read_notes = wrapper
         if spec.experts:
@@ -1028,13 +1029,15 @@ def _serving_state(
         total: float = args.fixed_state_bytes
         if auto:
             notes.append(
-                f"--fixed-state-bytes заменяет состояние из config: {auto} B на запрос"
+                "--fixed-state-bytes заменяет состояние из config: "
+                f"{format_number(auto)} B на запрос"
             )
     elif auto:
         total = auto
         notes.append(
             f"фиксированное состояние из config ({spec.model_type if spec else ''}): "
-            f"{auto} B на запрос — рекуррентное и свёрточное состояние линейных слоёв"
+            f"{format_number(auto)} B на запрос — рекуррентное и свёрточное состояние "
+            "линейных слоёв"
         )
     else:
         total = 0
@@ -1355,7 +1358,8 @@ def _training(args: argparse.Namespace) -> list[Result]:
     if active != params:
         six_nd_notes += (
             (
-                f"MoE: N — {active} активных параметров из {params}; все параметры "
+                f"MoE: N — {format_number(active)} активных параметров из "
+                f"{format_number(params)}; все параметры "
                 "определяют ёмкость (веса, состояние ZeRO), активные — лишь грубую "
                 "оценку вычислений"
             ),
@@ -2370,7 +2374,7 @@ def _queueing(args: argparse.Namespace) -> list[Result]:
     return out
 
 
-def _peak_label(peak: dict[str, Any]) -> str:
+def _peak_label(peak: Mapping[str, Any]) -> str:
     fields = ("input_precision", "accumulator_precision", "execution_unit", "sparsity")
     unit = "TFLOP/s" if peak.get("operation_kind") == "floating_point" else "TOPS"
     label = "/".join(str(peak.get(field)) for field in fields)

@@ -49,7 +49,7 @@ class Result:
         if self.value is None:
             shown = "не вычисляется"
         else:
-            shown = f"{_number(self.value)} {self.unit}".rstrip()
+            shown = f"{format_number(self.value)} {self.unit}".rstrip()
         lines = [f"**{self.name}**{bound}: {shown}", f"- формула: `{self.formula}`"]
         if self.inputs:
             shown_inputs = ", ".join(
@@ -62,7 +62,8 @@ class Result:
         return "\n".join(lines)
 
 
-def _number(value: float) -> str:
+def format_number(value: float) -> str:
+    """Число для текста: целые полностью с разрядами, дробные — 6 значащих цифр."""
     if isinstance(value, int) and not isinstance(value, bool):
         # целые — полностью, с разрядами через пробел, как в книге: 8 190 735 360
         return f"{value:,}".replace(",", " ")
@@ -71,5 +72,5 @@ def _number(value: float) -> str:
 
 def _shown(value: Any) -> str:
     if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return _number(value)
+        return format_number(value)
     return str(value)

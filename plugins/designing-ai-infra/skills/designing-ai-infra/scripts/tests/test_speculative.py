@@ -87,6 +87,14 @@ class SpeculativeTest(unittest.TestCase):
             with self.subTest(args=args), self.assertRaises(ValueError):
                 speculative.breakeven_round_seconds(*args)
 
+    def test_breakeven_names_non_finite_expected_tokens(self) -> None:
+        # NaN и бесконечность — не «меньше 1», а не число: сообщение о конечности
+        for value in (math.nan, math.inf):
+            with self.subTest(value=value), self.assertRaises(ValueError) as caught:
+                speculative.breakeven_round_seconds(value, 0.01)
+            self.assertIn("конечным числом", str(caught.exception))
+            self.assertNotIn("меньше 1", str(caught.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

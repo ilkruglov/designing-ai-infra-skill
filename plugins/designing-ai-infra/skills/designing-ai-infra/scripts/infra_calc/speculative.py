@@ -36,8 +36,9 @@ def mean_time_per_token(round_seconds: list[float], round_tokens: list[int]) -> 
 
 def breakeven_round_seconds(expected_tokens: float, plain_step_seconds: float) -> float:
     """Раунд выгоден, пока он короче E[N] обычных шагов decode."""
+    # конечность первой: NaN — не «меньше 1», а не число
+    require_finite("expected_tokens", expected_tokens)
     if not expected_tokens >= 1:
         raise ValueError(f"E[N] не может быть меньше 1: {expected_tokens}")
-    require_finite("expected_tokens", expected_tokens)
     require_positive("plain_step_seconds", plain_step_seconds)
     return expected_tokens * plain_step_seconds

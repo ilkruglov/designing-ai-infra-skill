@@ -151,6 +151,21 @@ class LoaderTest(unittest.TestCase):
             devices["h100-sxm"] = devices["rtx4090"]  # type: ignore[index]
         self.assertEqual(hardware.device("h100-sxm").id, "h100-sxm")
 
+    def test_peaks_of_cached_snapshot_are_read_only(self) -> None:
+        # снимок кэшируется: запись в dev.peaks[i] изменила бы пик для всех следующих
+        # вызовов; chapter1.md:268 — пик H100 BF16 989.4 TFLOP/s остаётся прежним
+        dev = hardware.device("h100-sxm")
+        peak = dev.peaks[0]
+        with self.assertRaises(TypeError):
+            peak["tera_ops_per_second"] = 1  # type: ignore[index]
+        nested = next(p for p in dev.peaks if p.get("supporting_evidence"))
+        self.assertIsInstance(nested["supporting_evidence"], tuple)
+        with self.assertRaises(TypeError):
+            nested["supporting_evidence"][0]["claim"] = ""  # type: ignore[index]
+        self.assertEqual(
+            hardware.peak_flops(hardware.device("h100-sxm"), "BF16"), 989.4e12
+        )
+
     def test_unknown_capacity_unit_is_refused(self) -> None:
         with self.assertRaises(ValueError) as caught:
             hardware.load_devices(FIXTURES / "hardware-unknown-unit.json")
