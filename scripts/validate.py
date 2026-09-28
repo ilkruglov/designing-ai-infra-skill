@@ -107,8 +107,10 @@ CJK = re.compile(r"[\u3000-\u9fff]")
 # Полный sha коммита и короткая ссылка на оригинал в тексте документов
 FULL_COMMIT = re.compile(r"\b[0-9a-f]{40}\b")
 UPSTREAM_REFERENCE = re.compile(r"bojieli/ai-infra-book@(?P<sha>[0-9a-f]{7,40})\b")
-# Документы, которые называют пины; источник истины — константы
-# scripts/build_source_lock.py
+TRANSLATION_REFERENCE = re.compile(r"ilkruglov/ai-infra-book@(?P<sha>[0-9a-f]{7,40})\b")
+# Документы вне скилла, которые называют пины; источник истины — константы
+# scripts/build_source_lock.py. Документы скилла (iter_skill_documents)
+# проверяются все: короткие ссылки есть в шаблонах, шпаргалке и главах
 PIN_DOCUMENTS = (
     SKILL_DIRECTORY / "SKILL.md",
     SKILL_DIRECTORY / "references" / "source-map.md",
@@ -1383,8 +1385,10 @@ def validate_pins(root: Path, lock: dict, errors: list[str]) -> None:
     """Пины оригинала и перевода совпадают везде, где записаны.
 
     Источник истины — константы scripts/build_source_lock.py: они же попадают
-    в lock. SOURCE.json, lock и документы, которые называют пины, с ними
-    сверяются, чтобы смена пина не осталась записанной только в одном месте.
+    в lock. SOURCE.json, lock, все документы скилла, README и оба NOTICE с ними
+    сверяются: полный sha и короткие ссылки bojieli/ai-infra-book@… и
+    ilkruglov/ai-infra-book@…, чтобы смена пина не осталась записанной только в
+    одном месте.
     """
     pins = {"upstream": UPSTREAM_COMMIT, "translation": TRANSLATION_COMMIT}
     for source in (Path("SOURCE.json"), PLUGIN_DIRECTORY / "SOURCE.json"):
@@ -1409,7 +1413,13 @@ def validate_pins(root: Path, lock: dict, errors: list[str]) -> None:
                     f"book.{kind}_commit = {value!r}, expected {pin} "
                     "(scripts/build_source_lock.py)"
                 )
-    for relative in PIN_DOCUMENTS:
+    documents = dict.fromkeys(
+        [
+            *PIN_DOCUMENTS,
+            *(path.relative_to(root) for path in iter_skill_documents(root)),
+        ]
+    )
+    for relative in documents:
         path = root / relative
         if not path.is_file():
             continue
@@ -1421,13 +1431,17 @@ def validate_pins(root: Path, lock: dict, errors: list[str]) -> None:
                     f"{match.group(0)}, which is neither the upstream pin "
                     f"{UPSTREAM_COMMIT} nor the translation pin {TRANSLATION_COMMIT}"
                 )
-        for match in UPSTREAM_REFERENCE.finditer(text):
-            if not UPSTREAM_COMMIT.startswith(match.group("sha")):
-                errors.append(
-                    f"pin mismatch: {relative.as_posix()} names "
-                    f"bojieli/ai-infra-book@{match.group('sha')}, expected a prefix "
-                    f"of {UPSTREAM_COMMIT}"
-                )
+        for pattern, repository, pin in (
+            (UPSTREAM_REFERENCE, "bojieli/ai-infra-book", UPSTREAM_COMMIT),
+            (TRANSLATION_REFERENCE, "ilkruglov/ai-infra-book", TRANSLATION_COMMIT),
+        ):
+            for match in pattern.finditer(text):
+                if not pin.startswith(match.group("sha")):
+                    errors.append(
+                        f"pin mismatch: {relative.as_posix()} names "
+                        f"{repository}@{match.group('sha')}, expected a prefix "
+                        f"of {pin}"
+                    )
 
 
 def _dotted(payload: object, key: str) -> object:

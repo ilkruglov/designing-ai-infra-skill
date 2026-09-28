@@ -1496,6 +1496,59 @@ class PinTests(unittest.TestCase):
         self.assertIn("pin mismatch", errors[0])
         self.assertIn("deadbeef", errors[0])
 
+    def test_rejects_short_pin_mismatch_in_any_skill_document(self) -> None:
+        # короткая ссылка на оригинал есть и в шаблонах, шпаргалке и главах, а не
+        # только в документах, которые называют пины
+        references = SKILL_DIRECTORY / "references"
+        for relative in (
+            references / "templates" / "sizing-sheet.md",
+            references / "templates" / "training-plan.md",
+            references / "cheatsheet.md",
+            references / "chapters" / "ch04-accelerators.md",
+        ):
+            with self.subTest(document=relative.as_posix()):
+                errors = self.mutate(
+                    relative,
+                    "bojieli/ai-infra-book@56ecb425",
+                    "bojieli/ai-infra-book@56ecb426",
+                )
+                self.assertEqual(1, len(errors), errors)
+                self.assertIn("pin mismatch", errors[0])
+                self.assertIn(relative.as_posix(), errors[0])
+                self.assertIn("56ecb426", errors[0])
+
+    def append_line(self, relative: Path, line: str) -> list[str]:
+        with repository_copy() as copied_root:
+            path = copied_root / relative
+            text = path.read_text(encoding="utf-8")
+            path.write_text(f"{text}\n{line}\n", encoding="utf-8")
+            result = run_validator(copied_root)
+        return error_lines(result)
+
+    def test_rejects_translation_and_full_pin_mismatch_in_skill_documents(
+        self,
+    ) -> None:
+        template = SKILL_DIRECTORY / "references" / "templates" / "sizing-sheet.md"
+        cases = (
+            ("Перевод: ilkruglov/ai-infra-book@c791c07d.", "c791c07d"),
+            (f"Коммит оригинала `{self.OTHER}`.", self.OTHER),
+        )
+        for line, wrong in cases:
+            with self.subTest(line=line):
+                errors = self.append_line(template, line)
+                self.assertEqual(1, len(errors), errors)
+                self.assertIn("pin mismatch", errors[0])
+                self.assertIn(template.as_posix(), errors[0])
+                self.assertIn(wrong, errors[0])
+        # верные короткие ссылки на оба пина ошибок не дают
+        self.assertEqual(
+            [],
+            self.append_line(
+                template,
+                "ilkruglov/ai-infra-book@c791c07c и bojieli/ai-infra-book@56ecb425b07e",
+            ),
+        )
+
     def test_pins_are_the_lock_builder_constants(self) -> None:
         sys.path.insert(0, str(ROOT / "scripts"))
         try:
