@@ -1540,6 +1540,17 @@ class ServingWindowTest(unittest.TestCase):
         self.assertNotIn("включая", dedup)
         self.assertEqual(full["value"], v["tpot_lower_bound_seconds"]["value"])
 
+    def test_prefix_fully_in_window_dedup_reads_whole_prefix(self) -> None:
+        # длина 3072 < окна 4096: префикс 1024 целиком в окне
+        v = self.serving(
+            "--context", "3072", "--batch", "16", "--shared-prefix-tokens", "1024"
+        )
+        dedup = " ".join(v["tpot_without_prefix_dedup_seconds"]["notes"])
+        self.assertIn(
+            "KV последних min(context, window) ток., включая весь общий префикс", dedup
+        )
+        self.assertNotIn("часть", dedup)
+
     def test_prefix_partly_in_window_and_no_window_wording(self) -> None:
         # в окне остаются последние 1024 из 3072 ток. префикса (вывод выше);
         # без окна запрос без дедупликации читает KV всего контекста
@@ -2187,6 +2198,46 @@ class FinalReviewTest(unittest.TestCase):
         self.assertEqual(
             cli._prefill_read(tied, 1e9, 16, 0), (1e9, "M_w", {}, "lower", ())
         )
+
+    def test_prefill_read_table_precision_case_is_dense_only(self) -> None:
+        # MoE: общее условие и пример с экспертами; категоричное «таблица точнее
+        # слоёв — доля завышает» неверно (DeepSeek-V3: слои FP8, таблица BF16 — граница
+        # остаётся нижней), поэтому случай таблицы — только в примечании плотной модели
+        moe = values(
+            *self.PREFILL_8B, "--config", str(CONFIGS / "qwen3-30b-a3b.json"),
+            "--context", "16",
+        )  # fmt: skip
+        notes = " ".join(moe["ttft_lower_bound_seconds"]["notes"])
+        self.assertIn("эксперты хранятся точнее остальных весов", notes)
+        self.assertNotIn("таблица эмбеддингов точнее", notes)
+        self.assertNotIn("таблица эмбеддингов хранится точнее", notes)
+        dense = values(*self.PREFILL_8B, "--config", QWEN3_8B, "--context", "16")
+        notes = " ".join(dense["ttft_lower_bound_seconds"]["notes"])
+        self.assertIn(
+            "если таблица эмбеддингов хранится точнее прочитанных весов в среднем",
+            notes,
+        )
+
+    def test_prefill_read_repeat_clause_is_not_degenerate(self) -> None:
+        # повторы токенов снижают число строк не больше чем на (min(V, n) − 1)·h;
+        # при n = 0 (весь вход — префикс) и n = 1 повторов нет, оговорки нет
+        many = values(*self.PREFILL_8B, "--config", QWEN3_8B, "--context", "16")
+        notes = " ".join(many["ttft_lower_bound_seconds"]["notes"])
+        self.assertIn("не больше чем на (min(V, n) − 1)·h параметров", notes)
+        self.assertNotIn("(n − 1)", notes)
+        for context, prefix in (("32", "32"), ("17", "16")):
+            with self.subTest(context=context, prefix=prefix):
+                v = values(
+                    *self.PREFILL_8B, "--config", QWEN3_8B, "--context", context,
+                    "--memory-context", "48", "--shared-prefix-tokens", prefix,
+                )  # fmt: skip
+                item = v["ttft_lower_bound_seconds"]
+                notes = " ".join(item["notes"])
+                self.assertNotIn("повторя", notes)
+                self.assertNotIn("− 1)·h", notes)
+                n = int(context) - int(prefix)
+                self.assertEqual(item["inputs"]["prefill_tokens"], n)
+                self.assertIn(f"= {n} ток.", notes)
 
     def test_prefill_read_without_config_keeps_all_weights_and_says_so(self) -> None:
         # без --config значение прежнее — все веса M_w, но примечание говорит, что
