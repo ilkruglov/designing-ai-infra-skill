@@ -167,7 +167,7 @@ python3 scripts/calc.py serving --device h100-sxm --memory 68719476736 --weights
 
 **Гейт.** Для каждой пары моделей назван член, который растёт при изменении условия (batch, контекст, длина ответа, число экспертов), и порог, где лидер меняется. Выбор делается по стоимости принятого ответа на одинаковой задаче при одинаковых требованиях к качеству и сроку; для долгосрочного обслуживания — с учётом стоимости жизненного цикла `Q* = ΔC_0/Δc`.
 
-**Чем закрыть.** Ручной расчёт по шагам 4–6 и таблицам главы 2 (`references/chapters/ch02-model-architecture.md`): у Qwen3.6 фиксированная часть 61,875 MiB и рост 20 KiB на токен (`H*` = 3168), у Kimi K3 в компактном MLA — ≈ 433,4 MiB и 27 KiB (≈ 16,4K). Стоимость ответа — `references/playbooks/plan-resource-pool.md` (API) или шаг 7 `references/playbooks/size-inference.md` (свой сервис).
+**Чем закрыть.** Ручной расчёт по шагам 4–6 и таблицам главы 2 (`references/chapters/ch02-model-architecture.md`): у Qwen3.6 фиксированная часть 61,875 MiB и рост 20 KiB на токен (`H*` = 3168), у Kimi K3 в компактном MLA — ≈ 433,4 MiB и 27 KiB (≈ 16,4K). Стоимость ответа — `references/playbooks/plan-resource-pool.md` (API) или шаг 9 `references/playbooks/size-inference.md` (свой сервис).
 
 ### 8. Прогноз против измерения
 
