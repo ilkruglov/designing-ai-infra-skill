@@ -1,0 +1,180 @@
+{
+ "goldens": {
+  "301": {
+   "quantity": "max_concurrent_requests_at_end_of_generation",
+   "value": 13,
+   "unit": "requests",
+   "relative_tolerance": 0.01
+  },
+  "302": {
+   "quantity": "ttft_lower_bound_prefill_16384",
+   "value": 0.5795731,
+   "unit": "s",
+   "relative_tolerance": 0.01
+  },
+  "303": {
+   "quantity": "decode_step_lower_bound_batch4_ctx24576_32_experts",
+   "value": 0.0055456384,
+   "unit": "s",
+   "relative_tolerance": 0.01
+  },
+  "304": {
+   "quantity": "tp4_ring_allreduce_time_per_decode_step",
+   "value": 0.0050982912,
+   "unit": "s",
+   "relative_tolerance": 0.01
+  },
+  "305": {
+   "quantity": "optimal_checkpoint_interval_first_order",
+   "value": 840.4044921507738,
+   "unit": "s",
+   "relative_tolerance": 0.01
+  },
+  "306": {
+   "quantity": "training_days_elementwise_flops_mfu_0_4",
+   "value": 3.5934596321,
+   "unit": "days",
+   "relative_tolerance": 0.01
+  },
+  "307": {
+   "quantity": "cost_per_successful_task_retry_tree",
+   "value": 0.18713987,
+   "unit": "USD",
+   "relative_tolerance": 0.01
+  },
+  "308": {
+   "quantity": "computer_use_cloud_task_total_time",
+   "value": 26.7096,
+   "unit": "s",
+   "relative_tolerance": 0.01
+  }
+ },
+ "results": {
+  "with": {
+   "301": {
+    "value": 13,
+    "unit_conversion": "none",
+    "rel_err": 0.0,
+    "in_tolerance": true,
+    "snippet": "**13 запросов** одновременно к концу генерации."
+   },
+   "302": {
+    "value": 0.579573,
+    "unit_conversion": "none; headline gives ≈ 0,580 s with precise value 0,579573 s in parentheses, precise value used",
+    "rel_err": 1.7e-07,
+    "in_tolerance": true,
+    "snippet": "**Нижняя граница TTFT (только prefill) — ≈ 0,580 s (0,579573 s).**"
+   },
+   "303": {
+    "value": 0.0055456,
+    "unit_conversion": "5,5456 ms -> 0.0055456 s; headline ≈ 5,55 ms with precise 5,5456 ms in parentheses, precise value used",
+    "rel_err": 6.92e-06,
+    "in_tolerance": true,
+    "snippet": "**Нижняя граница шага decode ≈ 5,55 ms** (5,5456 ms)."
+   },
+   "304": {
+    "value": 0.0051,
+    "unit_conversion": "5,10 ms -> 0.00510 s",
+    "rel_err": 0.00033517,
+    "in_tolerance": true,
+    "snippet": "**≈ 5,10 ms на шаг decode** уходит на 128 AllReduce кольцом (64 слоя × 2)"
+   },
+   "305": {
+    "value": 840.404,
+    "unit_conversion": "none; headline ≈ 840 s with precise 840,404 s in parentheses, precise value used",
+    "rel_err": 5.9e-07,
+    "in_tolerance": true,
+    "snippet": "**τ\\* ≈ 840 s** (840,404 s, около 14 мин) полезной работы между checkpoint."
+   },
+   "306": {
+    "value": 3.59,
+    "unit_conversion": "none",
+    "rel_err": 0.00096276,
+    "in_tolerance": true,
+    "snippet": "**Чистое обучение на 512 H100 SXM при MFU 40 %: ≈ 3,59 дня** (310 475 s)."
+   },
+   "307": {
+    "value": 0.187,
+    "unit_conversion": "none",
+    "rel_err": 0.00074741,
+    "in_tolerance": true,
+    "snippet": "**Одна успешно решённая задача стоит ≈ 0,187 $** (0,17928 $ ожидаемых расходов на поступившую задачу / 0,958 доли решённых)."
+   },
+   "308": {
+    "value": 26.7,
+    "unit_conversion": "none",
+    "rel_err": 0.00035942,
+    "in_tolerance": true,
+    "snippet": "**≈ 26,7 s на всю задачу** (15 × 1,781 s)."
+   }
+  },
+  "without": {
+   "301": {
+    "value": 13,
+    "unit_conversion": "none",
+    "rel_err": 0.0,
+    "in_tolerance": true,
+    "snippet": "**Ответ: 13 запросов.**"
+   },
+   "302": {
+    "value": 0.58,
+    "unit_conversion": "none",
+    "rel_err": 0.00073658,
+    "in_tolerance": true,
+    "snippet": "**Нижняя граница TTFT ≈ 0,58 с** (≈ 1,304 PFLOP / 2250 TFLOP/s)."
+   },
+   "303": {
+    "value": 0.00555,
+    "unit_conversion": "5,55 мс -> 0.00555 s",
+    "rel_err": 0.00078649,
+    "in_tolerance": true,
+    "snippet": "**Нижняя граница времени шага: ≈ 5,55 мс.**"
+   },
+   "304": {
+    "value": 0.0051,
+    "unit_conversion": "5,1 мс -> 0.0051 s",
+    "rel_err": 0.00033517,
+    "in_tolerance": true,
+    "snippet": "**Ответ: около 5,1 мс на шаг decode** (128 AllReduce по ~39,8 μs каждый)."
+   },
+   "305": {
+    "value": 840.0,
+    "unit_conversion": "none",
+    "rel_err": 0.00048131,
+    "in_tolerance": true,
+    "snippet": "**Ответ: τ\\* ≈ 840 с (около 14 минут полезной работы между checkpoint).**"
+   },
+   "306": {
+    "value": 3.59,
+    "unit_conversion": "none (сутки = days)",
+    "rel_err": 0.00096276,
+    "in_tolerance": true,
+    "snippet": "**Итог: ≈6,29·10²² FLOP, ≈3,59 суток (≈86,2 ч) чистого обучения.**"
+   },
+   "307": {
+    "value": 0.18714,
+    "unit_conversion": "none; headline ≈ 0,187 $ with precise 0,18714 $ in parentheses, precise value used",
+    "rel_err": 6.9e-07,
+    "in_tolerance": true,
+    "snippet": "**Ответ: ≈ 0,187 $ за одну решённую задачу** (0,17928 / 0,958 = 0,18714 $)."
+   },
+   "308": {
+    "value": 26.71,
+    "unit_conversion": "none; headline ≈ 26,7 с with precise 26,71 с in parentheses, precise value used",
+    "rel_err": 1.498e-05,
+    "in_tolerance": true,
+    "snippet": "**Ответ: ≈ 26,7 с** (точно 26,71 с)."
+   }
+  }
+ },
+ "summary": {
+  "with": {
+   "in_tolerance": 8,
+   "of": 8
+  },
+  "without": {
+   "in_tolerance": 8,
+   "of": 8
+  }
+ }
+}
