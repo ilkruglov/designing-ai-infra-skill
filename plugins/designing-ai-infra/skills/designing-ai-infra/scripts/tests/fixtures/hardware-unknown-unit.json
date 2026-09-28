@@ -1,0 +1,11 @@
+{
+  "devices": [
+    {
+      "id": "unit-probe",
+      "name": "Probe with an unknown capacity unit",
+      "spec_scope": "single_device",
+      "memory": {"nominal_capacity": 80, "capacity_unit": "TB", "bandwidth_bytes_per_second": 1e12},
+      "peak_rates": []
+    }
+  ]
+}
