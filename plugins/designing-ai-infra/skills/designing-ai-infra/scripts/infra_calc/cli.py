@@ -1478,15 +1478,33 @@ def _serving(args: argparse.Namespace) -> list[Result]:
             )
         else:
             where = "на карту"
-        prefix_notes: tuple[str, ...] = (
-            (
-                f"общий префикс shared_prefix = {prefix} ток. хранится в пуле один раз "
-                f"({format_number(round(kv_card * shared_memory))} B {where}), на "
-                f"запрос — {own_text} собственных ток.; один раз "
-                "хранятся заполненные блоки префикса, неполный хвостовой блок каждый "
-                "запрос копирует при записи (8.3.2) — задавайте префикс кратным блоку KV"
-            ),
-        )
+        per_request = f"на запрос — {own_text} собственных ток."
+        if shared_memory == 0:
+            # окно ушло дальше префикса: его KV больше не хранится
+            prefix_note = (
+                f"общий префикс shared_prefix = {prefix} ток. целиком вышел из окна "
+                f"внимания (window = {window} ток.) и KV в пуле не занимает; "
+                f"{per_request}"
+            )
+        else:
+            stored = (
+                f"хранится в пуле один раз "
+                f"({format_number(round(kv_card * shared_memory))} B {where})"
+            )
+            if shared_memory < prefix:
+                held = (
+                    f"из общего префикса shared_prefix = {prefix} ток. в окне "
+                    f"остаются последние {shared_memory} ток.; они "
+                    f"{stored.replace('хранится', 'хранятся', 1)}"
+                )
+            else:
+                held = f"общий префикс shared_prefix = {prefix} ток. {stored}"
+            prefix_note = (
+                f"{held}, {per_request}; один раз хранятся заполненные блоки "
+                "префикса, неполный хвостовой блок каждый запрос копирует при записи "
+                "(8.3.2) — задавайте префикс кратным блоку KV"
+            )
+        prefix_notes: tuple[str, ...] = (prefix_note,)
     else:
         length = "min(memory_context, window)" if window else "memory_context"
         memory_formula = (
@@ -1652,6 +1670,22 @@ def _serving(args: argparse.Namespace) -> list[Result]:
         ),
     ]
     if prefix:
+        condition = (
+            "нижняя граница шага, только если ядро внимания читает префикс каждым "
+            "запросом — это допущение о ядре, книга (8.3) его не описывает"
+        )
+        if not window:
+            dedup_read = "KV всего контекста (context ток.), включая общий префикс"
+        elif shared_step:
+            dedup_read = (
+                "KV последних min(context, window) ток., включая попавшую в окно "
+                "часть общего префикса"
+            )
+        else:
+            dedup_read = (
+                "KV последних min(context, window) ток.; общий префикс из окна вышел"
+            )
+            condition = "поле совпадает с tpot_lower_bound_seconds"
         out.append(
             _result(
                 "tpot_without_prefix_dedup_seconds",
@@ -1666,11 +1700,8 @@ def _serving(args: argparse.Namespace) -> list[Result]:
                 notes=(
                     *step_notes,
                     (
-                        "без дедупликации префикса: каждый запрос читает KV всех "
-                        f"{'min(context, window)' if window else 'context'} ток., "
-                        "включая общий префикс; нижняя граница шага, только "
-                        "если ядро внимания читает префикс каждым запросом — это "
-                        "допущение о ядре, книга (8.3) его не описывает"
+                        f"без дедупликации префикса: каждый запрос читает {dedup_read}; "
+                        f"{condition}"
                     ),
                 ),
             )

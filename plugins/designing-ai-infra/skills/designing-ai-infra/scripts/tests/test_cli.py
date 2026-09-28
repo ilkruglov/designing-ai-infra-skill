@@ -1515,6 +1515,59 @@ class ServingWindowTest(unittest.TestCase):
         )  # fmt: skip
         self.assertEqual(plain["max_concurrent_requests"]["value"], 161)
 
+    def test_prefix_entirely_outside_window_holds_no_kv(self) -> None:
+        # префикс 8192 при длине 16 384 и окне 4096: собственных
+        # min(16 384 − 8192, 4096) = 4096, префикса в окне 4096 − 4096 = 0 — он вышел
+        # из окна и KV не занимает. Ёмкость — как без префикса:
+        # ⌊(80e9 − 14 483 464 192) / (4096·131 072)⌋ = 122; шаг batch 16 — 6.80933 ms
+        v = self.serving(
+            "--context", "16384", "--batch", "16", "--shared-prefix-tokens", "8192"
+        )
+        capacity = v["max_concurrent_requests"]
+        self.assertEqual(capacity["value"], 122)
+        notes = " ".join(capacity["notes"])
+        self.assertIn("shared_prefix = 8192 ток. целиком вышел из окна внимания", notes)
+        self.assertIn("KV в пуле не занимает", notes)
+        self.assertNotIn("хранится в пуле один раз", notes)
+        self.assertNotIn("0 B на карту", notes)
+        self.assertNotIn("хвостовой блок", notes)
+        full = v["tpot_without_prefix_dedup_seconds"]
+        self.assertAlmostEqual(full["value"] * 1e3, 6.809329786, places=6)
+        dedup = " ".join(full["notes"])
+        self.assertIn("KV последних min(context, window) ток.", dedup)
+        self.assertIn("общий префикс из окна вышел", dedup)
+        self.assertIn("совпадает с tpot_lower_bound_seconds", dedup)
+        self.assertNotIn("включая", dedup)
+        self.assertEqual(full["value"], v["tpot_lower_bound_seconds"]["value"])
+
+    def test_prefix_partly_in_window_and_no_window_wording(self) -> None:
+        # в окне остаются последние 1024 из 3072 ток. префикса (вывод выше);
+        # без окна запрос без дедупликации читает KV всего контекста
+        v = self.serving(
+            "--context", "6144", "--batch", "16", "--shared-prefix-tokens", "3072"
+        )
+        notes = " ".join(v["max_concurrent_requests"]["notes"])
+        self.assertIn(
+            "из общего префикса shared_prefix = 3072 ток. в окне остаются последние "
+            "1024 ток.; они хранятся в пуле один раз (134 217 728 B на карту)",
+            notes,
+        )
+        dedup = " ".join(v["tpot_without_prefix_dedup_seconds"]["notes"])
+        self.assertIn(
+            "KV последних min(context, window) ток., включая попавшую в окно часть "
+            "общего префикса",
+            dedup,
+        )
+        plain = self.serving(
+            "--context", "6144", "--batch", "16", "--shared-prefix-tokens", "3072",
+            config=False,
+        )  # fmt: skip
+        notes = " ".join(plain["max_concurrent_requests"]["notes"])
+        self.assertIn("общий префикс shared_prefix = 3072 ток. хранится в пуле", notes)
+        dedup = " ".join(plain["tpot_without_prefix_dedup_seconds"]["notes"])
+        self.assertIn("KV всего контекста (context ток.), включая общий префикс", dedup)
+        self.assertNotIn("всех context ток.", dedup)
+
     def test_window_longer_than_context_changes_nothing(self) -> None:
         # 2048 < 4096: ⌊(80e9 − 14 483 464 192) / (131 072·2048)⌋ = 244, как без config
         v = self.serving("--context", "2048")
