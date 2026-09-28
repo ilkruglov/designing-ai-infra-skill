@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -126,6 +126,7 @@ class ModelSpec:
     linear_key_dim: int = 0
     linear_value_dim: int = 0
     conv_kernel: int = 0
+    wrapper_model_type: str | None = None
 
 
 def load_config(path: str | Path) -> dict[str, Any]:
@@ -133,7 +134,24 @@ def load_config(path: str | Path) -> dict[str, Any]:
 
 
 def parse_spec(config: dict[str, Any]) -> ModelSpec:
-    cfg = config.get("text_config", config)
+    if "text_config" not in config:
+        return _parse_text(config)
+    outer_type = str(config.get("model_type", "")) or "не указан"
+    inner = config["text_config"]
+    if not isinstance(inner, dict):
+        raise UnsupportedArchitecture(
+            outer_type,
+            ["text_config"],
+            "Ожидается объект text_config с параметрами текстовой модели.",
+        )
+    cfg = dict(inner)
+    # tie_word_embeddings мультимодальные конфиги пишут то внутри, то снаружи
+    if "tie_word_embeddings" not in cfg:
+        cfg["tie_word_embeddings"] = bool(config.get("tie_word_embeddings", False))
+    return replace(_parse_text(cfg), wrapper_model_type=outer_type)
+
+
+def _parse_text(cfg: dict[str, Any]) -> ModelSpec:
     model_type = str(cfg.get("model_type", ""))
     if model_type in {"qwen3", "llama", "mistral"}:
         return _dense(cfg, model_type)
@@ -241,7 +259,17 @@ def _deepseek_v3(cfg: dict[str, Any]) -> ModelSpec:
 
 
 def _hybrid(cfg: dict[str, Any], model_type: str) -> ModelSpec:
-    types = cfg.get("layer_types") or []
+    bad = []
+    if cfg.get("attention_bias"):
+        bad.append("attention_bias")
+    if cfg.get("mlp_only_layers"):
+        bad.append("mlp_only_layers")
+    _refuse(
+        model_type,
+        bad,
+        "Поддержан только вариант без смещений в проекциях внимания, где каждый слой — MoE.",
+    )
+    types = cfg.get("layer_types") or _layer_types_from_interval(cfg)
     full = sum(1 for t in types if t == "full_attention")
     linear = sum(1 for t in types if t == "linear_attention")
     if len(types) != int(cfg["num_hidden_layers"]) or full + linear != len(types):
@@ -261,3 +289,14 @@ def _hybrid(cfg: dict[str, Any], model_type: str) -> ModelSpec:
         linear_value_dim=int(cfg["linear_value_head_dim"]),
         conv_kernel=int(cfg["linear_conv_kernel_dim"]),
     )
+
+
+def _layer_types_from_interval(cfg: dict[str, Any]) -> list[str]:
+    """Полное внимание — каждый interval-й слой (1-based), остальные линейные."""
+    interval = cfg.get("full_attention_interval")
+    if isinstance(interval, bool) or not isinstance(interval, int) or interval < 1:
+        return []
+    return [
+        "full_attention" if (i + 1) % interval == 0 else "linear_attention"
+        for i in range(int(cfg["num_hidden_layers"]))
+    ]

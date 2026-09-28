@@ -4,6 +4,7 @@ from infra_calc import units
 
 ANCHORS = (
     "references/source-book/chapter1.md:189",
+    "references/source-book/chapter2.md:236",
     "references/source-book/chapter8.md:52",
     "references/source-book/chapter12.md:11",
 )
@@ -34,6 +35,13 @@ class UnitsTest(unittest.TestCase):
         self.assertEqual(units.dtype_bytes("FP4"), 0.5)
         with self.assertRaises(ValueError):
             units.dtype_bytes("fp12")
+
+    def test_dtype_aliases_from_config_torch_dtype(self) -> None:
+        # chapter2.md:236: config.json пишет dtype как "bfloat16"
+        self.assertEqual(units.dtype_bytes("bfloat16"), 2)
+        self.assertEqual(units.dtype_bytes("BFloat16"), 2)
+        self.assertEqual(units.dtype_bytes("float16"), 2)
+        self.assertEqual(units.dtype_bytes("Float32"), 4)
 
     def test_megabits_per_second(self):
         # chapter12.md:11: MB и Mbit десятичные, 20 Mbit/s = 2.5e6 байт/с

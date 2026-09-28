@@ -35,8 +35,16 @@ UNITS: dict[str, int] = {
 _BYTES = re.compile(r"^\s*(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>[KMGT]i?B|B)\s*$")
 
 
+DTYPE_ALIASES: dict[str, str] = {
+    "bfloat16": "bf16",
+    "float16": "fp16",
+    "float32": "fp32",
+}
+
+
 def dtype_bytes(dtype: str) -> float:
     key = dtype.lower()
+    key = DTYPE_ALIASES.get(key, key)
     if key not in DTYPE_BYTES:
         known = ", ".join(sorted(DTYPE_BYTES))
         raise ValueError(f"неизвестный тип данных {dtype!r}; известны: {known}")

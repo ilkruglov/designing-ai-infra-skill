@@ -78,5 +78,67 @@ class ParseSpecTest(unittest.TestCase):
             model.parse_spec(config)
 
 
+class WrapperTest(unittest.TestCase):
+    # chapter2.md:236: обёртка text_config мультимодального конфига
+    def test_wrapper_model_type_is_recorded(self) -> None:
+        self.assertEqual(spec("qwen3.5-397b-a17b").wrapper_model_type, "qwen3_5_moe")
+        self.assertIsNone(spec("qwen3-8b").wrapper_model_type)
+
+    def test_text_config_that_is_not_an_object_is_refused(self) -> None:
+        for inner in (None, [1, 2], "qwen3"):
+            with self.assertRaises(model.UnsupportedArchitecture) as caught:
+                model.parse_spec({"model_type": "x", "text_config": inner})
+            self.assertEqual(caught.exception.fields, ["text_config"])
+            self.assertEqual(caught.exception.model_type, "x")
+
+    def test_inner_config_inherits_outer_tie_word_embeddings(self) -> None:
+        config = model.load_config(CONFIGS / "qwen3.5-397b-a17b.json")
+        self.assertNotIn("tie_word_embeddings", config["text_config"])
+        self.assertTrue(
+            model.parse_spec(config | {"tie_word_embeddings": True}).tied_embeddings
+        )
+        self.assertFalse(model.parse_spec(config).tied_embeddings)
+
+    def test_inner_tie_word_embeddings_wins_over_outer(self) -> None:
+        config = model.load_config(CONFIGS / "qwen3.5-397b-a17b.json")
+        config["tie_word_embeddings"] = True
+        config["text_config"] = config["text_config"] | {"tie_word_embeddings": False}
+        self.assertFalse(model.parse_spec(config).tied_embeddings)
+
+
+class HybridRulesTest(unittest.TestCase):
+    # chapter2.md:418: состав состояния при гибридном внимании
+    def _text_config(self, **changes: object) -> dict[str, object]:
+        config = model.load_config(CONFIGS / "qwen3.5-397b-a17b.json")
+        config["text_config"] = config["text_config"] | changes
+        return config
+
+    def test_attention_bias_is_refused(self) -> None:
+        with self.assertRaises(model.UnsupportedArchitecture) as caught:
+            model.parse_spec(self._text_config(attention_bias=True))
+        self.assertEqual(caught.exception.fields, ["attention_bias"])
+
+    def test_dense_only_layers_are_refused(self) -> None:
+        with self.assertRaises(model.UnsupportedArchitecture) as caught:
+            model.parse_spec(self._text_config(mlp_only_layers=[0]))
+        self.assertEqual(caught.exception.fields, ["mlp_only_layers"])
+
+    def test_layer_types_derived_from_full_attention_interval(self) -> None:
+        config = self._text_config()
+        del config["text_config"]["layer_types"]
+        s = model.parse_spec(config)
+        # те же 15 слоёв полного внимания и 45 линейных, что и в фикстуре
+        self.assertEqual((s.full_attention_layers, s.linear_layers), (15, 45))
+        self.assertEqual(s, spec("qwen3.5-397b-a17b"))
+
+    def test_missing_layer_types_and_interval_is_refused(self) -> None:
+        config = self._text_config()
+        del config["text_config"]["layer_types"]
+        del config["text_config"]["full_attention_interval"]
+        with self.assertRaises(model.UnsupportedArchitecture) as caught:
+            model.parse_spec(config)
+        self.assertEqual(caught.exception.fields, ["layer_types"])
+
+
 if __name__ == "__main__":
     unittest.main()
