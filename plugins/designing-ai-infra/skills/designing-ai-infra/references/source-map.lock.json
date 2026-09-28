@@ -2,7 +2,7 @@
   "schema_version": 1,
   "book": {
     "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
-    "translation_commit": "83f26c39ed5fe0e5a16c4f7191e0bebb42c86d94"
+    "translation_commit": "c791c07c8370155474d84b635d41d142f54f4fc9"
   },
   "anchors": {
     "chapter1.md:101": {

@@ -8,9 +8,10 @@
     "commit": "56ecb425b07ea6d16e891cba87bf7db416927d09"
   },
   "translation": {
-    "repository": "https://github.com/ilkruglov/ai-infra-book-ru",
-    "branch": "bootstrap/russian-edition",
-    "commit": "83f26c39ed5fe0e5a16c4f7191e0bebb42c86d94"
+    "repository": "https://github.com/ilkruglov/ai-infra-book",
+    "branch": "russian-community-edition",
+    "commit": "c791c07c8370155474d84b635d41d142f54f4fc9",
+    "path": "book-ru/book"
   },
   "bundled_sources": {
     "directory": "plugins/designing-ai-infra/skills/designing-ai-infra/references/source-book",

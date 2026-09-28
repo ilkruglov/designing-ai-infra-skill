@@ -349,8 +349,9 @@ p = 6,3·10⁻¹⁴; он считает критерии одного отве�
 - Автор: [Bojie Li](https://github.com/bojieli).
 - Оригинал и калькуляторы автора: [bojieli/ai-infra-book](https://github.com/bojieli/ai-infra-book),
   коммит `56ecb425b07ea6d16e891cba87bf7db416927d09`.
-- Русский перевод: [ilkruglov/ai-infra-book-ru](https://github.com/ilkruglov/ai-infra-book-ru),
-  ветка `bootstrap/russian-edition`, коммит `83f26c39ed5fe0e5a16c4f7191e0bebb42c86d94`,
+- Русский перевод: [ilkruglov/ai-infra-book](https://github.com/ilkruglov/ai-infra-book),
+  ветка `russian-community-edition`, каталог `book-ru/book`, коммит
+  `c791c07c8370155474d84b635d41d142f54f4fc9`,
   «Русский перевод: community edition».
 
 Формулы калькуляторов перенесены из `calculations/` оригинала и переписаны,

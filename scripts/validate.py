@@ -53,31 +53,31 @@ REQUIRED_ATTRIBUTIONS = {
     "README.md": (
         "https://github.com/bojieli",
         "https://github.com/bojieli/ai-infra-book",
-        "https://github.com/ilkruglov/ai-infra-book-ru",
+        "https://github.com/ilkruglov/ai-infra-book",
     ),
     "NOTICE": (
         "Bojie Li",
         "https://github.com/bojieli",
         "https://github.com/bojieli/ai-infra-book",
-        "https://github.com/ilkruglov/ai-infra-book-ru",
+        "https://github.com/ilkruglov/ai-infra-book",
     ),
     "SOURCE.json": (
         "Bojie Li",
         "https://github.com/bojieli",
         "https://github.com/bojieli/ai-infra-book",
-        "https://github.com/ilkruglov/ai-infra-book-ru",
+        "https://github.com/ilkruglov/ai-infra-book",
     ),
     str(PLUGIN_DIRECTORY / "NOTICE"): (
         "Bojie Li",
         "https://github.com/bojieli",
         "https://github.com/bojieli/ai-infra-book",
-        "https://github.com/ilkruglov/ai-infra-book-ru",
+        "https://github.com/ilkruglov/ai-infra-book",
     ),
     str(PLUGIN_DIRECTORY / "SOURCE.json"): (
         "Bojie Li",
         "https://github.com/bojieli",
         "https://github.com/bojieli/ai-infra-book",
-        "https://github.com/ilkruglov/ai-infra-book-ru",
+        "https://github.com/ilkruglov/ai-infra-book",
     ),
 }
 NON_LOCAL_SOURCE_PATH = re.compile(r"(?<![-\w/])book/")

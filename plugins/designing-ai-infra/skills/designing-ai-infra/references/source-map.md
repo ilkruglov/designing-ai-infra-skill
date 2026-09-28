@@ -4,7 +4,7 @@
 
 | Источник | Репозиторий | Пин |
 |---|---|---|
-| Перевод | `https://github.com/ilkruglov/ai-infra-book-ru`, ветка `bootstrap/russian-edition` | `83f26c39ed5fe0e5a16c4f7191e0bebb42c86d94` |
+| Перевод | `https://github.com/ilkruglov/ai-infra-book`, ветка `russian-community-edition`, каталог `book-ru/book` | `c791c07c8370155474d84b635d41d142f54f4fc9` |
 | Оригинал и калькуляторы автора | `https://github.com/bojieli/ai-infra-book` | `56ecb425b07ea6d16e891cba87bf7db416927d09` |
 | Снимок ускорителей `data/hardware.json` | `calculations/configs/hardware.json` оригинала на том же пине | sha256 `9c4639ec65ca3b808923a7f332114f800c7930635b6fdac08f49686cddbf0ba2` |
 
