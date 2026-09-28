@@ -330,6 +330,11 @@
       "line_text": "## Упражнения и эксперименты",
       "kind": "heading"
     },
+    "chapter12.md:11": {
+      "line_sha256": "3c55b11564dd24a5d15bcc5fcb736797b2f9bb21982db28ac915aa9053ff2ab4",
+      "line_text": "## 12.1 От времени работы модели до полного времени взаимодействия",
+      "kind": "heading"
+    },
     "chapter12.md:114": {
       "line_sha256": "5368cb391b29b12788cf5b636355091521eae7d06b902adf0c4557c1aff65877",
       "line_text": "### 12.1.3 Computer Use: выполнение задач через интерфейс",
@@ -415,6 +420,11 @@
       "line_text": "### 12.4.3 Выбор двух путей, распределение трафика и переключение при отказе",
       "kind": "heading"
     },
+    "chapter12.md:538": {
+      "line_sha256": "82f642d4e8badbeea9de91cb4e89607530f3f3e944e8c1364ed2361fbcd83750",
+      "line_text": "### 12.5.1 Регион, данные и расположение сервиса",
+      "kind": "heading"
+    },
     "chapter12.md:556": {
       "line_sha256": "7924e77f724cd4eb2223b6759b016015a23e65e93cf04af9787d4dd9a918ec4c",
       "line_text": "### 12.5.2 Совместное сравнение срока, стоимости и восстановления",
@@ -480,6 +490,11 @@
       "line_text": "### 2.2.3 Объём вычислений и чтения-записи состояния при генерации полного ответа",
       "kind": "heading"
     },
+    "chapter2.md:3": {
+      "line_sha256": "e597a34d35062aca30584333e267e4a2d539e8f602d2c3eb2f0362e178ba248a",
+      "line_text": "# Глава 2. Архитектура модели",
+      "kind": "heading"
+    },
     "chapter2.md:312": {
       "line_sha256": "da6ae486d760918974cb33e98fc54210cbcbda70f20819a35674936d0bd47656",
       "line_text": "### 2.3.1 Многоголовое внимание и совместное использование KV",
@@ -518,6 +533,11 @@
     "chapter2.md:526": {
       "line_sha256": "b52ee61b9671fd2fff3d4f8c0a6202fac668a16eb8e851f6219d308462f351fd",
       "line_text": "## 2.4 Условные вычисления и повторное использование весов экспертов",
+      "kind": "heading"
+    },
+    "chapter2.md:532": {
+      "line_sha256": "d3975bc0f1c127bf80846d32e9ac9f22e530119239a2e28ea36d3d0cc32b519b",
+      "line_text": "### 2.4.1 Плотная сеть прямого распространения и маршрутизация экспертов",
       "kind": "heading"
     },
     "chapter2.md:542": {
@@ -700,6 +720,11 @@
       "line_text": "### 4.2.1 Почему матричные блоки подходят для нейронных сетей",
       "kind": "heading"
     },
+    "chapter4.md:250": {
+      "line_sha256": "dfa5c50d978d061cf1ff621a5f490f724ec3fb93eb8565c6d410a5a739d98f6d",
+      "line_text": "### 4.2.2 За какую работу отвечают векторные и управляющие блоки",
+      "kind": "heading"
+    },
     "chapter4.md:274": {
       "line_sha256": "23e658de104104201194bbaa09ffd50e83744ef7b8034d6e16f8ba8de31cb458",
       "line_text": "### 4.2.3 Как NVIDIA, Ascend и Apple выполняют вычисление внимания",
@@ -748,6 +773,11 @@
     "chapter4.md:623": {
       "line_sha256": "2c7838ef35c2fdb2f757119a4e7841715f90a5085192ee9740f1c1e2d9e9d99c",
       "line_text": "### 4.5.1 Вычислительные кристаллы, память и соединения внутри корпуса",
+      "kind": "heading"
+    },
+    "chapter4.md:645": {
+      "line_sha256": "81b09dd8646ae0537663ecf833162b93188d366cd5d5c326dcf03f5c962ef08b",
+      "line_text": "### 4.5.2 Доступ к данным между CPU и ускорителем",
       "kind": "heading"
     },
     "chapter4.md:65": {
@@ -815,6 +845,11 @@
       "line_text": "### 5.1.5 Как один kernel выполняется на SM",
       "kind": "heading"
     },
+    "chapter5.md:182": {
+      "line_sha256": "0d34a7b658e810742f6da92cf366be021f65ce80adad5aa07f09a121033b2906",
+      "line_text": "### 5.2.1 Форма матриц и повторное чтение",
+      "kind": "heading"
+    },
     "chapter5.md:225": {
       "line_sha256": "dc17414f05ede90ce37f6e13542792cacfdc79210368243c7f454324ff5fe96e",
       "line_text": "### 5.2.2 Повторное использование блоков при ограниченной ёмкости",
@@ -823,6 +858,11 @@
     "chapter5.md:25": {
       "line_sha256": "0f0e16d4c9fcfab12c592e1fc6a6ad9fdeae575db949cbc7fc590b7b6e892335",
       "line_text": "### 5.1.1 От вызова фреймворка до kernel launch",
+      "kind": "heading"
+    },
+    "chapter5.md:283": {
+      "line_sha256": "c9248fe2724c6e8109b55c06300411c0a64d741b40d3fe53c3c0fdf808cf7fdf",
+      "line_text": "### 5.2.3 Размещение данных: распределение параллельных запросов по разным bank",
       "kind": "heading"
     },
     "chapter5.md:297": {
@@ -853,6 +893,11 @@
     "chapter5.md:401": {
       "line_sha256": "a3219f1a287a6cad438bfb1ff5ecc20653f2ca15df1212df2532bbe565abcfed",
       "line_text": "### 5.3.3 FlashAttention: разбиение на блоки и онлайн-Softmax",
+      "kind": "heading"
+    },
+    "chapter5.md:491": {
+      "line_sha256": "c48bb32d61701d75d8f632544570d795f5010c1c0631e8b0305993bde9eca59f",
+      "line_text": "### 5.4.2 Представление разбиения на блоки и слияния с помощью преобразований циклов",
       "kind": "heading"
     },
     "chapter5.md:542": {
@@ -893,6 +938,11 @@
     "chapter5.md:742": {
       "line_sha256": "92c4237ec7d7199aa9051d039ce51fac4b441e312240fb9e724a915b0c9e855b",
       "line_text": "### 5.5.4 Persistent Kernel: планирование задач по блокам данных",
+      "kind": "heading"
+    },
+    "chapter5.md:772": {
+      "line_sha256": "13e6c74a36ada4cca762677a5d89c8a2b02c3c3f8021e178fdb1a947661864c9",
+      "line_text": "### 5.6.1 Доля узкого места определяет потенциал ускорения",
       "kind": "heading"
     },
     "chapter5.md:784": {
@@ -945,6 +995,11 @@
       "line_text": "### 6.2.2 Тензорный параллелизм: разделение матриц внутри слоя",
       "kind": "heading"
     },
+    "chapter6.md:243": {
+      "line_sha256": "92ffec39faea5409ff51a27d912ab02a4475101e0dacac6902a4da12739d4ddf",
+      "line_text": "### 6.2.3 Параллелизм по последовательности: разбиение операторов, работающих с отдельными токенами, вдоль последовательности",
+      "kind": "heading"
+    },
     "chapter6.md:25": {
       "line_sha256": "1e8545573d4d47b6a1e9b98d60c5adb78c1f64d119cb8e8fa0cf2bd191bacb3f",
       "line_text": "### 6.1.2 Сквозной пример: ёмкость и время одного шага Qwen3-235B-A22B",
@@ -968,6 +1023,11 @@
     "chapter6.md:312": {
       "line_sha256": "bfe8bacee29a4096a39b8013dc21cea9feb0c7d18ed1c9a43c28e0da4eb41efa",
       "line_text": "### 6.2.6 Экспертный параллелизм: разбиение набора экспертов",
+      "kind": "heading"
+    },
+    "chapter6.md:352": {
+      "line_sha256": "e39edfe56ba701540b4cfdbbd62933b7bb6258e000d1cf06e06b11379c7e675b",
+      "line_text": "### 6.3.1 Схемы комбинирования и координаты устройств",
       "kind": "heading"
     },
     "chapter6.md:391": {
@@ -1008,6 +1068,11 @@
     "chapter6.md:677": {
       "line_sha256": "dddb0c15d037e5c3a32768ebe152666d55176f07d8db33c97149672be9f84a4d",
       "line_text": "### 6.5.2 Среда соединения, электропитание и физический масштаб",
+      "kind": "heading"
+    },
+    "chapter6.md:70": {
+      "line_sha256": "75b00ed4d5c165133b356f61fd3caee39fc17edde43b0a1ea50605201b3c7f17",
+      "line_text": "### 6.1.3 Различия в требованиях к ресурсам для Prefill, Decode и обучения",
       "kind": "heading"
     },
     "chapter6.md:705": {
@@ -1078,6 +1143,11 @@
     "chapter7.md:208": {
       "line_sha256": "664e7fd5375fc5cbee9d2de78bace40de210177842b0aafe2b2a473ef8bb3de8",
       "line_text": "### 7.2.2 Требования к обмену данными при тензорном и конвейерном параллелизме",
+      "kind": "heading"
+    },
+    "chapter7.md:239": {
+      "line_sha256": "486ab3ef7a8cc55e3a2f122825ec02bd3b08127ade5f15dbce82bbd26bdf31f7",
+      "line_text": "### 7.2.3 Коммуникационная нагрузка при экспертном параллелизме",
       "kind": "heading"
     },
     "chapter7.md:269": {
@@ -1225,6 +1295,11 @@
       "line_text": "### 8.3.4 Допуск в кэш, вытеснение, выгрузка и повторное вычисление",
       "kind": "heading"
     },
+    "chapter8.md:386": {
+      "line_sha256": "646c842df98b21c62bd480364c615666a41e4e8882dc186352fcbab59207d261",
+      "line_text": "### 8.4.1 Потребление памяти после квантования весов",
+      "kind": "heading"
+    },
     "chapter8.md:398": {
       "line_sha256": "566c926c5d90830483101cf2f8759ba9e3ab1f70d6be932381dc709ad212e017",
       "line_text": "### 8.4.2 Сжатие KV и стоимость чтения",
@@ -1285,6 +1360,11 @@
       "line_text": "## История и дальнейшее чтение",
       "kind": "heading"
     },
+    "chapter8.md:82": {
+      "line_sha256": "f015b86713fb9fe749544b8a444373b22d21a070d0d60aa239d1dd306d18c9a6",
+      "line_text": "### 8.1.3 От времени отдельного запроса к целевым показателям сервиса",
+      "kind": "heading"
+    },
     "chapter9.md:100": {
       "line_sha256": "6fa2ab11de6b4564952d3c700a0f5c1a056ed44d180970516f04e6c54920fc88",
       "line_text": "### 9.2.2 Передача KV-кэша и потребление памяти на обеих сторонах",
@@ -1293,6 +1373,11 @@
     "chapter9.md:154": {
       "line_sha256": "44c5de50ade19da07878c7083d3822830d4a33a2e995ac8b0c1d4aa149e0cba6",
       "line_text": "### 9.2.3 Производительность этапов и соотношение числа экземпляров",
+      "kind": "heading"
+    },
+    "chapter9.md:17": {
+      "line_sha256": "dd279a34f9ca0b559afa1e1ed08979e7f144876bd6505091df8f7f4df90dda74",
+      "line_text": "### 9.1.1 Вычислительные ресурсы, экземпляры инференса и реплики сервиса",
       "kind": "heading"
     },
     "chapter9.md:216": {

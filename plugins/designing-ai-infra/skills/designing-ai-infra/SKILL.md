@@ -25,3 +25,5 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
 - [ch12-edge-cloud.md](references/chapters/ch12-edge-cloud.md)
 - [numbers.md](references/numbers.md)
 - [fallacies.md](references/fallacies.md)
+- [cheatsheet.md](references/cheatsheet.md)
+- [glossary.md](references/glossary.md)
