@@ -77,8 +77,10 @@
 | 1024 ускорителя при растущем суперузле; заблуждения развёртывания сети | `references/source-book/chapter7.md:938`, `references/source-book/chapter7.md:1009` | `references/chapters/ch07-datacenter-network.md` |
 | Жизненный цикл запроса и бюджет памяти сервинга | `references/source-book/chapter8.md:24`, `references/source-book/chapter8.md:52` | `references/chapters/ch08-inference-optimization.md` |
 | TTFT, ITL и SLO | `references/source-book/chapter8.md:82` | `references/chapters/ch08-inference-optimization.md` |
-| Batching: повторное использование весов, непрерывная обработка, блочный prefill, бюджет токенов | `references/source-book/chapter8.md:104`, `references/source-book/chapter8.md:165`, `references/source-book/chapter8.md:191` | `references/chapters/ch08-inference-optimization.md` |
-| Paged KV, копирование при записи, кэш префикса, вытеснение | `references/source-book/chapter8.md:232`, `references/source-book/chapter8.md:268`, `references/source-book/chapter8.md:310` | `references/chapters/ch08-inference-optimization.md` |
+| Batching: повторное использование весов, непрерывная пакетная обработка | `references/source-book/chapter8.md:104`, `references/source-book/chapter8.md:165` | `references/chapters/ch08-inference-optimization.md` |
+| Блочный prefill, бюджет токенов, формы CUDA Graph | `references/source-book/chapter8.md:191`, `references/source-book/chapter8.md:218` | `references/chapters/ch08-inference-optimization.md` |
+| Paged KV, копирование при записи, освобождение | `references/source-book/chapter8.md:232`, `references/source-book/chapter8.md:268` | `references/chapters/ch08-inference-optimization.md` |
+| Кэш префикса, допуск в кэш, вытеснение, выгрузка и повторное вычисление | `references/source-book/chapter8.md:310`, `references/source-book/chapter8.md:354` | `references/chapters/ch08-inference-optimization.md` |
 | Квантование весов, сжатие KV, выгрузка | `references/source-book/chapter8.md:386`, `references/source-book/chapter8.md:398`, `references/source-book/chapter8.md:432` | `references/chapters/ch08-inference-optimization.md` |
 | Спекулятивное декодирование | `references/source-book/chapter8.md:504`, `references/source-book/chapter8.md:536`, `references/source-book/chapter8.md:572` | `references/chapters/ch08-inference-optimization.md` |
 | Поток запросов, эффективная пропускная способность, стоимость конфигурации | `references/source-book/chapter8.md:598`, `references/source-book/chapter8.md:616`, `references/source-book/chapter8.md:642` | `references/chapters/ch08-inference-optimization.md` |

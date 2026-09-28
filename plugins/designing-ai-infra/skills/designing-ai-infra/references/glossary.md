@@ -12,7 +12,7 @@
 
 **Пик нужной точности** — пиковая матричная производительность задана для точности входа (BF16, FP8, FP4), точности накопления (FP32 или FP16) и вида вычислений (плотные или со структурной разреженностью). Пик FP8 нельзя подставлять в задачу BF16, разреженный — в плотную. В калькуляторе — `--precision`, `--accumulator`, `--sparsity`. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:152`.
 
-**BF16, FP16, FP8, FP4, int8** — форматы чисел: 2, 2, 1 и 0,5 байта на значение (int8 — 1 байт). BF16 имеет диапазон FP32 и короткую мантиссу, FP16 требует масштабирования потерь при обучении, FP8 — блочного масштабирования. Квантованные веса занимают больше «параметры × байты»: добавляются scale и части в высокой точности. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter4.md:314`, `references/source-book/chapter8.md:386`.
+**BF16, FP16, FP8, FP4, int8** — форматы чисел: 2, 2, 1 и 0,5 байта на значение (int8 — 1 байт). BF16 имеет диапазон FP32 и короткую мантиссу, FP16 требует масштабирования функции потерь при обучении, FP8 — блочного масштабирования. Квантованные веса занимают больше, чем произведение числа параметров на байты формата: добавляются scale и части в высокой точности. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:59`, `references/source-book/chapter4.md:314`, `references/source-book/chapter8.md:386`.
 
 ## Модель времени и метрики
 
@@ -24,9 +24,9 @@
 
 **Арифметическая интенсивность** — FLOP на прочитанный байт, `I = F/R`. Если I меньше `Π/β`, дольше чтение; если больше — вычисления. `calc.py roofline` печатает `arithmetic_intensity`. `references/source-book/chapter1.md:263`.
 
-**Roofline** — модель «линия крыши»: достижимая производительность `≤ min(P, R·I)`; наклонная часть — предел памяти, горизонтальная — предел матричного блока. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:906`.
+**Roofline** — модель «линия крыши»: достижимая производительность `≤ min(P, R·I)` (обозначения главы 4: P — пик, R — пропускная способность памяти, I — FLOP на байт; в главе 1 те же величины — Π и β); наклонная часть — предел памяти, горизонтальная — предел матричного блока. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:906`.
 
-**Ridge point (точка пересечения)** — интенсивность `I* = P/R` (в обозначениях главы 1 — `Π/β`), где пересекаются две линии Roofline; выше неё узкое место — вычисления. Калькулятор печатает `ridge_point` в FLOP/B; в книге это «точка пересечения», в конспектах иногда «точка перегиба». `references/source-book/chapter4.md:906`.
+**Ridge point (точка пересечения)** — интенсивность `I* = P/R` (в обозначениях главы 1 — `Π/β`), где пересекаются две линии Roofline; выше неё узкое место — вычисления. Калькулятор печатает `ridge_point` в FLOP/B; в книге и конспектах это «точка пересечения». `references/source-book/chapter4.md:906`.
 
 **B\* (точка перехода по batch)** — размер batch, при котором время вычислений догоняет время чтения весов: `B* = b_W·Π/(2β)`, для H100 и 1 байта на параметр ≈ 147,7. Не учитывает KV: с длинным контекстом чтение KV догоняет веса раньше (`b_KV`). `references/chapters/ch01-ai-infra-basics.md`, `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter1.md:263`, `references/source-book/chapter8.md:104`.
 
@@ -182,7 +182,7 @@
 
 **Отстающий узел** — медленный участник синхронного шага; шаг определяется максимумом, а не средним. `references/source-book/chapter10.md:600`.
 
-**Критический batch** — размер batch, выше которого добавленные карты перестают сокращать число шагов обучения. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:21`.
+**Критический batch (критический размер батча)** — размер batch, после которого добавление примеров лишь незначительно сокращает число шагов до того же значения функции потерь, а вычисления на шаг растут пропорционально; оценивается через масштаб шума градиента. Поэтому выше него добавленные карты почти не сокращают срок. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:21`.
 
 **Rollout** — генерация траекторий в RL, за которой идут проверка средой, вознаграждение и обновление стратегии; единица работы — пригодный для обучения образец. `references/chapters/ch03-workloads.md`, `references/chapters/ch10-training-systems.md`, `references/source-book/chapter3.md:476`, `references/source-book/chapter10.md:629`.
 
