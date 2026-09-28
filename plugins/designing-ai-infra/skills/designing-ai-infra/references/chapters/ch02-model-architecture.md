@@ -397,14 +397,14 @@ for r in json.load(sys.stdin)["results"]: print(r["name"], r["value"], r["unit"]
 parameters 30532122624  []
 active_parameters 3353032704  []
 weight_bytes 61064245248 B []
-decode_weight_read_bytes 6083735552 B ['эксперты одного токена; при батче читается объединение экспертов']
+decode_weight_read_bytes 6083735552 B ['эксперты одного токена; при батче читается объединение экспертов, не меньше k на слой, поэтому при batch > 1 это нижняя граница чтения шага']
 kv_bytes_per_token 98304 B ['при TP KV делится по головам KV: на карту kv_bytes_per_token / min(TP, 4); при TP > 4 головы KV дублируются']
 kv_resident_bytes 805306368 B []
 prefill_flops 71128501977088 FLOP []
 decode_step_flops 12525764608 FLOP []
 ```
 
-98 304 B/токен — как в таблице раздела 2.3.6. `decode_weight_read_bytes` — чтение для одного токена; для batch нужно объединение U экспертов (пример 2-4). Его ожидание при равномерной маршрутизации для batch B печатает `model --batch B` — `decode_weight_read_bytes_at_batch`, это значение и передаётся в `serving --weight-read`.
+98 304 B/токен — как в таблице раздела 2.3.6. `decode_weight_read_bytes` — чтение для одного токена; для batch нужно объединение U экспертов (пример 2-4). Нижняя граница шага при любом batch берёт `decode_weight_read_bytes` (U = k). `model --batch B` печатает `decode_weight_read_bytes_at_batch` — оценку при равномерной маршрутизации; шаг `serving` с ней в `--weight-read` — оценка, а не нижняя граница.
 
 Гибридная модель — калькулятор отказывается считать как плотную и называет поля:
 

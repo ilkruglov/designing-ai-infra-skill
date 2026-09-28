@@ -936,6 +936,38 @@ class ExpertUnionCommandTest(unittest.TestCase):
             read["value"], int(2_459_856_896 + union["value"] * 48 * 9_437_184)
         )
 
+    def test_uniform_read_is_an_estimate_not_a_bound(self) -> None:
+        # U(B) по формуле (6-8), chapter6.md:391, — ожидание при равномерной независимой
+        # маршрутизации; неравномерная затрагивает меньше экспертов, вплоть до U = k.
+        # Нижняя граница чтения шага — decode_weight_read_bytes (U = k)
+        v = values("model", "--config", self.QWEN3_30B, "--batch", "16")
+        for name in ("experts_per_layer_at_batch", "decode_weight_read_bytes_at_batch"):
+            with self.subTest(name=name):
+                item = v[name]
+                self.assertIsNone(item["bound"])
+                notes = " ".join(item["notes"])
+                self.assertIn("оценка при равномерной маршрутизации", notes)
+        notes = " ".join(v["decode_weight_read_bytes_at_batch"]["notes"])
+        self.assertIn("не нижняя граница", notes)
+        self.assertIn("decode_weight_read_bytes", notes)
+        self.assertIn("serving --weight-read", notes)
+        # чтение одного токена (U = k) при batch — нижняя граница чтения шага
+        single = " ".join(v["decode_weight_read_bytes"]["notes"])
+        self.assertIn("нижняя граница чтения шага", single)
+        # квантизация не делает оценку границей
+        int8 = values(
+            "model", "--config", self.QWEN3_30B, "--batch", "16", "--weight-dtype", "int8",
+        )  # fmt: skip
+        self.assertIsNone(int8["decode_weight_read_bytes_at_batch"]["bound"])
+        # заданное объединение — не оценка: при квантизации чтение — нижняя граница
+        given = values(
+            "model", "--config", self.QWEN3_30B, "--batch", "16", "--weight-dtype", "int8",
+            "--experts-per-layer", "40",
+        )  # fmt: skip
+        item = given["decode_weight_read_bytes_at_batch"]
+        self.assertEqual(item["bound"], "lower")
+        self.assertNotIn("оценка при равномерной", " ".join(item["notes"]))
+
     def test_explicit_union_matches_author(self) -> None:
         # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --tokens 1 --routing balanced
         # (код автора на 56ecb425): expert_union_per_layer 32, weight_read_once_per_operator_bytes

@@ -602,15 +602,17 @@ def _model_batch(
         )
     batch, k, experts = args.batch, spec.experts_per_token, spec.experts
     inputs = base | {"batch": batch, "experts": experts, "top_k": k}
-    if args.experts_per_layer is None:
+    uniform = args.experts_per_layer is None
+    if uniform:
         union = accounting.expected_active_experts(experts, k, batch)
         union_formula = "E·[1 − (1 − k/E)^B]"
         union_notes: tuple[str, ...] = (
             (
-                "равномерная независимая маршрутизация (формула 6-8); decode — один "
-                "токен на запрос. Реальная маршрутизация неравномерна: от k (одни и "
-                f"те же эксперты) до min(B·k, E) = {min(batch * k, experts)}; "
-                "измеренное или худшее значение задайте через --experts-per-layer"
+                "оценка при равномерной маршрутизации: ожидание при равномерной "
+                "независимой маршрутизации (формула 6-8), decode — один токен на "
+                "запрос. Реальная маршрутизация неравномерна: от k (одни и те же "
+                f"эксперты) до min(B·k, E) = {min(batch * k, experts)}; измеренное "
+                "или худшее значение задайте через --experts-per-layer"
             ),
         )
     else:
@@ -640,6 +642,16 @@ def _model_batch(
         read_notes: tuple[str, ...] = (
             "общие веса читаются один раз на шаг, каждый выбранный эксперт — один раз",
         )
+        if uniform:
+            read_notes += (
+                (
+                    "оценка при равномерной маршрутизации, не нижняя граница: при "
+                    "неравномерной маршрутизации различных экспертов меньше, вплоть "
+                    "до k. Нижняя граница чтения шага — decode_weight_read_bytes "
+                    "(U = k); шаг из serving --weight-read с этим значением — "
+                    "оценка, а не граница"
+                ),
+            )
     except UnsupportedArchitecture as error:
         read, read_notes = None, (str(error),)
     out.append(
@@ -652,7 +664,11 @@ def _model_batch(
             else "не вычисляется",
             inputs | {"experts_per_layer": union, "weight_dtype": args.weight_dtype},
             A_CH2_EXPERTS,
-            bound="lower" if read is not None and wb < BF16_BYTES else None,
+            # квантизация занижает чтение заданного объединения; оценку при
+            # равномерной маршрутизации границей она не делает
+            bound="lower"
+            if read is not None and wb < BF16_BYTES and not uniform
+            else None,
             notes=read_notes,
         )
     )
@@ -698,7 +714,11 @@ def _model(args: argparse.Namespace) -> list[Result]:
         read_notes = wrapper
         if spec.experts:
             read_notes += (
-                "эксперты одного токена; при батче читается объединение экспертов",
+                (
+                    "эксперты одного токена; при батче читается объединение "
+                    "экспертов, не меньше k на слой, поэтому при batch > 1 это "
+                    "нижняя граница чтения шага"
+                ),
             )
         if weight_bound == "lower" or overhead:
             read_notes += (QUANT_READ_NOTE,)
