@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "designing-ai-infra-skill",
+  "description": "Плагин для количественного проектирования AI-инфраструктуры: сайзинг инференса и обучения, память, KV, FLOPs, roofline, параллелизм, сети, стоимость.",
+  "owner": {
+    "name": "ilkruglov"
+  },
+  "plugins": [
+    {
+      "name": "designing-ai-infra",
+      "source": "./plugins/designing-ai-infra",
+      "description": "Инженерный skill для количественного проектирования AI-инфраструктуры: сайзинг инференса и обучения, память, KV, FLOPs, roofline, параллелизм, сети, стоимость. Основан на книге Bojie Li «AI Infra in Depth».",
+      "version": "0.1.0",
+      "category": "productivity"
+    }
+  ]
+}

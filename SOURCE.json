@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "author": "Bojie Li",
+  "author_url": "https://github.com/bojieli",
+  "book": "AI Infra in Depth: Quantitative Analysis and System Design",
+  "upstream": {
+    "repository": "https://github.com/bojieli/ai-infra-book",
+    "commit": "56ecb425b07ea6d16e891cba87bf7db416927d09"
+  },
+  "translation": {
+    "repository": "https://github.com/ilkruglov/ai-infra-book-ru",
+    "branch": "bootstrap/russian-edition",
+    "commit": "83f26c39ed5fe0e5a16c4f7191e0bebb42c86d94"
+  },
+  "bundled_sources": {
+    "directory": "skills/designing-ai-infra/references/source-book",
+    "files": ["preface.md", "chapter1.md", "chapter2.md", "chapter3.md", "chapter4.md", "chapter5.md", "chapter6.md", "chapter7.md", "chapter8.md", "chapter9.md", "chapter10.md", "chapter11.md", "chapter12.md"]
+  },
+  "data": {
+    "hardware_json": {
+      "path": "skills/designing-ai-infra/data/hardware.json",
+      "upstream_path": "calculations/configs/hardware.json",
+      "sha256": "9c4639ec65ca3b808923a7f332114f800c7930635b6fdac08f49686cddbf0ba2"
+    }
+  },
+  "license": "Apache-2.0"
+}

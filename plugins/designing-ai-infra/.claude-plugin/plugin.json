@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "designing-ai-infra",
+  "displayName": "Проектирование AI-инфраструктуры",
+  "version": "0.1.0",
+  "description": "Инженерный skill для количественного проектирования AI-инфраструктуры: сайзинг инференса и обучения, память, KV, FLOPs, roofline, параллелизм, сети, стоимость. Основан на книге Bojie Li «AI Infra in Depth».",
+  "author": {
+    "name": "ilkruglov",
+    "url": "https://github.com/ilkruglov"
+  },
+  "homepage": "https://github.com/ilkruglov/designing-ai-infra-skill",
+  "repository": "https://github.com/ilkruglov/designing-ai-infra-skill",
+  "license": "Apache-2.0",
+  "keywords": [
+    "ai-infrastructure",
+    "inference",
+    "training",
+    "gpu",
+    "capacity-planning",
+    "kv-cache",
+    "roofline"
+  ]
+}

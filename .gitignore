@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.tmp/
+.DS_Store
+
+# Рабочие материалы процесса: спеки и планы разработки
+docs/superpowers/
+
+# Рабочее пространство subagent-driven development
+.superpowers/

@@ -1,0 +1,35 @@
+{
+  "name": "designing-ai-infra",
+  "version": "0.1.0",
+  "description": "Инженерный skill для количественного проектирования AI-инфраструктуры: сайзинг инференса и обучения, память, KV, FLOPs, roofline, параллелизм, сети, стоимость. Основан на книге Bojie Li «AI Infra in Depth».",
+  "author": {
+    "name": "ilkruglov",
+    "url": "https://github.com/ilkruglov"
+  },
+  "homepage": "https://github.com/ilkruglov/designing-ai-infra-skill",
+  "repository": "https://github.com/ilkruglov/designing-ai-infra-skill",
+  "license": "Apache-2.0",
+  "keywords": [
+    "ai-infrastructure",
+    "inference",
+    "training",
+    "gpu",
+    "capacity-planning",
+    "kv-cache",
+    "roofline"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Проектирование AI-инфраструктуры",
+    "shortDescription": "Сайзинг, capacity planning и стоимость AI-инфраструктуры",
+    "longDescription": "Помогает посчитать память, KV-кэш, FLOPs, roofline-границы времени, параллелизм, сетевой трафик и стоимость для инференса и обучения моделей. Основан на книге Bojie Li «AI Infra in Depth».",
+    "developerName": "ilkruglov",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Посчитай, помещается ли модель в память GPU и сколько нужно памяти на KV-кэш.",
+      "Оцени нижнюю границу времени инференса или обучения по roofline.",
+      "Спроектируй параллелизм и сеть для кластера обучения."
+    ]
+  }
+}

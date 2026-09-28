@@ -1,0 +1,20 @@
+{
+  "name": "designing-ai-infra-skill",
+  "interface": {
+    "displayName": "Проектирование AI-инфраструктуры"
+  },
+  "plugins": [
+    {
+      "name": "designing-ai-infra",
+      "source": {
+        "source": "local",
+        "path": "./plugins/designing-ai-infra"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+designing-ai-infra
+Copyright 2026 ilkruglov
+
+Скилл основан на книге Bojie Li «AI Infra in Depth: Quantitative Analysis and
+System Design» (https://github.com/bojieli, https://github.com/bojieli/ai-infra-book),
+коммит оригинала 56ecb425b07ea6d16e891cba87bf7db416927d09, и на русском переводе
+community edition (https://github.com/ilkruglov/ai-infra-book-ru), коммит
+83f26c39ed5fe0e5a16c4f7191e0bebb42c86d94.
+
+references/source-book/ — текст перевода без изменений.
+data/hardware.json — копия calculations/configs/hardware.json оригинала без изменений.
+scripts/infra_calc/ — формулы перенесены из calculations/src/infra_calc оригинала
+и переписаны; эталонные числа взяты из calculations/results оригинала.
+
+Licensed under the Apache License, Version 2.0.
