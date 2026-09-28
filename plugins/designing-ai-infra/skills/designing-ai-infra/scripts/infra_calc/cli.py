@@ -63,6 +63,7 @@ A_CH8_SPEC = f"{BOOK}/chapter8.md:536"
 A_CH10_ZERO = f"{BOOK}/chapter10.md:151"
 A_CH10_PIPE = f"{BOOK}/chapter10.md:322"
 A_CH10_CKPT = f"{BOOK}/chapter10.md:553"
+A_CH10_SPIKE = f"{BOOK}/chapter10.md:600"
 A_CH11_LITTLE = f"{BOOK}/chapter11.md:62"
 A_CH11_CALL = f"{BOOK}/chapter11.md:488"
 A_CH11_TASK = f"{BOOK}/chapter11.md:515"
@@ -103,6 +104,7 @@ DIMENSIONLESS = frozenset(
         "mfu",
         "stages",
         "microbatches",
+        "virtual_stages",
         "acceptance",
         "calls",
         "success",
@@ -178,6 +180,12 @@ INPUT_UNITS: dict[str, str] = {
     "rtt": "s",
     "compute": "s",
     "time_in_system": "s",
+    "forward_seconds": "s",
+    "backward_seconds": "s",
+    "common_job_mtbf": "s",
+    "weight_bytes_per_param": "B",
+    "grad_bytes_per_param": "B",
+    "optimizer_bytes_per_param": "B",
     "failure_rate": "1/s",
     "arrival_rate": "1/s",
     "mbps": "Mbit/s",
@@ -935,6 +943,7 @@ def _checkpoint(args: argparse.Namespace) -> list[Result]:
             "--checkpoint-bytes",
             "--save-bandwidth",
             "--device-mtbf",
+            "--common-job-mtbf",
             "--interval",
         ),
         non_negative=("--recovery",),
@@ -945,8 +954,25 @@ def _checkpoint(args: argparse.Namespace) -> list[Result]:
             "для утилизации конвейера нужны оба значения: --stages и --microbatches"
         )
     save = args.checkpoint_bytes / args.save_bandwidth
-    rate = args.devices / args.device_mtbf
-    inputs = {"save_seconds": save, "failure_rate": rate, "recovery": args.recovery}
+    rate = training.job_failure_rate(
+        args.devices, args.device_mtbf, args.common_job_mtbf
+    )
+    inputs: dict[str, Any] = {
+        "save_seconds": save,
+        "failure_rate": rate,
+        "recovery": args.recovery,
+    }
+    anchor = A_CH10_CKPT
+    rate_notes: tuple[str, ...] = ()
+    if args.common_job_mtbf is not None:
+        inputs["common_job_mtbf"] = args.common_job_mtbf
+        anchor = A_CH10_SPIKE
+        rate_notes = (
+            (
+                "λ = N/MTBF_устройства + 1/MTBF_задания: общий для задания поток "
+                "(откат из-за всплеска потерь) прибавляется один раз, а не на устройство"
+            ),
+        )
     first = training.checkpoint_optimal_interval(save, rate)
     interval = first if args.interval is None else args.interval
     loss_notes = (
@@ -961,7 +987,8 @@ def _checkpoint(args: argparse.Namespace) -> list[Result]:
             "s",
             "sqrt(2c/λ)",
             inputs,
-            A_CH10_CKPT,
+            anchor,
+            notes=rate_notes,
         ),
         _result(
             "poisson_optimal_interval_seconds",
@@ -969,7 +996,8 @@ def _checkpoint(args: argparse.Namespace) -> list[Result]:
             "s",
             "y − 1 + exp(−y − λc) = 0, τ = y/λ",
             inputs,
-            A_CH10_CKPT,
+            anchor,
+            notes=rate_notes,
         ),
         _result(
             "first_order_loss_at_interval",
@@ -977,8 +1005,8 @@ def _checkpoint(args: argparse.Namespace) -> list[Result]:
             "",
             "c/τ + λτ/2 + λr",
             inputs | {"interval": interval},
-            A_CH10_CKPT,
-            notes=loss_notes,
+            anchor,
+            notes=(*rate_notes, *loss_notes),
         ),
     ]
     if args.stages is not None:
@@ -994,6 +1022,170 @@ def _checkpoint(args: argparse.Namespace) -> list[Result]:
                 notes=("одинаковые стадии, передачи между стадиями не учтены",),
             )
         )
+    return out
+
+
+def _pipeline(args: argparse.Namespace) -> list[Result]:
+    _check(
+        args,
+        non_negative=("--forward-seconds", "--backward-seconds"),
+        at_least=(("--stages", 1), ("--microbatches", 1), ("--virtual-stages", 1)),
+    )
+    p, m, v = args.stages, args.microbatches, args.virtual_stages
+    shape = {"stages": p, "microbatches": m, "virtual_stages": v}
+    schedule = (
+        "fill–drain и 1F1B"
+        if v == 1
+        else f"чередующийся 1F1B, блоков слоёв на карту: v = {v}"
+    )
+    ideal = (
+        f"{schedule}; одинаковые стадии, передачи между стадиями и обновление "
+        "параметров не учтены"
+    )
+    out = [
+        _result(
+            "pipeline_bubble_ratio",
+            training.pipeline_bubble_ratio(p, m, v),
+            "",
+            "(p − 1) / (v · m)",
+            shape,
+            A_CH10_PIPE,
+            notes=("доля пузыря относительно полезной работы, а не всего шага", ideal),
+        ),
+        _result(
+            "pipeline_utilization",
+            training.pipeline_utilization(p, m, v),
+            "",
+            "m / (m + (p − 1)/v)",
+            shape,
+            A_CH10_PIPE,
+            bound="upper",
+            notes=(ideal,),
+        ),
+    ]
+    times = {
+        "--forward-seconds": args.forward_seconds,
+        "--backward-seconds": args.backward_seconds,
+    }
+    if any(value is not None for value in times.values()):
+        missing = [flag for flag, value in times.items() if value is None]
+        if missing:
+            raise ValueError(
+                "для времени шага нужны --forward-seconds и --backward-seconds; "
+                f"не хватает: {', '.join(missing)}"
+            )
+        timed = shape | {
+            "forward_seconds": args.forward_seconds,
+            "backward_seconds": args.backward_seconds,
+        }
+        measured = (
+            "в примере главы 10.3.2 формула даёт 330 ms, а событийная модель с "
+            "передачами 1 ms и обновлением 1 ms — 337 ms (fill–drain), 347 ms (1F1B), "
+            "298 ms (чередующийся, v = 2)"
+        )
+        out += [
+            _result(
+                "pipeline_step_seconds",
+                training.pipeline_step_seconds(
+                    p, m, args.forward_seconds, args.backward_seconds, v
+                ),
+                "s",
+                "(m + (p − 1)/v)(t_f + t_b)",
+                timed,
+                A_CH10_PIPE,
+                bound="lower",
+                notes=(ideal, measured),
+            ),
+            _result(
+                "pipeline_bubble_seconds",
+                training.pipeline_bubble_seconds(
+                    p, args.forward_seconds, args.backward_seconds, v
+                ),
+                "s",
+                "(p − 1)(t_f + t_b) / v",
+                timed,
+                A_CH10_PIPE,
+                bound="lower",
+                notes=("простой каждой стадии за шаг", ideal),
+            ),
+        ]
+    return out
+
+
+def _training_state(args: argparse.Namespace) -> list[Result]:
+    _check(
+        args,
+        non_negative=("--weight-bytes", "--grad-bytes", "--optimizer-bytes"),
+        at_least=(("--dp", 1),),
+    )
+    if (args.config is None) == (args.params is None):
+        raise ValueError(
+            "укажите одно из двух: --config (число параметров по config.json) "
+            "или --params (число параметров из карточки модели)"
+        )
+    notes: tuple[str, ...] = ()
+    if args.config is not None:
+        spec = _load_spec(args.config)
+        try:
+            params = accounting.parameter_count(spec)
+        except UnsupportedArchitecture as error:
+            raise ValueError(
+                f"{error}; для training-state передайте --params"
+            ) from None
+        notes = _wrapper_notes(spec)
+        if spec.experts:
+            notes += ("MoE: состояние хранит всех экспертов, а не активных",)
+    else:
+        params = args.params
+    parts = training.sharded_state_components(
+        params,
+        args.dp,
+        args.stage,
+        args.weight_bytes,
+        args.grad_bytes,
+        args.optimizer_bytes,
+    )
+    inputs = {
+        "parameters": params,
+        "dp": args.dp,
+        "stage": args.stage,
+        "weight_bytes_per_param": args.weight_bytes,
+        "grad_bytes_per_param": args.grad_bytes,
+        "optimizer_bytes_per_param": args.optimizer_bytes,
+    }
+    scope = (
+        "постоянно размещённое состояние: активации, буферы AllGather и временные "
+        "полные градиенты не входят; FSDP с полным шардированием соответствует stage 3"
+    )
+    rows = (
+        (
+            "weight_state_bytes_per_device",
+            "P × b_w" + (" / d" if args.stage >= 3 else ""),
+        ),
+        (
+            "gradient_state_bytes_per_device",
+            "P × b_g" + (" / d" if args.stage >= 2 else ""),
+        ),
+        (
+            "optimizer_state_bytes_per_device",
+            "P × b_o" + (" / d" if args.stage >= 1 else ""),
+        ),
+    )
+    out = [
+        _result(name, value, "B", formula, inputs, A_CH10_ZERO, notes=notes)
+        for (name, formula), value in zip(rows, parts)
+    ]
+    out.append(
+        _result(
+            "training_state_bytes_per_device",
+            sum(parts),
+            "B",
+            "веса + градиенты + состояние оптимизатора на устройство",
+            inputs,
+            A_CH10_ZERO,
+            notes=(scope, *notes),
+        )
+    )
     return out
 
 
@@ -1629,8 +1821,73 @@ def _parser() -> argparse.ArgumentParser:
         type=float,
         help="интервал для доли потерь, секунд (по умолчанию — оптимум)",
     )
+    p.add_argument(
+        "--common-job-mtbf",
+        type=float,
+        help="секунд между событиями, прерывающими всё задание сразу (например, "
+        "откат из-за всплеска потерь); прибавляется к частоте один раз",
+    )
     p.add_argument("--stages", type=int, help="стадий конвейера")
     p.add_argument("--microbatches", type=int, help="микропакетов на шаг")
+
+    p = command(
+        "pipeline",
+        _pipeline,
+        "пузырь и утилизация конвейера, время шага при одинаковых стадиях",
+    )
+    p.add_argument("--stages", type=int, required=True, help="стадий конвейера p")
+    p.add_argument(
+        "--microbatches", type=int, required=True, help="micro-batch на шаг m"
+    )
+    p.add_argument(
+        "--virtual-stages",
+        type=int,
+        default=1,
+        help="блоков слоёв на карту v для чередующегося 1F1B (1 — fill–drain и 1F1B)",
+    )
+    p.add_argument(
+        "--forward-seconds", type=float, help="секунд прямого прохода одной стадии"
+    )
+    p.add_argument(
+        "--backward-seconds", type=float, help="секунд обратного прохода одной стадии"
+    )
+
+    p = command(
+        "training-state",
+        _training_state,
+        "веса, градиенты и состояние оптимизатора на устройство при ZeRO/FSDP",
+    )
+    p.add_argument("--config", help="config.json в формате Hugging Face")
+    p.add_argument(
+        "--params",
+        type=_count,
+        help="число параметров из карточки модели (вместо --config)",
+    )
+    p.add_argument(
+        "--dp", type=int, required=True, help="число GPU в группе шардирования d"
+    )
+    p.add_argument(
+        "--stage",
+        type=int,
+        required=True,
+        choices=(0, 1, 2, 3),
+        help="stage ZeRO: 0 — обычный DP, 1 — оптимизатор, 2 — и градиенты, 3 — и веса",
+    )
+    p.add_argument(
+        "--weight-bytes", type=float, default=2, help="байт весов на параметр (BF16: 2)"
+    )
+    p.add_argument(
+        "--grad-bytes",
+        type=float,
+        default=2,
+        help="байт градиентов на параметр (BF16: 2; глава 3.4.1 — FP32: 4)",
+    )
+    p.add_argument(
+        "--optimizer-bytes",
+        type=float,
+        default=12,
+        help="байт оптимизатора на параметр (основные веса FP32 и два момента Adam: 12)",
+    )
 
     p = command(
         "speculative",

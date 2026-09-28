@@ -23,12 +23,16 @@ ANCHORS = (
     "references/source-book/chapter6.md:705",
     "references/source-book/chapter8.md:536",
     "references/source-book/chapter10.md:151",
+    "references/source-book/chapter10.md:322",
     "references/source-book/chapter10.md:553",
+    "references/source-book/chapter10.md:600",
     "references/source-book/chapter11.md:62",
     "references/source-book/chapter11.md:515",
     "references/source-book/chapter12.md:11",
     "calculations/results/qwen3-30b-a3b-decode-b1-s8192.json#sha256=fbf0b07f78bd8d7ab3765f6fc9ad5f6992cc95192449c2f8f1ee0fd01b5bc75b",
     "calculations/results/checkpoint-interval-book.json#sha256=e986d06ba47b7d0c13b54a99cc2abde1744d674eb470b26d9cf00e417ac0c6ad",
+    "calculations/results/training-pipeline-interleaved-m8.json#sha256=773f52ffe9134ea65961825a000bba925cd1734beb6937b2488ef400710703a3",
+    "calculations/results/training-state-book.json#sha256=0cdea3fbd70fac7846e6655282e76624d3f5b14fd0e2627f5393fe178b6f3cd5",
 )
 SCRIPTS = Path(__file__).resolve().parents[1]
 SKILL = SCRIPTS.parent
@@ -556,6 +560,121 @@ class ResultTest(unittest.TestCase):
         self.assertIn("8 190 735 360", text)
 
 
+class PipelineCommandTest(unittest.TestCase):
+    def test_book_bubble_without_checkpoint_arguments(self) -> None:
+        # chapter10.md:336: «При $p=4,m=8$ получаем $u=8/11\\approx72.7\\%$.»;
+        # chapter10.md:406: доля пузырей 1F1B при восьми micro-batch — 37.5%
+        v = values("pipeline", "--stages", "4", "--microbatches", "8")
+        self.assertEqual(round(v["pipeline_utilization"]["value"] * 100, 1), 72.7)
+        self.assertEqual(v["pipeline_utilization"]["bound"], "upper")
+        self.assertEqual(v["pipeline_bubble_ratio"]["value"], 0.375)
+        self.assertNotIn("pipeline_step_seconds", v)
+
+    def test_interleaved_with_stage_times(self) -> None:
+        # training-pipeline-interleaved-m8.json: bubble_bound_interleaved_seconds 0.045,
+        # bubble_bound_interleaved_fraction 0.1875; шаг 285 ms — вывод вручную:
+        # 8·30 + 3·30/2, событийная модель автора с передачами — 297.7 ms
+        v = values(
+            "pipeline", "--stages", "4", "--microbatches", "8",
+            "--virtual-stages", "2", "--forward-seconds", "0.01",
+            "--backward-seconds", "0.02",
+        )  # fmt: skip
+        self.assertEqual(v["pipeline_bubble_ratio"]["value"], 0.1875)
+        self.assertAlmostEqual(v["pipeline_bubble_seconds"]["value"], 0.045)
+        self.assertAlmostEqual(v["pipeline_step_seconds"]["value"], 0.285)
+        self.assertEqual(v["pipeline_step_seconds"]["bound"], "lower")
+        self.assertEqual(v["pipeline_bubble_seconds"]["bound"], "lower")
+
+    def test_needs_both_stage_times(self) -> None:
+        message = fails(
+            "pipeline", "--stages", "4", "--microbatches", "8",
+            "--forward-seconds", "0.01",
+        )  # fmt: skip
+        self.assertIn("--backward-seconds", message)
+
+    def test_interleaved_needs_divisible_microbatches(self) -> None:
+        message = fails(
+            "pipeline", "--stages", "4", "--microbatches", "6", "--virtual-stages", "2"
+        )
+        self.assertIn("кратн", message)
+
+
+class TrainingStateCommandTest(unittest.TestCase):
+    def test_components_per_device(self) -> None:
+        # training-state-book.json, stage 1, 8 участников: weights_bf16 16 381 470 720,
+        # gradients 16 381 470 720, master + два момента 3 × 4 095 367 680,
+        # persistent_bytes_per_rank 45 049 044 480
+        v = values("training-state", "--config", QWEN3_8B, "--dp", "8", "--stage", "1")
+        self.assertEqual(v["weight_state_bytes_per_device"]["value"], 16_381_470_720)
+        self.assertEqual(v["gradient_state_bytes_per_device"]["value"], 16_381_470_720)
+        self.assertEqual(
+            v["optimizer_state_bytes_per_device"]["value"], 3 * 4_095_367_680
+        )
+        self.assertEqual(v["training_state_bytes_per_device"]["value"], 45_049_044_480)
+
+    def test_params_and_fp32_gradients(self) -> None:
+        # chapter10.md:190-193: ZeRO-3 на восьми GPU — 15.3 GiB; с градиентами FP32
+        # training-state-fp32-gradient.json: stage 3 — 18 429 154 560 байт
+        v = values(
+            "training-state", "--params", "8190735360", "--dp", "8", "--stage", "3",
+            "--grad-bytes", "4",
+        )  # fmt: skip
+        self.assertEqual(v["training_state_bytes_per_device"]["value"], 18_429_154_560)
+        v = values(
+            "training-state", "--params", "8190735360", "--dp", "8", "--stage", "3"
+        )
+        self.assertEqual(
+            round(v["training_state_bytes_per_device"]["value"] / 2**30, 1), 15.3
+        )
+
+    def test_config_or_params(self) -> None:
+        self.assertIn("--params", fails("training-state", "--dp", "8", "--stage", "0"))
+        message = fails(
+            "training-state", "--config", QWEN3_8B, "--params", "1000", "--dp", "8",
+            "--stage", "0",
+        )  # fmt: skip
+        self.assertIn("--config", message)
+        hybrid = str(CONFIGS / "qwen3.5-397b-a17b.json")
+        message = fails(
+            "training-state", "--config", hybrid, "--dp", "8", "--stage", "3"
+        )
+        self.assertIn("--params", message)
+
+
+class CheckpointCommonShockTest(unittest.TestCase):
+    BASE = (
+        "checkpoint", "--checkpoint-bytes", "114670295040", "--save-bandwidth", "7e9",
+        "--devices", "48", "--device-mtbf", "29122560", "--recovery", "120",
+    )  # fmt: skip
+
+    def test_loss_spike_book(self) -> None:
+        # chapter10.md:623: всплеск раз в семь дней: оптимум «примерно с 4 458 s до
+        # 3 150 s», при 1800 s потери «с 1,08% примерно до 1,25%»
+        v = values(*self.BASE, "--interval", "1800", "--common-job-mtbf", "604800")
+        self.assertEqual(
+            round(v["first_order_optimal_interval_seconds"]["value"], -1), 3150
+        )
+        self.assertEqual(
+            round(v["first_order_loss_at_interval"]["value"] * 100, 2), 1.25
+        )
+        self.assertEqual(
+            v["first_order_loss_at_interval"]["anchor"],
+            "references/source-book/chapter10.md:600",
+        )
+        self.assertEqual(
+            v["first_order_loss_at_interval"]["inputs"]["common_job_mtbf"], 604800
+        )
+        plain = values(*self.BASE, "--interval", "1800")
+        self.assertEqual(
+            round(plain["first_order_loss_at_interval"]["value"] * 100, 2), 1.08
+        )
+
+    def test_rejects_non_positive_common_mtbf(self) -> None:
+        message = fails(*self.BASE, "--common-job-mtbf", "0")
+        self.assertIn("--common-job-mtbf", message)
+        self.assertIn("больше нуля", message)
+
+
 # Все команды с корректными входами: для проверок якорей и единиц, а не чисел книги
 COMMANDS = tuple(
     shlex.split(line)
@@ -576,6 +695,15 @@ COMMANDS = tuple(
             " --device-mtbf 1e6 --stages 4 --microbatches 8"
         ),
         "speculative --acceptance 0.5 --draft 4 --plain-step 0.01",
+        (
+            "pipeline --stages 4 --microbatches 8 --virtual-stages 2"
+            " --forward-seconds 0.01 --backward-seconds 0.02"
+        ),
+        f"training-state --config {QWEN3_8B} --dp 8 --stage 2",
+        (
+            "checkpoint --checkpoint-bytes 1e9 --save-bandwidth 1e9 --devices 8"
+            " --device-mtbf 1e6 --common-job-mtbf 604800"
+        ),
         "ring --devices 8 --message 1 --bandwidth 1 --alpha 0",
         "cost --input-tokens 1 --input-price 1",
         (

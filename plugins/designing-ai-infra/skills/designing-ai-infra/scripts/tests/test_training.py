@@ -11,7 +11,13 @@ ANCHORS = (
     "references/source-book/chapter10.md:151",
     "references/source-book/chapter10.md:322",
     "references/source-book/chapter10.md:553",
+    "references/source-book/chapter10.md:600",
     "calculations/results/checkpoint-interval-book.json#sha256=e986d06ba47b7d0c13b54a99cc2abde1744d674eb470b26d9cf00e417ac0c6ad",
+    "calculations/results/checkpoint-interval-common-shock.json#sha256=599b6d27d8ff541886c69eb066952d49e43e1e025b8eb006c5235adabebf89da",
+    "calculations/results/training-pipeline-interleaved-m8.json#sha256=773f52ffe9134ea65961825a000bba925cd1734beb6937b2488ef400710703a3",
+    "calculations/results/training-pipeline-interleaved-m16.json#sha256=978e1644d72dbd4a059e1afeb3fc8d3a01747fba8a94bb7c4b96bd7ef930cae4",
+    "calculations/results/training-state-book.json#sha256=0cdea3fbd70fac7846e6655282e76624d3f5b14fd0e2627f5393fe178b6f3cd5",
+    "calculations/results/training-state-fp32-gradient.json#sha256=f5924f46eece9b76bb7eebcb04ed0f08eb262b46397f65715c0f40a3c5f791cc",
 )
 AUTHOR = json.loads(
     (Path(__file__).resolve().parent / "fixtures" / "author_results.json").read_text()
@@ -62,6 +68,62 @@ class PipelineTest(unittest.TestCase):
                 self.assertRaises(ValueError),
             ):
                 training.fill_drain_seconds(4, 8, forward, backward)
+
+
+class InterleavedPipelineTest(unittest.TestCase):
+    def test_bubble_ratio_book_and_author(self) -> None:
+        # chapter10.md:365: доля пузырей чередующегося 1F1B «\\frac{1}{v}\\cdot\\frac{p-1}{m}»;
+        # training-pipeline-interleaved-m8.json: bubble_bound_1f1b_fraction 0.375,
+        # bubble_bound_interleaved_fraction 0.1875 (p = 4, m = 8, v = 2)
+        self.assertEqual(training.pipeline_bubble_ratio(4, 8), 0.375)
+        self.assertEqual(training.pipeline_bubble_ratio(4, 8, 2), 0.1875)
+        # chapter10.md:406: «при 16 micro-batch доля пузырей 1F1B снижается с 37.5% до 18.8%»;
+        # training-pipeline-interleaved-m16.json: bubble_bound_interleaved_fraction 0.09375
+        self.assertEqual(round(training.pipeline_bubble_ratio(4, 16) * 100, 1), 18.8)
+        self.assertEqual(training.pipeline_bubble_ratio(4, 16, 2), 0.09375)
+
+    def test_bubble_seconds_author(self) -> None:
+        # training-pipeline-interleaved-m8.json: bubble_bound_1f1b_seconds 0.09,
+        # bubble_bound_interleaved_seconds 0.045 при t_f = 10 ms, t_b = 20 ms
+        self.assertAlmostEqual(training.pipeline_bubble_seconds(4, 10e-3, 20e-3), 0.09)
+        self.assertAlmostEqual(
+            training.pipeline_bubble_seconds(4, 10e-3, 20e-3, 2), 0.045
+        )
+
+    def test_step_seconds(self) -> None:
+        # chapter10.md:338: fill–drain «(8+4-1)\\times30=330» ms без передач
+        self.assertAlmostEqual(
+            training.pipeline_step_seconds(4, 8, 10e-3, 20e-3), 330e-3
+        )
+        # вывод вручную: m(t_f + t_b) + (p − 1)(t_f + t_b)/v = 8·30 + 3·30/2 = 285 ms
+        self.assertAlmostEqual(
+            training.pipeline_step_seconds(4, 8, 10e-3, 20e-3, 2), 285e-3
+        )
+
+    def test_interleaved_utilization(self) -> None:
+        # вывод вручную: u = m/(m + (p − 1)/v); p = 4, m = 8, v = 2 — 8/9.5;
+        # p = 8, m = 32, v = 4 — 32/33.75
+        self.assertAlmostEqual(training.pipeline_utilization(4, 8, 2), 8 / 9.5)
+        self.assertAlmostEqual(training.pipeline_utilization(8, 32, 4), 32 / 33.75)
+        self.assertAlmostEqual(training.pipeline_bubble_ratio(8, 32, 4), 7 / 128)
+
+    def test_interleaved_needs_microbatches_divisible_by_stages(self) -> None:
+        # порядок Megatron-LM, которому следует автор (training_pipeline_schedule.py):
+        # «interleaved_1f1b requires microbatches divisible by the pipeline depth»
+        for function in (training.pipeline_utilization, training.pipeline_bubble_ratio):
+            with self.subTest(function=function.__name__):
+                with self.assertRaises(ValueError) as caught:
+                    function(4, 6, 2)
+                self.assertIn("кратн", str(caught.exception))
+        with self.assertRaises(ValueError):
+            training.pipeline_step_seconds(4, 6, 10e-3, 20e-3, 2)
+
+    def test_rejects_invalid_virtual_stages(self) -> None:
+        for virtual in (0, -1, 1.5, True):
+            with self.subTest(virtual=virtual), self.assertRaises(ValueError):
+                training.pipeline_bubble_ratio(4, 8, virtual)
+            with self.subTest(virtual=virtual), self.assertRaises(ValueError):
+                training.pipeline_bubble_seconds(4, 10e-3, 20e-3, virtual)
 
 
 class CheckpointTest(unittest.TestCase):
@@ -138,6 +200,62 @@ class CheckpointTest(unittest.TestCase):
                 training.checkpoint_first_order_loss(*args)
 
 
+class CommonShockTest(unittest.TestCase):
+    SAVE = (
+        114_670_295_040 / 7e9
+    )  # checkpoint-interval-book.json: 14 байт × P при 7 GB/s
+
+    def test_author_common_job_rate(self) -> None:
+        # checkpoint-interval-common-shock.json: devices 1024, device_mtbf_seconds
+        # 29122560, common_job_mtbf_seconds 86400; job_failure_rate_exact_per_second
+        # «319/6825600»: общий удар прибавляется один раз, а не на каждое устройство
+        rate = training.job_failure_rate(1024, 29_122_560, 86_400)
+        self.assertAlmostEqual(rate, 319 / 6_825_600, places=15)
+        # first_order_optimal_useful_interval_seconds 837.2719042643316,
+        # poisson_optimal_useful_interval_seconds 826.3867220685526
+        self.assertAlmostEqual(
+            training.checkpoint_optimal_interval(self.SAVE, rate),
+            837.2719042643316,
+            places=6,
+        )
+        self.assertAlmostEqual(
+            training.checkpoint_poisson_optimal_interval(self.SAVE, rate),
+            826.3867220685526,
+            places=6,
+        )
+        # checkpoint_interval_rows: first_order_loss 0.046931494800562586 при 600 s
+        self.assertAlmostEqual(
+            training.checkpoint_first_order_loss(600, self.SAVE, rate, 120),
+            0.046931494800562586,
+            places=12,
+        )
+
+    def test_loss_spike_book(self) -> None:
+        # chapter10.md:619-620: λ = λ_hw + λ_spike; chapter10.md:623: 48 ускорителей,
+        # MTBF около 337 дней, всплеск раз в семь дней: «При том же τ=600 s
+        # дополнительные затраты увеличиваются с 2,80% до 2,87%, а оптимальный период
+        # сохранения сокращается примерно с 4 458 s до 3 150 s. При интервале 1800 s
+        # ... возрастают с 1,08% примерно до 1,25%»
+        hw = training.job_failure_rate(48, 29_122_560)
+        both = training.job_failure_rate(48, 29_122_560, 7 * 86_400)
+        loss = training.checkpoint_first_order_loss
+        self.assertEqual(round(loss(600, self.SAVE, hw, 120) * 100, 2), 2.80)
+        self.assertEqual(round(loss(600, self.SAVE, both, 120) * 100, 2), 2.87)
+        self.assertEqual(
+            round(training.checkpoint_optimal_interval(self.SAVE, hw)), 4458
+        )
+        self.assertEqual(
+            round(training.checkpoint_optimal_interval(self.SAVE, both), -1), 3150
+        )
+        self.assertEqual(round(loss(1800, self.SAVE, hw, 120) * 100, 2), 1.08)
+        self.assertEqual(round(loss(1800, self.SAVE, both, 120) * 100, 2), 1.25)
+
+    def test_rate_rejects_invalid_inputs(self) -> None:
+        for args in ((0, 1e6), (8, 0), (8, -1e6), (8, 1e6, 0), (8, 1e6, math.nan)):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                training.job_failure_rate(*args)
+
+
 class ShardingTest(unittest.TestCase):
     def test_full_training_state_18_bytes(self) -> None:
         # chapter3.md:414: «на каждый параметр требуется $2+4+4+4+4=18$ байт, всего 147,433 GB»
@@ -157,6 +275,45 @@ class ShardingTest(unittest.TestCase):
             for stage in range(4)
         ]
         self.assertEqual(gib, [122.1, 42.0, 28.6, 15.3])
+
+    def test_components_match_author(self) -> None:
+        # training-state-book.json: training_state_stages[*].components per_rank_bytes
+        # (weights_bf16; gradients; master_weights_fp32 + adam_m_fp32 + adam_v_fp32),
+        # 8 участников, градиенты BF16
+        optimizer_full = 3 * 32_762_941_440
+        optimizer_shard = 3 * 4_095_367_680
+        expected = {
+            0: (16_381_470_720, 16_381_470_720, optimizer_full),
+            1: (16_381_470_720, 16_381_470_720, optimizer_shard),
+            2: (16_381_470_720, 2_047_683_840, optimizer_shard),
+            3: (2_047_683_840, 2_047_683_840, optimizer_shard),
+        }
+        for stage, parts in expected.items():
+            with self.subTest(stage=stage):
+                self.assertEqual(
+                    training.sharded_state_components(8_190_735_360, 8, stage), parts
+                )
+
+    def test_components_with_fp32_gradients(self) -> None:
+        # training-state-fp32-gradient.json: gradients 32 762 941 440 до stage 2,
+        # 4 095 367 680 со stage 2; persistent_bytes_per_rank stage 0 — 147 433 236 480
+        # (chapter3.md:414: 18 байт на параметр)
+        parts = training.sharded_state_components(8_190_735_360, 8, 0, grad_bytes=4)
+        self.assertEqual(parts[1], 32_762_941_440)
+        self.assertEqual(sum(parts), 147_433_236_480)
+        parts = training.sharded_state_components(8_190_735_360, 8, 3, grad_bytes=4)
+        self.assertEqual(parts, (2_047_683_840, 4_095_367_680, 12_286_103_040))
+
+    def test_components_hand_derived(self) -> None:
+        # вывод вручную: P = 10^9, d = 4, stage 2 — веса 2P, градиенты 2P/4, оптимизатор 12P/4
+        self.assertEqual(
+            training.sharded_state_components(10**9, 4, 2),
+            (2 * 10**9, 5 * 10**8, 3 * 10**9),
+        )
+        self.assertEqual(
+            sum(training.sharded_state_components(10**9, 4, 2)),
+            training.sharded_state_bytes_per_device(10**9, 4, 2),
+        )
 
     def test_unknown_stage(self) -> None:
         for stage in (4, -1, 1.0, True, math.nan):
