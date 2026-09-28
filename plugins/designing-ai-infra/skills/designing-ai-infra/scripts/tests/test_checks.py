@@ -11,22 +11,33 @@ class RequirePositiveTest(unittest.TestCase):
     def test_accepts_positive(self) -> None:
         checks.require_positive("peak", 1e-9)
 
-    def test_rejects_zero_negative_and_nan(self) -> None:
-        for value in (0, -1.0, math.nan):
+    def test_rejects_zero_and_negative(self) -> None:
+        for value in (0, -1.0):
             with self.subTest(value=value), self.assertRaises(ValueError) as caught:
                 checks.require_positive("peak", value)
             self.assertIn("peak должен быть больше нуля", str(caught.exception))
+
+    def test_nan_is_reported_as_not_a_number(self) -> None:
+        # «должен быть больше нуля: nan» указывало бы не на ту ошибку
+        with self.assertRaises(ValueError) as caught:
+            checks.require_positive("peak", math.nan)
+        self.assertIn("peak должен быть конечным числом", str(caught.exception))
 
 
 class RequireNonNegativeTest(unittest.TestCase):
     def test_accepts_zero(self) -> None:
         checks.require_non_negative("flops", 0)
 
-    def test_rejects_negative_and_nan(self) -> None:
-        for value in (-1e-9, math.nan):
-            with self.subTest(value=value), self.assertRaises(ValueError) as caught:
-                checks.require_non_negative("flops", value)
-            self.assertIn("flops не может быть отрицательным", str(caught.exception))
+    def test_rejects_negative(self) -> None:
+        with self.assertRaises(ValueError) as caught:
+            checks.require_non_negative("flops", -1e-9)
+        self.assertIn("flops не может быть отрицательным", str(caught.exception))
+
+    def test_nan_is_reported_as_not_a_number(self) -> None:
+        # «не может быть отрицательным: nan» указывало бы не на ту ошибку
+        with self.assertRaises(ValueError) as caught:
+            checks.require_non_negative("flops", math.nan)
+        self.assertIn("flops должен быть конечным числом", str(caught.exception))
 
 
 class RequireFiniteTest(unittest.TestCase):
