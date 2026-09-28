@@ -846,6 +846,67 @@ class CalculatorCoverageTests(unittest.TestCase):
             result.stdout,
         )
 
+    def test_rejects_call_that_is_only_a_comment(self) -> None:
+        with repository_copy() as copied_root:
+            self.add_calculator(
+                copied_root,
+                f'ANCHORS = ("{HEADING_ANCHOR}",)\n# sample.public_fn(\n',
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            "calculator function without anchored test: sample.public_fn",
+            result.stdout,
+        )
+
+    def test_rejects_call_that_is_only_a_string(self) -> None:
+        with repository_copy() as copied_root:
+            self.add_calculator(
+                copied_root,
+                f'ANCHORS = ("{HEADING_ANCHOR}",)\n\n\n'
+                'def test_sample() -> None:\n    text = "sample.public_fn(1)"\n',
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            "calculator function without anchored test: sample.public_fn",
+            result.stdout,
+        )
+
+    def test_rejects_call_outside_test_functions(self) -> None:
+        # вызов на уровне модуля не проверяется ни одним assert теста
+        with repository_copy() as copied_root:
+            self.add_calculator(
+                copied_root,
+                f'ANCHORS = ("{HEADING_ANCHOR}",)\nVALUE = sample.public_fn()\n',
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            "calculator function without anchored test: sample.public_fn",
+            result.stdout,
+        )
+
+    def test_accepts_call_inside_test_method(self) -> None:
+        with repository_copy() as copied_root:
+            self.add_calculator(
+                copied_root,
+                f'import unittest\n\nANCHORS = ("{HEADING_ANCHOR}",)\n\n\n'
+                "class SampleTest(unittest.TestCase):\n"
+                "    def test_value(self) -> None:\n"
+                "        self.assertEqual(sample.public_fn(), 1)\n",
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_rejects_anchor_that_is_not_a_heading(self) -> None:
         with repository_copy() as copied_root:
             self.add_calculator(
@@ -1000,6 +1061,20 @@ class DataIntegrityTests(unittest.TestCase):
             f"SOURCE.json path does not resolve: {PLUGIN_DIRECTORY / 'SOURCE.json'} "
             f"bundled_sources.directory={rooted}",
             result.stdout,
+        )
+
+    def test_rejects_cjk_artifact_in_skill_document(self) -> None:
+        with repository_copy() as copied_root:
+            path = copied_root / SKILL_DIRECTORY / "SKILL.md"
+            text = path.read_text(encoding="utf-8")
+            path.write_text(text + "Номер 对\n", encoding="utf-8")
+            line = len(text.splitlines()) + 1
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            f"CJK artifact: {SKILL_DIRECTORY / 'SKILL.md'}:{line}", result.stdout
         )
 
     def test_rejects_cjk_artifact_in_references(self) -> None:

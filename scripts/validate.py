@@ -101,7 +101,6 @@ AUTHOR_RESULT = re.compile(
 )
 # Разреженный клон оригинала на пине; в git не входит и может отсутствовать
 AUTHOR_RESULTS_CLONE = Path(".tmp") / "upcalc" / "calculations" / "results"
-SOURCE_BOOK_DIRECTORY_NAME = "source-book"
 CJK = re.compile(r"[\u3000-\u9fff]")
 REFERENCE_PATH = re.compile(r"references/[A-Za-z0-9._/-]+\.md")
 SEMVER = re.compile(
@@ -1028,6 +1027,28 @@ def _test_anchors(tree: ast.Module) -> list[str]:
     return anchors
 
 
+def _calls_in_tests(tree: ast.Module) -> set[tuple[str, str]]:
+    """Вызовы вида module.function(...) внутри тестовых функций (test*).
+
+    Упоминание в комментарии, строке или на уровне модуля тестом не является:
+    его не проверяет ни один assert.
+    """
+    calls: set[tuple[str, str]] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if not node.name.startswith("test"):
+            continue
+        for inner in ast.walk(node):
+            if (
+                isinstance(inner, ast.Call)
+                and isinstance(inner.func, ast.Attribute)
+                and isinstance(inner.func.value, ast.Name)
+            ):
+                calls.add((inner.func.value.id, inner.func.attr))
+    return calls
+
+
 def _check_test_anchor(
     root: Path, test_name: str, anchor: str, errors: list[str]
 ) -> None:
@@ -1066,27 +1087,28 @@ def validate_calculator_coverage(root: Path, errors: list[str]) -> None:
     tests_dir = root / CALC_TESTS_DIRECTORY
     if not calc_dir.is_dir():
         return
-    anchored_text: list[str] = []
+    tested: set[tuple[str, str]] = set()
     for test_file in sorted(tests_dir.glob("test_*.py")):
-        text = test_file.read_text(encoding="utf-8")
-        anchors = _test_anchors(ast.parse(text))
+        tree = ast.parse(test_file.read_text(encoding="utf-8"))
+        anchors = _test_anchors(tree)
         for anchor in anchors:
             _check_test_anchor(root, test_file.name, anchor, errors)
         if anchors:
-            anchored_text.append(text)
-    corpus = "\n".join(anchored_text)
+            tested |= _calls_in_tests(tree)
     for module in sorted(calc_dir.glob("*.py")):
         if module.name in CALC_EXCLUDED:
             continue
         tree = ast.parse(module.read_text(encoding="utf-8"))
         for node in tree.body:
-            if isinstance(node, ast.FunctionDef) and not node.name.startswith("_"):
-                call = rf"\b{re.escape(module.stem)}\.{re.escape(node.name)}\("
-                if not re.search(call, corpus):
-                    errors.append(
-                        "calculator function without anchored test: "
-                        f"{module.stem}.{node.name}"
-                    )
+            if (
+                isinstance(node, ast.FunctionDef)
+                and not node.name.startswith("_")
+                and (module.stem, node.name) not in tested
+            ):
+                errors.append(
+                    "calculator function without anchored test: "
+                    f"{module.stem}.{node.name}"
+                )
 
 
 def validate_data_integrity(root: Path, errors: list[str]) -> None:
@@ -1128,10 +1150,10 @@ def validate_data_integrity(root: Path, errors: list[str]) -> None:
                 f"recorded {expected}, actual {actual}"
             )
 
-    references = root / SKILL_DIRECTORY / "references"
-    for document in sorted(references.rglob("*.md")):
-        if SOURCE_BOOK_DIRECTORY_NAME in document.relative_to(references).parts:
-            continue
+    # тексты скилла: все Markdown вне текста книги и описания агентов
+    documents = iter_skill_documents(root)
+    documents += sorted((root / SKILL_DIRECTORY / "agents").glob("*.yaml"))
+    for document in documents:
         lines = document.read_text(encoding="utf-8").splitlines()
         for number, line in enumerate(lines, 1):
             if CJK.search(line):
