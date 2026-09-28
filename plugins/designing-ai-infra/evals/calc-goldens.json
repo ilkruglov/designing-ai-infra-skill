@@ -23,12 +23,12 @@
     },
     {
       "id": 303,
-      "quantity": "decode_step_lower_bound_batch1_ctx32768",
-      "value": 0.0019385344,
+      "quantity": "decode_step_lower_bound_batch4_ctx24576_32_experts",
+      "value": 0.0055456384,
       "unit": "s",
       "relative_tolerance": 0.01,
-      "derivation": "Код автора: `python3 .tmp/upcalc/calculations/calc.py forward --model qwen3-30b-a3b --batch 1 --history 32767 --tokens 1 --format json` (routing balanced) → matrix_flops = 31 853 117 440 FLOP, weight_read_once_per_operator_bytes = 6 083 739 648 B (внимание, роутер, 8 активных экспертов на слой, выходной слой, строка эмбеддинга), kv_attention_unique_payload_bytes = 3 221 225 472 B (32 768 × 98 304). R = 9 304 965 120 B; для h200-sxm функцией автора select_peak: 989,5 TFLOP/s, 4,8·10^12 B/s; max(F/Π, R/β) = max(3,22·10^-5; 1,9385344·10^-3) = 1,9385344·10^-3 s.",
-      "skill_cross_check": "из каталога скилла: python3 scripts/calc.py model --config ../../evals/fixtures/configs/qwen3-30b-a3b.json --context 32768 → decode_weight_read_bytes 6 083 735 552 (на 4096 B меньше автора: строка эмбеддинга), kv_resident_bytes 3 221 225 472, decode_step_flops 31 853 117 440; serving --device h200-sxm --weights 61064245248 --weight-read 6083735552 --decode-flops 31853117440 --kv-per-token 98304 --context 32768 --batch 1 → tpot_lower_bound_seconds 0.00193853. Совпадает (расхождение 8,5·10^-7 относительных)."
+      "derivation": "Код автора: `python3 .tmp/upcalc/calculations/calc.py forward --model qwen3-30b-a3b --batch 4 --history 24575 --tokens 1 --routing balanced --format json` → expert_union_per_layer 32 (4 токена × top-8 без пересечений), weight_read_once_per_operator_bytes = 16 955 387 904 B (из них routed_expert_unique_weight_payload_bytes 14 495 514 624 = 32 × 48 × 3 × 2048 × 768 × 2; остальное 2 459 873 280 — внимание, роутер, нормализации, выходной слой и 4 строки эмбеддинга), kv_attention_unique_payload_bytes = 9 663 676 416 B (4 × 24 576 × 98 304), matrix_flops = 101 642 665 984. R = 26 619 064 320 B; для h200-sxm функцией автора select_peak: 989,5 TFLOP/s, 4,8·10^12 B/s; max(F/Π, R/β) = max(1,027·10^-4; 5,5456384·10^-3) = 5,5456384·10^-3 s. Ручная сверка неэкспертной части: на слой q 2048×4096 + k,v 2 × 2048×512 + o 4096×2048 + роутер 2048×128 + нормы 2×2048 + q/k-norm 2×128 = 19 140 864 параметра; × 48 + финальная норма 2048 + lm_head 151 936 × 2048 + 4 × 2048 строк эмбеддинга = 1 229 936 640 параметров × 2 B = 2 459 873 280 B. Среднее объединение при случайной независимой маршрутизации 128·[1 − (1 − 8/128)^4] ≈ 29,1 эксперта дало бы ≈ 5,27 ms; в запросе зафиксировано 32.",
+      "skill_cross_check": "из каталога скилла: python3 scripts/calc.py model --config ../../evals/fixtures/configs/qwen3-30b-a3b.json --context 24576 → decode_weight_read_bytes 6 083 735 552 (batch 1, 8 экспертов), decode_step_flops 25 410 666 496 (× 4 = 101 642 665 984). Калькулятор не считает объединение экспертов при batch — пересчёт вручную по его же числам: 6 083 735 552 − 8 × 48 × 9 437 184 + 32 × 48 × 9 437 184 = 16 955 371 520 B; + KV 9 663 676 416 = 26 619 047 936 B; из каталога скилла: python3 scripts/calc.py roofline --device h200-sxm --flops 101642665984 --bytes 26619047936 → step_lower_bound_seconds 0.00554563. Совпадает (разница 16 384 B — строки эмбеддинга, 6·10^-7 относительных)."
     },
     {
       "id": 304,
@@ -45,7 +45,7 @@
       "value": 840.4044921507738,
       "unit": "s",
       "relative_tolerance": 0.01,
-      "derivation": "Код автора: `python3 .tmp/upcalc/calculations/calc.py checkpoint-interval --inputs <файл>` с входом {\"model\": \"qwen3-32b\", \"devices\": 2048, \"device_mtbf_seconds\": 63072000, \"save_bandwidth_bytes_per_second\": 40000000000, \"recovery_ns\": 600000000000, \"intervals_seconds\": [300, 600, 900, 1200, 1800]} → parameters 32 762 123 264, checkpoint_payload_bytes 458 669 725 696 (14 B/параметр), c = 11,4667 s, λ = 8/246375 1/s, first_order_optimal_useful_interval_seconds 840,40449 = √(2c/λ); poisson_optimal_useful_interval_seconds 832,78 (−0,9 %, в допуске).",
+      "derivation": "Код автора: `python3 .tmp/upcalc/calculations/calc.py checkpoint-interval --inputs <файл>` с входом {\"model\": \"qwen3-32b\", \"devices\": 2048, \"device_mtbf_seconds\": 63072000, \"save_bandwidth_bytes_per_second\": 40000000000, \"recovery_ns\": 600000000000, \"intervals_seconds\": [300, 600, 900, 1200, 1800]} → parameters 32 762 123 264, checkpoint_payload_bytes 458 669 725 696 (14 B/параметр), c = 11,4667 s, λ = 8/246375 1/s, first_order_optimal_useful_interval_seconds 840,40449 = √(2c/λ); poisson_optimal_useful_interval_seconds 832,78 (справочно; запрос фиксирует формулу первого порядка).",
       "skill_cross_check": "из каталога скилла: python3 scripts/calc.py checkpoint --checkpoint-bytes 458669725696 --save-bandwidth 40e9 --devices 2048 --device-mtbf 63072000 --recovery 600 → first_order_optimal_interval_seconds 840.404, poisson_optimal_interval_seconds 832.777. Совпадает."
     },
     {

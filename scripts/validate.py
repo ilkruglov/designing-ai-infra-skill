@@ -1002,6 +1002,64 @@ def validate_benchmark_coverage(root: Path, errors: list[str]) -> None:
                     f"covered by {covered.get(key, 0)} scenarios, need {minimum}"
                 )
 
+    validate_benchmark_inputs(root, scenarios, errors)
+
+
+# Расчётные сценарии бенчмарка занимают диапазон id 300–399; у каждого из них
+# есть числовой эталон в calc-goldens.json, и наоборот.
+CALCULATION_IDS = range(300, 400)
+
+
+def validate_benchmark_inputs(
+    root: Path, scenarios: list[object], errors: list[str]
+) -> None:
+    """Вложения сценариев существуют, расчётные сценарии и эталоны парны.
+
+    Сценарий с отсутствующим вложением прогоняется без данных, а расчётный
+    сценарий без эталона нельзя оценить по допуску; обе ошибки иначе
+    обнаруживаются только после прогона бенчмарка.
+    """
+    plugin_root = root / PLUGIN_DIRECTORY
+    calculation_ids: set[int] = set()
+    for scenario in scenarios:
+        if not isinstance(scenario, dict):
+            continue
+        for relative in scenario.get("files", []):
+            if not (plugin_root / relative).is_file():
+                errors.append(
+                    f"benchmark scenario file missing: {relative} "
+                    f"(scenario {scenario.get('id', scenario.get('name', '?'))})"
+                )
+        scenario_id = scenario.get("id")
+        if isinstance(scenario_id, int) and scenario_id in CALCULATION_IDS:
+            calculation_ids.add(scenario_id)
+
+    goldens_path = plugin_root / "evals" / "calc-goldens.json"
+    golden_ids: set[int] = set()
+    if goldens_path.is_file():
+        try:
+            goldens = json.loads(goldens_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return  # об ошибке уже сообщила общая проверка JSON
+        rows = goldens.get("goldens") if isinstance(goldens, dict) else None
+        if not isinstance(rows, list):
+            errors.append("invalid calc-goldens.json: goldens must be a list")
+            return
+        golden_ids = {
+            row["id"]
+            for row in rows
+            if isinstance(row, dict) and isinstance(row.get("id"), int)
+        }
+    elif calculation_ids:
+        errors.append(
+            f"missing required file: {goldens_path.relative_to(root).as_posix()}"
+        )
+
+    for scenario_id in sorted(calculation_ids - golden_ids):
+        errors.append(f"calculation scenario without golden: {scenario_id}")
+    for golden_id in sorted(golden_ids - calculation_ids):
+        errors.append(f"golden without calculation scenario: {golden_id}")
+
 
 def validate_skill_routing(root: Path, errors: list[str]) -> None:
     skill_path = root / SKILL_DIRECTORY / "SKILL.md"

@@ -775,8 +775,8 @@ class BenchmarkCoverageTests(unittest.TestCase):
         self.assertIn("insufficient benchmark coverage", result.stdout)
 
     def test_rejects_benchmark_pointing_at_missing_file(self) -> None:
-        # benchmark-v1.json пока пустой (evals: []), поэтому сценарий
-        # добавляется фикстурой, а не правится в существующем элементе списка.
+        # Сценарий добавляется отдельным элементом без id, а не правится в
+        # существующем: заодно проверяется, что валидатор не падает на нём.
         with repository_copy() as copied_root:
             path = copied_root / PLUGIN_DIRECTORY / "evals" / "benchmark-v1.json"
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -792,6 +792,66 @@ class BenchmarkCoverageTests(unittest.TestCase):
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("benchmark covers a missing file", result.stdout)
+
+    def test_rejects_scenario_with_missing_input_file(self) -> None:
+        # Сценарий с несуществующим вложением прогоняется «вслепую»: модель
+        # не видит данных, и критерии проверяют уже не то, что задумано.
+        with repository_copy() as copied_root:
+            path = copied_root / PLUGIN_DIRECTORY / "evals" / "benchmark-v1.json"
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload["evals"][0]["files"] = ["evals/fixtures/ghost-brief.yaml"]
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("benchmark scenario file missing", result.stdout)
+        self.assertIn("evals/fixtures/ghost-brief.yaml", result.stdout)
+
+    def test_rejects_calculation_scenario_without_golden(self) -> None:
+        # Расчётный сценарий (id 3xx) без эталона нельзя оценить по допуску.
+        with repository_copy() as copied_root:
+            path = copied_root / PLUGIN_DIRECTORY / "evals" / "benchmark-v1.json"
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload["evals"].append(
+                {"id": 399, "name": "calc-without-golden", "files": [], "covers": []}
+            )
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("calculation scenario without golden: 399", result.stdout)
+
+    def test_rejects_golden_without_calculation_scenario(self) -> None:
+        with repository_copy() as copied_root:
+            path = copied_root / PLUGIN_DIRECTORY / "evals" / "calc-goldens.json"
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload["goldens"].append(
+                {
+                    "id": 398,
+                    "quantity": "orphan",
+                    "value": 1,
+                    "unit": "s",
+                    "relative_tolerance": 0.01,
+                    "derivation": "вручную",
+                }
+            )
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("golden without calculation scenario: 398", result.stdout)
 
 
 CALCULATOR_DIRECTORY = SKILL_DIRECTORY / "scripts" / "infra_calc"
