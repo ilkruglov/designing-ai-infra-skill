@@ -108,16 +108,23 @@ Qwen3.5-397B-A17B: 30 720 B на токен на слоях полного вн�
 
 ```bash
 python3 scripts/calc.py model --config scripts/tests/fixtures/configs/qwen3-8b.json --context 8192
-python3 -c "E, k = 128, 8; print([round(E * (1 - (1 - k / E) ** m), 1) for m in (1, 8, 64)])"
+python3 scripts/calc.py model --config scripts/tests/fixtures/configs/qwen3-30b-a3b.json --context 8192 --batch 8 \
+  | grep -E '^\*\*(decode_weight_read_bytes|experts_per_layer_at_batch|decode_weight_read_bytes_at_batch)\*\*'
+python3 scripts/calc.py model --config scripts/tests/fixtures/configs/qwen3-30b-a3b.json --context 8192 --batch 64 \
+  | grep -E '^\*\*(experts_per_layer_at_batch|decode_weight_read_bytes_at_batch)\*\*'
 ```
 
 ```text
 **prefill_flops**: 133 594 323 353 600 FLOP
 **decode_step_flops**: 19 968 032 768 FLOP
-[8.0, 51.6, 125.9]
+**decode_weight_read_bytes**: 6 083 735 552 B
+**experts_per_layer_at_batch**: 51.6199
+**decode_weight_read_bytes_at_batch**: 25 842 891 954 B
+**experts_per_layer_at_batch**: 125.942
+**decode_weight_read_bytes_at_batch**: 59 509 830 820 B
 ```
 
-Qwen3-8B при 8K — 133,59 TFLOPs prefill и 20,0 GFLOPs на шаг decode. У Qwen3-30B-A3B (128 экспертов, top-8) при равномерной маршрутизации batch 8 затрагивает в среднем ≈ 52 эксперта слоя, batch 64 — почти все 128: преимущество «читаем только активные» тает с ростом batch. Второе выражение — формула главы 6 (6-8), считается вручную; калькулятор объединение экспертов не моделирует. Полный ответ 8192 → 1025 у Qwen3-8B читает ≈ 1224 GiB старого KV при итоговом кэше ≈ 1,27 GiB (пример 2-3).
+Qwen3-8B при 8K — 133,59 TFLOPs prefill и 20,0 GFLOPs на шаг decode. У Qwen3-30B-A3B (128 экспертов, top-8) при равномерной маршрутизации batch 8 затрагивает в среднем ≈ 52 эксперта слоя, batch 64 — почти все 128: преимущество «читаем только активные» тает с ростом batch. Чтение весов за шаг растёт с 6,08 GB при одном запросе до ≈ 25,8 GB при batch 8 и ≈ 59,5 GB при batch 64. `model --batch` считает формулу главы 6 (6-8) — ожидание при равномерной независимой маршрутизации; измеренное или худшее объединение `min(B·k, E)` передаётся через `--experts-per-layer`. Полный ответ 8192 → 1025 у Qwen3-8B читает ≈ 1224 GiB старого KV при итоговом кэше ≈ 1,27 GiB (пример 2-3).
 
 ### 6. Ёмкость и время на целевом железе
 
@@ -139,21 +146,21 @@ python3 scripts/calc.py serving --device h100-sxm --weights 61064245248 --weight
 **tpot_lower_bound_seconds** (нижняя граница): 0.00205643 s
 ```
 
-При одном запросе MoE быстрее по нижней границе (2,06 против 4,88 ms), но из-за 61 GB весов вмещает 20 запросов 8K против 50; при `--context 32768` — 5 против 12. С ростом batch у MoE растёт и чтение объединения экспертов (шаг 5), которое `serving` не учитывает: при batch > 1 граница TPOT MoE остаётся нижней, но слабой — реальное чтение больше. Порог batch по KV для плотной модели — `roofline.batch_threshold` (шаг 5 `references/playbooks/size-inference.md`).
+При одном запросе MoE быстрее по нижней границе (2,06 против 4,88 ms), но из-за 61 GB весов вмещает 20 запросов 8K против 50; при `--context 32768` — 5 против 12. С ростом batch у MoE растёт и чтение объединения экспертов (шаг 5), которого `serving` по `decode_weight_read_bytes` не видит: с ним граница TPOT MoE при batch > 1 остаётся нижней, но слабой — реальное чтение больше. Для batch B в `--weight-read` передаётся `decode_weight_read_bytes_at_batch` из `model --batch B`. Порог batch по KV — `batch-threshold` (шаг 5 `references/playbooks/size-inference.md`); для MoE он нижняя граница, потому что при batch читается объединение экспертов.
 
 Гибридные модели и MLA требуют трёх поправок:
 
-- **Фиксированное состояние запроса.** У `serving` нет отдельного входа для рекуррентного и свёрточного состояния, а книга включает его в знаменатель `B_max` вместе с KV (`references/source-book/chapter2.md:805`). Эффективный `--kv-per-token` = `kv_bytes_per_token` + ⌈`fixed_state_bytes` / контекст⌉. Для фикстуры Qwen3.5-397B-A17B при 8192 токенах — 30 720 + ⌈193 167 360 / 8192⌉ = 54 300 B, то есть 444,8 MB на запрос вместо 251,7 MB по одному KV. Тот же приём кладёт состояние в чтение шага decode один раз; запись обновлённого состояния не учтена, так что граница TPOT остаётся нижней.
+- **Фиксированное состояние запроса.** Книга включает рекуррентное и свёрточное состояние в знаменатель `B_max` вместе с KV (`references/source-book/chapter2.md:805`). `serving --config` с гибридным конфигом берёт `fixed_state_bytes` сам и печатает его во входах, а `--fixed-state-bytes` задаёт его явно. Для фикстуры Qwen3.5-397B-A17B при 8192 токенах запрос занимает 30 720 × 8192 + 193 167 360 = 444 825 600 B вместо 251 658 240 B одного KV. Состояние прибавляется и к чтению шага decode; запись обновлённого состояния не учтена, так что граница TPOT остаётся нижней.
 - **FLOPs «не вычисляется».** Для MLA и гибридного внимания `model` не даёт `decode_step_flops`, а `serving` требует `--decode-flops`: передаётся `--decode-flops 0` — граница только по чтению, всё ещё нижняя (как для телефона в `references/playbooks/design-edge-cloud.md`), а FLOPs берутся из команд автора на `56ecb425` или из измерения.
-- **Веса не помещаются на одну карту.** 794 GB (номинал Qwen3.5-397B-A17B) и 1342 GB (DeepSeek-V3) в BF16 требуют разбиения — пересчёт на карту и редукции по шагу 5 `references/playbooks/size-inference.md`. Компактный KV MLA при TP не делится: на каждой карте группы лежит полный латентный кэш запросов.
+- **Веса не помещаются на одну карту.** 794 GB (номинал Qwen3.5-397B-A17B) и 1342 GB (DeepSeek-V3) в BF16 требуют разбиения — ёмкость на карту считает `serving --tp p --config`, редукции добавляются по шагу 5 `references/playbooks/size-inference.md`. Компактный KV MLA при TP не делится: на каждой карте группы лежит полный латентный кэш запросов.
 
-Пример: сколько запросов 8K поместится в бюджет состояния 64 GiB (условный бюджет после весов на группе карт; `--weights 0`, поля шага decode в этом вызове не имеют смысла) — без фиксированного состояния и с ним:
+Пример: сколько запросов 8K поместится в бюджет состояния 64 GiB одной карты (условный бюджет после весов; `--weights 0`, поля шага decode в этом вызове не имеют смысла) — без фиксированного состояния и с ним. Здесь KV и состояние всей модели лежат на одной карте, как при TP1. Бюджеты карт группы не складываются: у Qwen3.5 две головы KV, и при TP > 2 KV дублируется; ёмкость на карту при TP считает `serving --tp p --config`.
 
 ```bash
 python3 scripts/calc.py serving --device h100-sxm --memory 68719476736 --weights 0 --weight-read 0 \
   --decode-flops 0 --kv-per-token 30720 --context 8192
 python3 scripts/calc.py serving --device h100-sxm --memory 68719476736 --weights 0 --weight-read 0 \
-  --decode-flops 0 --kv-per-token 54300 --context 8192
+  --decode-flops 0 --kv-per-token 30720 --context 8192 --config scripts/tests/fixtures/configs/qwen3.5-397b-a17b.json
 ```
 
 ```text

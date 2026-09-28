@@ -31,10 +31,10 @@
 
 Единицы явные: GB = 10⁹ B, GiB = 2³⁰ B, скорость — B/s, tok/s или step/s.
 
-Два правила ёмкости, которых нет во входах `serving`:
+Два правила ёмкости, которые легко пропустить:
 
-- **Фиксированное состояние запроса** (рекуррентное и свёрточное у гибридных моделей, поле `fixed_state_bytes` команды `model`) входит в знаменатель `B_max` вместе с KV (`references/source-book/chapter2.md:805`). `serving` его не принимает: считается `⌊пул / (KV на токен × контекст + фиксированное состояние)⌋` или `serving` с эффективным `--kv-per-token` = KV + ⌈фиксированное состояние / контекст⌉ (шаг 6 `references/playbooks/compare-model-architectures.md`). Число `serving` без этой поправки завышено и в лист не переносится.
-- **KV на карту при TP.** GQA: KV на токен делится на min(TP, `num_key_value_heads`), сверх числа KV-голов дублируется. MLA: компактный латентный KV при TP не делится — каждая карта группы держит полный латентный кэш своих запросов (шаг 5 `references/playbooks/size-inference.md`). При PP карта держит KV только своих слоёв.
+- **Фиксированное состояние запроса** (рекуррентное и свёрточное у гибридных моделей, поле `fixed_state_bytes` команды `model`) входит в знаменатель `B_max` вместе с KV (`references/source-book/chapter2.md:805`). `serving --config` с гибридным конфигом берёт его сам и печатает вход `fixed_state`, явное значение задаёт `--fixed-state-bytes`: ёмкость — `⌊пул / (KV на токен × контекст + фиксированное состояние)⌋` (шаг 6 `references/playbooks/compare-model-architectures.md`). Число `serving` без входа `fixed_state` у гибридной модели завышено и в лист не переносится.
+- **KV на карту при TP.** GQA: KV на токен делится на min(TP, `num_key_value_heads`), сверх числа KV-голов дублируется. MLA: компактный латентный KV при TP не делится — каждая карта группы держит полный латентный кэш своих запросов (шаг 5 `references/playbooks/size-inference.md`). `serving --tp N --config` получает значения всей модели и делит их на карту по этим правилам, `model --tp N` печатает значения на карту; редукции TP `serving` не учитывает. При PP карта держит KV только своих слоёв.
 
 ## Форма
 
@@ -201,22 +201,23 @@ python3 scripts/calc.py serving --device h100-sxm --weights 16381470720 --weight
 python3 scripts/calc.py serving --device h100-sxm --weights 16381470720 --weight-read 15136811008 \
   --decode-flops 17363369984 --kv-per-token 147456 --context 3776 --batch 64 --price-per-hour 2.5 \
   | grep -E '^\*\*(tpot|tokens_per_second|cost)'
-python3 -c "import sys; sys.path.insert(0, 'scripts'); from infra_calc import roofline; \
-print(roofline.batch_threshold(15136811008, 147456, 3776))"
+python3 scripts/calc.py batch-threshold --weight-read 15136811008 --kv-per-token 147456 --context 3776 \
+  --decode-flops 17363369984 --device h100-sxm | grep '^\*\*'
 ```
 
 ```text
 **tpot_lower_bound_seconds** (нижняя граница): 0.0151557 s
 **tokens_per_second_upper_bound** (верхняя граница): 4222.83 tok/s
 **cost_per_million_tokens_lower_bound** (нижняя граница): 0.16445 $
-28
+**kv_read_batch_threshold**: 28
+**compute_bound_batch_threshold**: не вычисляется
 ```
 
 Потребность пиковой минуты против мощности decode одной карты и число запросов в системе по закону Литтла:
 
 ```bash
 python3 scripts/calc.py queueing --class rag=6144:512 --class chat=1024:256 --rate rag=1.5 --rate chat=3 \
-  --decode-capacity 4222.83 | grep '^\*\*'
+  --decode-capacity 4222.83 --capacity-upper-bound | grep '^\*\*'
 python3 scripts/calc.py queueing --arrival-rate 1.5 --time-in-system 27.05 | grep '^\*\*'
 python3 scripts/calc.py queueing --arrival-rate 3 --time-in-system 14.25 | grep '^\*\*'
 ```
@@ -224,7 +225,7 @@ python3 scripts/calc.py queueing --arrival-rate 3 --time-in-system 14.25 | grep 
 ```text
 **input_tokens_per_second**: 12288 tok/s
 **decode_steps_per_second**: 1531.5 step/s
-**decode_utilization**: 0.362671
+**decode_utilization** (нижняя граница): 0.362671
 **in_system**: 40.575
 **in_system**: 42.75
 ```
@@ -279,7 +280,7 @@ python3 scripts/calc.py serving --device h100-sxm --weights 16381470720 --weight
 | `rag` | 147 456 B (TP1) | 0 | 981 467 136 B (936 MiB) | 56 | 0,0975 s | 15,2 ms (смесь, контекст 3776) | prefill — вычисления (0,0975 против 0,0049 s); decode — чтение (15,16 против 1,12 ms) | 7,84 s | 1,5 s / 50 ms / 30 s | не исключён при смеси; одновременно не больше 56 `rag` |
 | `chat` | 147 456 B (TP1) | 0 | 188 743 680 B (180 MiB) | 291 | 0,0147 s | 15,2 ms (смесь, контекст 3776) | prefill — вычисления (0,0147 против 0,0049 s); decode — чтение | 3,88 s | 1,5 s / 50 ms | не исключён |
 
-«Не исключён» не значит «уложится»: с калибровкой TPOT ≈ 23,3 ms, и p95 проверяется только измерением. Интенсивность шага decode — 21,9 FLOP/B против точки перегиба 295,3. При контексте 3776 она с ростом batch стремится к 17 363 369 984 / (147 456 × 3776) ≈ 31 FLOP/B и точки перегиба не достигает: шаг растёт чтением KV при любом batch.
+«Не исключён» не значит «уложится»: с калибровкой TPOT ≈ 23,3 ms, и p95 проверяется только измерением. Интенсивность шага decode — 21,9 FLOP/B против точки пересечения 295,3. При контексте 3776 она с ростом batch стремится к 17 363 369 984 / (147 456 × 3776) ≈ 31 FLOP/B и точки пересечения не достигает: шаг растёт чтением KV при любом batch — поэтому `compute_bound_batch_threshold` выше и «не вычисляется».
 
 #### Нагрузка в пиковом окне
 
@@ -333,7 +334,27 @@ python3 scripts/calc.py serving --device h100-sxm --weights 16381470720 --weight
 
 Пороги смены лидера — по batch и по контексту.
 
-Порог по batch. При одном запросе MoE быстрее по нижним границам (TTFT 0,0489 против 0,0975 s, шаг 2,01 против 4,81 ms), но при batch B шаг MoE читает объединение экспертов, которое `serving` не учитывает. Ручной расчёт по формуле 6-8 (шаг 5 `references/playbooks/compare-model-architectures.md`), фикстура: E = 128 экспертов на слое, top-k = 8, 48 слоёв, эксперт — 3 × 2048 × 768 × 2 B = 9 437 184 B (все эксперты — 57 982 058 496 B). Неэкспертная часть чтения: 6 083 735 552 − 8 × 48 × 9 437 184 = 2 459 856 896 B. Ожидаемое объединение при равномерной независимой маршрутизации `U(B) = E·[1 − (1 − k/E)^B]`: U(4) ≈ 29,12, U(5) ≈ 35,30, U(15) ≈ 79,38. Чтение шага MoE — 2 459 856 896 + U(B) × 48 × 9 437 184 + B × 654 311 424 (KV `rag` при 6656): 18 269 401 088 B при B = 4 и 21 723 072 512 B при B = 5; FLOPs — B × 11 317 805 056. Границы шага на H100:
+Порог по batch. При одном запросе MoE быстрее по нижним границам (TTFT 0,0489 против 0,0975 s, шаг 2,01 против 4,81 ms), но при batch B шаг MoE читает объединение экспертов, которого `decode_weight_read_bytes` не содержит. Ожидаемое объединение при равномерной независимой маршрутизации `U(B) = E·[1 − (1 − k/E)^B]` (формула 6-8, шаг 5 `references/playbooks/compare-model-architectures.md`) и чтение весов шага при нём считает `model --batch`; фикстура: E = 128 экспертов на слое, top-k = 8, 48 слоёв, эксперт — 3 × 2048 × 768 × 2 B = 9 437 184 B (все эксперты — 57 982 058 496 B):
+
+```bash
+python3 scripts/calc.py model --config scripts/tests/fixtures/configs/qwen3-30b-a3b.json --context 6656 --batch 4 \
+  | grep -E '^\*\*(experts_per_layer_at_batch|decode_weight_read_bytes_at_batch)\*\*'
+python3 scripts/calc.py model --config scripts/tests/fixtures/configs/qwen3-30b-a3b.json --context 6656 --batch 5 \
+  | grep -E '^\*\*(experts_per_layer_at_batch|decode_weight_read_bytes_at_batch)\*\*'
+python3 scripts/calc.py model --config scripts/tests/fixtures/configs/qwen3-30b-a3b.json --context 6656 --batch 15 \
+  | grep -E '^\*\*(experts_per_layer_at_batch|decode_weight_read_bytes_at_batch)\*\*'
+```
+
+```text
+**experts_per_layer_at_batch**: 29.123
+**decode_weight_read_bytes_at_batch**: 15 652 155 392 B
+**experts_per_layer_at_batch**: 35.3029
+**decode_weight_read_bytes_at_batch**: 18 451 515 392 B
+**experts_per_layer_at_batch**: 79.384
+**decode_weight_read_bytes_at_batch**: 38 419 610 260 B
+```
+
+Неэкспертная часть чтения — 6 083 735 552 − 8 × 48 × 9 437 184 = 2 459 856 896 B, и `decode_weight_read_bytes_at_batch` = 2 459 856 896 + U(B) × 48 × 9 437 184. Чтение шага MoE — это значение плюс B × 654 311 424 (KV `rag` при 6656): 18 269 401 088 B при B = 4 и 21 723 072 512 B при B = 5; FLOPs — B × 11 317 805 056. Границы шага на H100:
 
 ```bash
 python3 scripts/calc.py roofline --device h100-sxm --flops 45271220224 --bytes 18269401088 | grep '^\*\*step'
@@ -364,7 +385,7 @@ python3 scripts/calc.py serving --device h100-sxm --weights 16381470720 --weight
 
 - B = 4 (U ≈ 29,123): c ≈ 2621 токен. Короче — лидирует Qwen3-8B; при контексте `chat` 1280 лидер меняется уже между 3 и 4 последовательностями.
 - B = 5 (U ≈ 35,303): c ≈ 13 488 токенов. Длиннее — снова лидирует MoE.
-- B = 6 (U ≈ 41,096): c ≈ 20 139 токенов.
+- B = 6 (U ≈ 41,096): c ≈ 20 139 токенов — по памяти недостижимо: при таком контексте пул MoE на одной H100 держит лишь 5 запросов (`python3 scripts/calc.py serving --device h100-sxm --weights 61064245248 --weight-read 6083735552 --decode-flops 0 --kv-per-token 98304 --context 20144 --reserve 8589934592` — `max_concurrent_requests` 5, контекст округлён до блока 16; поля шага в этом вызове не нужны). Точка B = 5, c = 13 488 допустима: 7 запросов MoE при `--context 13488`.
 
 Проверка точки B = 5, c = 13 488: FLOPs — 5 × `decode_step_flops` при `--context 13488` (16 690 708 480 у MoE, 23 091 740 672 у Qwen3-8B), байты — по формулам выше:
 
