@@ -102,6 +102,8 @@ AUTHOR_RESULT = re.compile(
 # Разреженный клон оригинала на пине; в git не входит и может отсутствовать
 AUTHOR_RESULTS_CLONE = Path(".tmp") / "upcalc" / "calculations" / "results"
 CJK = re.compile(r"[\u3000-\u9fff]")
+NUMBERS_PATH = SKILL_DIRECTORY / "references" / "numbers.md"
+TABLE_SEPARATOR = re.compile(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$")
 REFERENCE_PATH = re.compile(r"references/[A-Za-z0-9._/-]+\.md")
 SEMVER = re.compile(
     r"^(0|[1-9]\d*)\."
@@ -934,6 +936,30 @@ def validate_chapter_quotes(root: Path, errors: list[str]) -> None:
                 )
 
 
+def validate_numbers_anchors(root: Path, errors: list[str]) -> None:
+    """Каждая строка таблицы numbers.md, кроме заголовка и разделителя,
+    ссылается на строку книги.
+
+    Число без якоря нельзя сверить с книгой: его не отличить от числа,
+    которое модель придумала или пересчитала с ошибкой единиц.
+    """
+    path = root / NUMBERS_PATH
+    if not path.is_file():
+        return
+    lines = path.read_text(encoding="utf-8").splitlines()
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped.startswith("|") or TABLE_SEPARATOR.match(stripped):
+            continue
+        following = lines[index + 1].strip() if index + 1 < len(lines) else ""
+        if TABLE_SEPARATOR.match(following):
+            continue  # строка заголовка таблицы
+        if not LOCAL_SOURCE_ANCHOR.search(stripped):
+            errors.append(
+                f"numbers.md row without anchor: {NUMBERS_PATH.as_posix()}:{index + 1}"
+            )
+
+
 def validate_benchmark_coverage(root: Path, errors: list[str]) -> None:
     """Каждый playbook и шаблон обязан быть покрыт сценариями бенчмарка.
 
@@ -1232,6 +1258,7 @@ def validate_repository(root: Path) -> list[str]:
     lock = load_lock(root, errors)
     validate_source_lock(root, lock, errors)
     validate_chapter_quotes(root, errors)
+    validate_numbers_anchors(root, errors)
     validate_calculator_coverage(root, errors)
     validate_data_integrity(root, errors)
     validate_skill_routing(root, errors)

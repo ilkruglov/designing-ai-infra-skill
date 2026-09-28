@@ -1092,5 +1092,42 @@ class DataIntegrityTests(unittest.TestCase):
         )
 
 
+class NumbersAnchorTests(unittest.TestCase):
+    HEADER = (
+        "# Числа книги\n\n"
+        "| Величина | Значение | Модель или железо | Как использовать | Источник |\n"
+        "|---|---|---|---|---|\n"
+    )
+
+    @staticmethod
+    def numbers_path(root: Path) -> Path:
+        return root / SKILL_DIRECTORY / "references" / "numbers.md"
+
+    def test_rejects_numbers_row_without_anchor(self) -> None:
+        with repository_copy() as copied_root:
+            self.numbers_path(copied_root).write_text(
+                self.HEADER + "| Вес | 1 GB | модель | для примера | глава 1 |\n",
+                encoding="utf-8",
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("numbers.md row without anchor", result.stdout)
+        self.assertIn("numbers.md:5", result.stdout)
+
+    def test_accepts_numbers_rows_with_anchor(self) -> None:
+        with repository_copy() as copied_root:
+            self.numbers_path(copied_root).write_text(
+                self.HEADER + "| Вес | 1 GB | модель | для примера | "
+                "`references/source-book/chapter1.md:3` |\n",
+                encoding="utf-8",
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotIn("numbers.md row without anchor", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
