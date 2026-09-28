@@ -29,6 +29,27 @@ class RequireNonNegativeTest(unittest.TestCase):
             self.assertIn("flops не может быть отрицательным", str(caught.exception))
 
 
+class RequireFiniteTest(unittest.TestCase):
+    def test_rejects_infinity(self) -> None:
+        # бесконечная полоса или пик дают нулевое время — правдоподобный, но ложный ответ
+        for check in (checks.require_positive, checks.require_non_negative):
+            with (
+                self.subTest(check=check.__name__),
+                self.assertRaises(ValueError) as caught,
+            ):
+                check("peak", math.inf)
+            self.assertIn("peak должен быть конечным числом", str(caught.exception))
+
+    def test_require_finite_rejects_nan_and_infinity(self) -> None:
+        checks.require_finite("expected_tokens", -1.5)
+        for value in (math.nan, math.inf, -math.inf):
+            with self.subTest(value=value), self.assertRaises(ValueError) as caught:
+                checks.require_finite("expected_tokens", value)
+            self.assertIn(
+                "expected_tokens должен быть конечным числом", str(caught.exception)
+            )
+
+
 class RequireIntAtLeastTest(unittest.TestCase):
     def test_accepts_integer_at_minimum(self) -> None:
         checks.require_int_at_least("batch", 1, 1)

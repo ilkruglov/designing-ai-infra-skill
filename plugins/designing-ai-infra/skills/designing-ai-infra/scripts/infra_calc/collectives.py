@@ -2,22 +2,21 @@
 
 Кольцевой AllReduce: T = 2(n−1)α + 2(n−1)M/(nB), формула (6-9).
 При малых сообщениях время определяют запуски раундов, а не пропускная способность.
+
+Формулы кольца и дерева перенесены из calculations/src/infra_calc/topics/
+ring_collective.py и tree_collective.py оригинала (github.com/bojieli/ai-infra-book,
+пин 56ecb425), all-to-all — из all_to_all.py там же.
 """
 
 from __future__ import annotations
 
 import math
 
-from .checks import require_non_negative, require_positive
-
-
-def _devices(name: str, devices: int) -> None:
-    if devices < 1:
-        raise ValueError(f"{name} должно быть не меньше 1: {devices}")
+from .checks import require_int_at_least, require_non_negative, require_positive
 
 
 def ring_bytes_sent_per_device(devices: int, message_bytes: float) -> float:
-    _devices("devices", devices)
+    require_int_at_least("devices", devices, 1)
     require_non_negative("message_bytes", message_bytes)
     return 2 * (devices - 1) * message_bytes / devices
 
@@ -34,7 +33,12 @@ def ring_allreduce_seconds(
 
 
 def tree_allreduce_rounds(devices: int) -> int:
-    _devices("devices", devices)
+    """2·ceil(log2 n) раундов несегментированного биномиального дерева.
+
+    Формула (6-10) книги записана для n — степени двойки; ceil — расширение на
+    остальные n, совпадающее с результатом автора tree-qwen3-8b-t1-p5 (6 раундов).
+    """
+    require_int_at_least("devices", devices, 1)
     return 2 * math.ceil(math.log2(devices))
 
 
@@ -46,18 +50,20 @@ def tp_step_seconds(
     bandwidth: float,
     round_latency: float,
 ) -> float:
-    """Шаг при TP: локальная часть делится на tp, добавляются кольцевые редукции (формулы 6-5, 6-9)."""
+    """Шаг при TP: локальная часть делится на tp, добавляются кольцевые редукции (формулы 6-5, 6-9).
+
+    Деление локальной части на tp идеальное: дисбаланс шардов и накладные
+    расходы вне коллективных операций не учитываются. При tp = 1 кольцо
+    вырождается в ноль раундов, поэтому коммуникация равна нулю.
+    """
     require_non_negative("local_seconds_single", local_seconds_single)
-    _devices("tp", tp)
-    require_non_negative("reductions", reductions)
+    require_int_at_least("tp", tp, 1)
+    require_int_at_least("reductions", reductions, 0)
     require_non_negative("message_bytes", message_bytes)
     require_positive("bandwidth", bandwidth)
     require_non_negative("round_latency", round_latency)
-    communication = (
-        0.0
-        if tp == 1
-        else reductions
-        * ring_allreduce_seconds(tp, message_bytes, bandwidth, round_latency)
+    communication = reductions * ring_allreduce_seconds(
+        tp, message_bytes, bandwidth, round_latency
     )
     return local_seconds_single / tp + communication
 
@@ -80,8 +86,8 @@ def all_to_all_phase(
                 f"матрица назначений не квадратная: в строке {i} {len(row)} элементов вместо {p}"
             )
         for j, count in enumerate(row):
-            require_non_negative(f"counts[{i}][{j}]", count)
-    require_non_negative("vector_bytes", vector_bytes)
+            require_int_at_least(f"counts[{i}][{j}]", count, 0)
+    require_int_at_least("vector_bytes", vector_bytes, 0)
     require_positive("bandwidth", bandwidth)
     require_non_negative("startup_seconds", startup_seconds)
     sends = [
