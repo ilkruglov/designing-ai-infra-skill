@@ -108,6 +108,14 @@ CJK = re.compile(r"[\u3000-\u9fff]")
 FULL_COMMIT = re.compile(r"\b[0-9a-f]{40}\b")
 UPSTREAM_REFERENCE = re.compile(r"bojieli/ai-infra-book@(?P<sha>[0-9a-f]{7,40})\b")
 TRANSLATION_REFERENCE = re.compile(r"ilkruglov/ai-infra-book@(?P<sha>[0-9a-f]{7,40})\b")
+# Короткий sha без имени репозитория, по контексту: «на коммите `56ecb425`»,
+# «на `56ecb425`», «пин …», «commit …», «@…». Якорь нужен, чтобы sha256, blob id
+# и числа не проверялись как пины; запись вида 16345e6 — число, а не sha
+BARE_PIN_REFERENCE = re.compile(
+    r"(?:@|(?<![\w-])(?:коммит[а-яё]*|пин[а-яё]*|на|commit|pin|at)\s+`?)"
+    r"(?![0-9]+e[0-9]+(?![0-9A-Za-z]))"
+    r"(?P<sha>[0-9a-f]{7,40})(?![0-9A-Za-z])"
+)
 # Документы вне скилла, которые называют пины; источник истины — константы
 # scripts/build_source_lock.py. Документы скилла (iter_skill_documents)
 # проверяются все: короткие ссылки есть в шаблонах, шпаргалке и главах
@@ -1386,9 +1394,9 @@ def validate_pins(root: Path, lock: dict, errors: list[str]) -> None:
 
     Источник истины — константы scripts/build_source_lock.py: они же попадают
     в lock. SOURCE.json, lock, все документы скилла, README и оба NOTICE с ними
-    сверяются: полный sha и короткие ссылки bojieli/ai-infra-book@… и
-    ilkruglov/ai-infra-book@…, чтобы смена пина не осталась записанной только в
-    одном месте.
+    сверяются: полный sha, короткие ссылки bojieli/ai-infra-book@… и
+    ilkruglov/ai-infra-book@… и короткий sha после слова-якоря (BARE_PIN_REFERENCE),
+    чтобы смена пина не осталась записанной только в одном месте.
     """
     pins = {"upstream": UPSTREAM_COMMIT, "translation": TRANSLATION_COMMIT}
     for source in (Path("SOURCE.json"), PLUGIN_DIRECTORY / "SOURCE.json"):
@@ -1431,17 +1439,30 @@ def validate_pins(root: Path, lock: dict, errors: list[str]) -> None:
                     f"{match.group(0)}, which is neither the upstream pin "
                     f"{UPSTREAM_COMMIT} nor the translation pin {TRANSLATION_COMMIT}"
                 )
+        checked: set[int] = set()
         for pattern, repository, pin in (
             (UPSTREAM_REFERENCE, "bojieli/ai-infra-book", UPSTREAM_COMMIT),
             (TRANSLATION_REFERENCE, "ilkruglov/ai-infra-book", TRANSLATION_COMMIT),
         ):
             for match in pattern.finditer(text):
+                checked.add(match.start("sha"))
                 if not pin.startswith(match.group("sha")):
                     errors.append(
                         f"pin mismatch: {relative.as_posix()} names "
                         f"{repository}@{match.group('sha')}, expected a prefix "
                         f"of {pin}"
                     )
+        for match in BARE_PIN_REFERENCE.finditer(text):
+            sha = match.group("sha")
+            # полный sha уже сверен FULL_COMMIT, ссылка с репозиторием — выше
+            if len(sha) == 40 or match.start("sha") in checked:
+                continue
+            if not any(pin.startswith(sha) for pin in pins.values()):
+                errors.append(
+                    f"pin mismatch: {relative.as_posix()} names commit {sha}, "
+                    f"which is a prefix of neither the upstream pin "
+                    f"{UPSTREAM_COMMIT} nor the translation pin {TRANSLATION_COMMIT}"
+                )
 
 
 def _dotted(payload: object, key: str) -> object:

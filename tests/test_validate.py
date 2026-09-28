@@ -1549,6 +1549,45 @@ class PinTests(unittest.TestCase):
             ),
         )
 
+    def test_rejects_bare_short_pin_mismatch(self) -> None:
+        # короткий sha без имени репозитория: «на `56ecb425`», «на коммите `56ecb425`»
+        references = SKILL_DIRECTORY / "references"
+        cases = (
+            (
+                references / "chapters" / "ch00-preface.md",
+                "Снимок `hardware.json` взят из репозитория оригинала на `56ecb425`",
+            ),
+            (
+                references / "source-map.md",
+                "снимок оригинала на коммите `56ecb425`",
+            ),
+            (
+                references / "playbooks" / "compare-model-architectures.md",
+                "в репозитории оригинала на коммите `56ecb425`",
+            ),
+        )
+        for relative, old in cases:
+            with self.subTest(document=relative.as_posix()):
+                errors = self.mutate(relative, old, old.replace("56ecb425", "56ecb426"))
+                self.assertEqual(1, len(errors), errors)
+                self.assertIn("pin mismatch", errors[0])
+                self.assertIn(relative.as_posix(), errors[0])
+                self.assertIn("56ecb426", errors[0])
+
+    def test_bare_short_pin_check_ignores_numbers_and_hashes(self) -> None:
+        # числа вида 16345e6, sha256 и blob id без слова-якоря ошибок не дают;
+        # верные короткие sha обоих пинов после якоря — тоже
+        template = SKILL_DIRECTORY / "references" / "templates" / "sizing-sheet.md"
+        line = (
+            "Чтение на 16345e6 байт, пин 1.0195e12 B/s, blob 0123abcd0123abcd, "
+            "sha256 `0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`; "
+            "оригинал на коммите `56ecb425b07`, перевод на `c791c07c`, commit c791c07."
+        )
+        self.assertEqual([], self.append_line(template, line))
+        errors = self.append_line(template, "Перевод на коммите `c791c07d`.")
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("c791c07d", errors[0])
+
     def test_pins_are_the_lock_builder_constants(self) -> None:
         sys.path.insert(0, str(ROOT / "scripts"))
         try:
