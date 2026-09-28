@@ -570,6 +570,11 @@
       "line_text": "### 5.1.4 От времени отправки до момента готовности результата",
       "kind": "heading"
     },
+    "chapter5.md:964": {
+      "line_sha256": "ce8eb7fc4f4558e3e8b9bec6197129ea00583dc4b7c61d484d7efa5548985ea3",
+      "line_text": "## Итоги главы",
+      "kind": "heading"
+    },
     "chapter6.md:1004": {
       "line_sha256": "5d8e0729e6ed4cb178b052fce03fa4a418fcffc5f8aa9c7dfe86f94171deea72",
       "line_text": "### 6.7.4 Увеличение суперузла и размещение весов, таблиц Engram и KV: комплексный пример V4.1 Flash",
