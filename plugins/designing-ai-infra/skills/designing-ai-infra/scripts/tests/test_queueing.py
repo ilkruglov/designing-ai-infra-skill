@@ -3,29 +3,46 @@ import unittest
 
 from infra_calc import queueing
 
-ANCHORS = ("references/source-book/chapter3.md:75",)
+ANCHORS = (
+    "references/source-book/chapter3.md:75",
+    "references/source-book/chapter11.md:62",
+)
 CLASSES = {"long_input": (8192, 256), "long_output": (1024, 2048)}
 
 
 class QueueingTest(unittest.TestCase):
     def test_example_3_1_uniform_mix(self) -> None:
-        # chapter3.md:75, пример 3-1: 18 432 входных токенов/с и 4 604 шагов decode/с
+        # chapter3.md:85: «в среднем четыре запроса в секунду», доли классов равны;
+        # chapter3.md:89: «| Равномерная смесь | 18,432 | 4,604 |»
         self.assertEqual(
             queueing.demand({"long_input": 2, "long_output": 2}, CLASSES),
             (18_432, 4_604),
         )
 
-    def test_example_3_1_first_minute(self) -> None:
-        # 29 900.8 и 1 736.8 в первую минуту изменяющейся смеси
+    def test_example_3_1_changing_mix(self) -> None:
+        # chapter3.md:85: «в первую минуту соотношение классов равно $9:1$, а во вторую — $1:9$»
+        # chapter3.md:90: «| Изменяющаяся во времени смесь, первая минута | 29,900.8 | 1,736.8 |»
         tokens, steps = queueing.demand(
             {"long_input": 3.6, "long_output": 0.4}, CLASSES
         )
         self.assertAlmostEqual(tokens, 29_900.8)
         self.assertAlmostEqual(steps, 1_736.8)
+        # chapter3.md:91: «| Изменяющаяся во времени смесь, вторая минута | 6,963.2 | 7,471.2 |»
+        tokens, steps = queueing.demand(
+            {"long_input": 0.4, "long_output": 3.6}, CLASSES
+        )
+        self.assertAlmostEqual(tokens, 6_963.2)
+        self.assertAlmostEqual(steps, 7_471.2)
 
-    def test_utilization_and_little(self) -> None:
-        self.assertEqual(queueing.utilization(900, 1000), 0.9)
-        self.assertEqual(queueing.littles_law_in_system(4, 2.5), 10)
+    def test_one_card_is_overloaded_by_the_uniform_mix(self) -> None:
+        # chapter3.md:137: «одна карта может выполнять не более приблизительно 2,796 шага
+        # decode в секунду, что ниже средней потребности равномерной смеси в 4,604 шага»
+        self.assertGreater(queueing.utilization(4_604, 2_796), 1)
+
+    def test_littles_law(self) -> None:
+        # chapter11.md:76: «Каждая задача занимает среду на 30 секунд, а каждую секунду
+        # использовать среду начинают 10 задач, поэтому ... в среднем 300 сред»
+        self.assertEqual(queueing.littles_law_in_system(10, 30), 300)
 
     def test_demand_rejects_invalid_classes(self) -> None:
         # ноль выходных токенов дал бы −1 шаг decode на запрос

@@ -5,40 +5,52 @@ from infra_calc import serving
 
 ANCHORS = (
     "references/source-book/chapter8.md:52",
+    "references/source-book/chapter1.md:189",
     "references/source-book/chapter1.md:263",
+    "references/source-book/chapter1.md:450",
 )
+GIB = 2**30
+MIB = 2**20
 
 
 class ServingTest(unittest.TestCase):
     def test_concurrency_from_memory_inequality(self) -> None:
-        # chapter8.md:52: M_w + M_KV + M_a + M_u ≤ C; KV длинного запроса 8192+255 токенов
-        per_request = 147_456 * (8192 + 255)
-        self.assertEqual(
-            serving.max_concurrent_requests(96e9, 16_381_470_720, per_request), 63
-        )
+        # chapter8.md:75-76: «Короткий диалог | 288 MiB | 324 MiB | 37»,
+        # «Длинный контекст | 1152 MiB | 1188 MiB | 10»; chapter8.md:78:
+        # «$\lfloor12288/324\rfloor$ и $\lfloor12288/1188\rfloor$» — 12 GiB под KV
+        self.assertEqual(serving.max_concurrent_requests(12 * GIB, 0, 324 * MIB), 37)
+        self.assertEqual(serving.max_concurrent_requests(12 * GIB, 0, 1188 * MIB), 10)
+        # chapter8.md:78: без резерва на генерацию «в 12 GiB поместятся 42» (288 MiB)
+        self.assertEqual(serving.max_concurrent_requests(12 * GIB, 0, 288 * MIB), 42)
 
     def test_weights_do_not_fit(self) -> None:
-        # Review Focus 4: 141.11 GB весов не помещаются в 80 GB — ноль, а не отрицательное число
+        # chapter1.md:201: «Весам объёмом 141.11 GB недостаточно номинальных 80 GB
+        # видеопамяти одной H100 SXM» — ноль запросов, а не отрицательное число
         self.assertEqual(serving.max_concurrent_requests(80e9, 141.11e9, 1e9), 0)
 
     def test_tpot_bound_batch_eight(self) -> None:
-        # chapter1.md:263: восемь запросов делят чтение 70 GB весов
+        # chapter1.md:268: чтение весов «\approx20{,}90\ \mathrm{ms}»;
+        # chapter1.md:293: восемь запросов делят одно чтение, граница «по-прежнему равна 20,90 мс»
         step = serving.tpot_lower_bound_seconds(8, 140e9, 70e9, 0, 989.4e12, 3.35e12)
         self.assertEqual(round(step * 1e3, 2), 20.90)
-        self.assertEqual(round(serving.tokens_per_second(8, step), 1), 382.9)
+        # chapter1.md:295: «примерно с 47,9 токена/с в модели одного запроса до 383 токенов/с»
+        self.assertEqual(round(serving.tokens_per_second(8, step)), 383)
+        single = serving.tpot_lower_bound_seconds(1, 140e9, 70e9, 0, 989.4e12, 3.35e12)
+        self.assertEqual(round(serving.tokens_per_second(1, single), 1), 47.9)
 
-    def test_ttft_bound(self) -> None:
-        self.assertEqual(
-            round(
-                serving.ttft_lower_bound_seconds(29.69e12, 16.38e9, 989.4e12, 3.35e12)
-                * 1e3,
-                2,
-            ),
-            30.01,
+    def test_rtx_pro_6000_bounds(self) -> None:
+        # chapter1.md:464: при 503.8 TFLOP/s «матричные операции prefill занимают около 58.9 ms»;
+        # при 1.792 TB/s чтение весов 15.14 GB и KV 0.302 GB за шаг decode «занимает около 8.62 ms»
+        ttft = serving.ttft_lower_bound_seconds(29.69e12, 16.38e9, 503.8e12, 1.792e12)
+        self.assertEqual(round(ttft * 1e3, 1), 58.9)
+        tpot = serving.tpot_lower_bound_seconds(
+            1, 16.34e9, 15.14e9, 0.302e9, 503.8e12, 1.792e12
         )
+        self.assertEqual(round(tpot * 1e3, 2), 8.62)
 
     def test_cost_per_million_tokens(self) -> None:
-        # 3.6 $/час при 1000 токенов/с: 1 $ за миллион токенов
+        # Арифметическое тождество, не число книги: 3.6 $/ч = 0.001 $/с,
+        # при 1000 токенов/с миллион токенов обходится в 1 $
         self.assertEqual(serving.cost_per_million_tokens(3.6, 1000), 1.0)
 
     def test_concurrency_rejects_invalid_sizes(self) -> None:
