@@ -14,3 +14,6 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
 - [ch01-ai-infra-basics.md](references/chapters/ch01-ai-infra-basics.md)
 - [ch02-model-architecture.md](references/chapters/ch02-model-architecture.md)
 - [ch03-workloads.md](references/chapters/ch03-workloads.md)
+- [ch04-accelerators.md](references/chapters/ch04-accelerators.md)
+- [ch05-operators-runtime.md](references/chapters/ch05-operators-runtime.md)
+- [ch06-supernodes.md](references/chapters/ch06-supernodes.md)
