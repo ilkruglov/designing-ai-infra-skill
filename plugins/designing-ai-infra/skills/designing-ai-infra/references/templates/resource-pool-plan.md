@@ -225,6 +225,6 @@ python3 scripts/calc.py queueing --arrival-rate 30 --time-in-system 6 | grep '^\
 ## Источники
 
 - Порядок плана и гейты: `references/playbooks/plan-resource-pool.md`.
-- Потребность ресурсов и закон Литтла для сред: `references/source-book/chapter11.md:62`; воссоздание среды: `references/source-book/chapter11.md:235`.
+- Потребность ресурсов и закон Литтла для сред: `references/source-book/chapter11.md:62`; приостановка (8 s сохранения и 1 s восстановления 2 GiB): `references/source-book/chapter11.md:203`; воссоздание среды: `references/source-book/chapter11.md:235`.
 - Выбор сервиса модели: `references/source-book/chapter11.md:515`; резерв против оплаты по потреблению: `references/source-book/chapter11.md:552`.
 - Полная стоимость успешной задачи: `references/source-book/chapter11.md:625`; итоговый выбор службы и стратегии среды: `references/source-book/chapter11.md:679`.
