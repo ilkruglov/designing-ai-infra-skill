@@ -1,0 +1,101 @@
+from __future__ import annotations
+
+import json
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+PLUGIN_DIRECTORY = ROOT / "plugins" / "designing-ai-infra"
+TRIGGER_SET = PLUGIN_DIRECTORY / "evals" / "trigger-evals.json"
+BENCHMARK = PLUGIN_DIRECTORY / "evals" / "benchmark-v1.json"
+PLAYBOOKS = (
+    PLUGIN_DIRECTORY / "skills" / "designing-ai-infra" / "references" / "playbooks"
+)
+REQUIRED_KEYS = {"id", "query", "should_trigger", "reason"}
+# Префиксы id: p — целевой запрос, w — агентная нагрузка на инфраструктуру,
+# x — логика агента (уходит в developing-ai-agents), n — похожий словарь
+# или посторонняя задача.
+FALSE_CATEGORIES = ("near-miss:", "unrelated:")
+
+
+def load_queries() -> list[dict]:
+    payload = json.loads(TRIGGER_SET.read_text(encoding="utf-8"))
+    return payload["queries"]
+
+
+class TriggerSetTests(unittest.TestCase):
+    def test_skill_name_matches_measurement_target(self) -> None:
+        payload = json.loads(TRIGGER_SET.read_text(encoding="utf-8"))
+        self.assertEqual("designing-ai-infra", payload["skill_name"])
+
+    def test_every_query_has_required_keys_and_types(self) -> None:
+        for query in load_queries():
+            with self.subTest(query=query.get("id")):
+                self.assertEqual(REQUIRED_KEYS, set(query))
+                self.assertIsInstance(query["should_trigger"], bool)
+                for key in ("id", "query", "reason"):
+                    self.assertIsInstance(query[key], str)
+                    self.assertTrue(query[key].strip())
+                self.assertNotIn("\n", query["reason"])
+
+    def test_ids_are_unique(self) -> None:
+        ids = [query["id"] for query in load_queries()]
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_set_is_balanced_18_to_18(self) -> None:
+        queries = load_queries()
+        positive = [q for q in queries if q["should_trigger"]]
+        negative = [q for q in queries if not q["should_trigger"]]
+        self.assertEqual(18, len(positive))
+        self.assertEqual(18, len(negative))
+
+    def test_id_prefix_matches_expected_outcome(self) -> None:
+        expected = {"p": True, "w": True, "x": False, "n": False}
+        for query in load_queries():
+            with self.subTest(query=query["id"]):
+                self.assertIn(query["id"][0], expected)
+                self.assertEqual(expected[query["id"][0]], query["should_trigger"])
+
+    def test_six_cross_skill_cases_route_to_agent_skill(self) -> None:
+        cross = [q for q in load_queries() if q["id"].startswith("x")]
+        self.assertEqual(6, len(cross))
+        for query in cross:
+            with self.subTest(query=query["id"]):
+                self.assertTrue(query["reason"].startswith("developing-ai-agents:"))
+
+    def test_three_agent_workload_cases_trigger(self) -> None:
+        workload = [q for q in load_queries() if q["id"].startswith("w")]
+        self.assertEqual(3, len(workload))
+
+    def test_other_negatives_name_their_category(self) -> None:
+        for query in load_queries():
+            if not query["id"].startswith("n"):
+                continue
+            with self.subTest(query=query["id"]):
+                self.assertTrue(query["reason"].startswith(FALSE_CATEGORIES))
+
+    def test_positives_cover_every_playbook(self) -> None:
+        playbooks = {path.stem for path in PLAYBOOKS.glob("*.md")}
+        covered = set()
+        for query in load_queries():
+            if not query["should_trigger"]:
+                continue
+            with self.subTest(query=query["id"]):
+                name = query["reason"].split(":", 1)[0]
+                self.assertIn(name, playbooks)
+                covered.add(name)
+        self.assertEqual(playbooks, covered)
+
+    def test_queries_do_not_name_the_skill_or_reuse_benchmark_prompts(self) -> None:
+        benchmark = json.loads(BENCHMARK.read_text(encoding="utf-8"))
+        prompts = {scenario["prompt"].strip() for scenario in benchmark["evals"]}
+        for query in load_queries():
+            with self.subTest(query=query["id"]):
+                text = query["query"]
+                self.assertNotIn("designing-ai-infra", text)
+                self.assertNotIn("developing-ai-agents", text)
+                self.assertNotIn(text.strip(), prompts)
+
+
+if __name__ == "__main__":
+    unittest.main()
