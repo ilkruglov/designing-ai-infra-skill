@@ -705,6 +705,346 @@
       "line_text": "### 6.7.3 Как выбрать стратегию разбиения для заданных модели и оборудования",
       "kind": "heading"
     },
+    "chapter7.md:1009": {
+      "line_sha256": "f5948610f54e4a018939c0b902b06c45cd5659941bb1f7dd725d5d5086a72201",
+      "line_text": "### 7.6.5 Развёртывание и распространённые заблуждения",
+      "kind": "heading"
+    },
+    "chapter7.md:120": {
+      "line_sha256": "d2c22e1d61f96bb0dd09fc44d8e9674e8f14e4bb4f19d3afd5ec0c6af8e69177",
+      "line_text": "### 7.2.1 Межсерверный трафик при параллелизме по данным",
+      "kind": "heading"
+    },
+    "chapter7.md:17": {
+      "line_sha256": "54e87f62bd1e86dbc5c9e0518ef7f84b64574f044c0f13336f11bdc3d795e3bb",
+      "line_text": "### 7.1.1 Как требования к хранилищу приводят к взаимодействию между серверами",
+      "kind": "heading"
+    },
+    "chapter7.md:208": {
+      "line_sha256": "664e7fd5375fc5cbee9d2de78bace40de210177842b0aafe2b2a473ef8bb3de8",
+      "line_text": "### 7.2.2 Требования к обмену данными при тензорном и конвейерном параллелизме",
+      "kind": "heading"
+    },
+    "chapter7.md:269": {
+      "line_sha256": "bfe909b11e069337628c20042e36970b862b2d57d6ad2403ce550dfc36f54660",
+      "line_text": "### 7.2.4 Несколько сетевых адаптеров",
+      "kind": "heading"
+    },
+    "chapter7.md:299": {
+      "line_sha256": "78e8d34a3a5626a6b9d52a133a01286d3b8c61d211bd06d82dbf3026aad670b6",
+      "line_text": "### 7.2.5 Многорельсовая топология",
+      "kind": "heading"
+    },
+    "chapter7.md:3": {
+      "line_sha256": "06f5268cdba68524874fefa00d1818fa09f3d1f725c470952be3297f42b4756f",
+      "line_text": "# Глава 7. Сети центров обработки данных",
+      "kind": "heading"
+    },
+    "chapter7.md:319": {
+      "line_sha256": "f91b879a44a84b96d2eec697a04d5b16d751c464be6d2ce4b23848690dd40869",
+      "line_text": "### 7.3.1 Передача данных и уведомление о завершении",
+      "kind": "heading"
+    },
+    "chapter7.md:367": {
+      "line_sha256": "73151718d1c9aaac5f362c5365e31d0bd29b568c0086bc1eca7381165f9ebd71",
+      "line_text": "### 7.3.3 Семантика памяти: Load/Store и Read/Write",
+      "kind": "heading"
+    },
+    "chapter7.md:41": {
+      "line_sha256": "a75d3a3e1b7d9842d225cd7e30ea256a66f920d48378b95cb7fc2d174600b16a",
+      "line_text": "### 7.1.2 Модель трафика и ресурсов",
+      "kind": "heading"
+    },
+    "chapter7.md:457": {
+      "line_sha256": "7984cd6db859d48a1464a26c15d75e86035150b9089bf27f5c71d8c378877ba2",
+      "line_text": "### 7.3.4 Модель параллелизма и пропускной способности",
+      "kind": "heading"
+    },
+    "chapter7.md:524": {
+      "line_sha256": "5a048807a56d8cae34ff15975c185b84fb90b101e9d199689bd435329742b3eb",
+      "line_text": "### 7.4.1 Создание и использование сегментов данных, повторное использование буферов",
+      "kind": "heading"
+    },
+    "chapter7.md:544": {
+      "line_sha256": "8ff6b5776fe375c5e34d0971ab6767155f89deca6278fa0790aebbd1e0ccb17f",
+      "line_text": "### 7.4.2 Разделение уровня транзакций и транспортного уровня: Jetty и общее состояние",
+      "kind": "heading"
+    },
+    "chapter7.md:604": {
+      "line_sha256": "19f94a8e2663896610cac579e97db4216f6ccfba76dea9c40d14d5bc4e4a8605",
+      "line_text": "### 7.4.3 Зависимости операций и изоляция отказов",
+      "kind": "heading"
+    },
+    "chapter7.md:640": {
+      "line_sha256": "09c0648baecc11d0e397a2cdd713ceeb2c7be77e397948d941c76418830bc105",
+      "line_text": "### 7.4.4 Освобождение слотов запросов и обратное давление",
+      "kind": "heading"
+    },
+    "chapter7.md:668": {
+      "line_sha256": "8b3fca8831aeca72aa812b5d425a95a46e2240229756d6b69ed70871af66f044",
+      "line_text": "### 7.5.1 От фиксированного трафика к изменяющемуся во времени спросу",
+      "kind": "heading"
+    },
+    "chapter7.md:700": {
+      "line_sha256": "0267d3904926ca6cda3c18793c150ac98db8b3aed859cb6cbafb65e86158d48a",
+      "line_text": "### 7.5.2 Задержка обратной связи и ёмкость буфера",
+      "kind": "heading"
+    },
+    "chapter7.md:758": {
+      "line_sha256": "a44ac576e0cb38cfe2fc89648c65f60eac7bcadd0d1080a3090c6c6e418c7798",
+      "line_text": "### 7.5.3 Многопутевая передача и повторная передача",
+      "kind": "heading"
+    },
+    "chapter7.md:812": {
+      "line_sha256": "2ed1a1babc41055855575363c874d700a520761bb5f5d967d8fafc3c4522dfab",
+      "line_text": "### 7.5.4 Взаимная блокировка",
+      "kind": "heading"
+    },
+    "chapter7.md:834": {
+      "line_sha256": "f88ce2471d3e371d4fe26512d38afde6aae7688ea8ff57013115eccd4b4194eb",
+      "line_text": "### 7.6.1 Критический путь начинается с готовности данных",
+      "kind": "heading"
+    },
+    "chapter7.md:856": {
+      "line_sha256": "dc5c0e578875ce92d39094b7b084aa46f810339a9530dc16a53050899fef4eb6",
+      "line_text": "### 7.6.2 Расчёт времени обмена в иерархической сети",
+      "kind": "heading"
+    },
+    "chapter7.md:908": {
+      "line_sha256": "33413fc79e7b9a62b787bdd7fc076281f3109a4e1bec18992f275c1c2780ae61",
+      "line_text": "### 7.6.3 Коммуникационные узкие места при обучении и инференсе",
+      "kind": "heading"
+    },
+    "chapter7.md:938": {
+      "line_sha256": "393b6ac8ff21e1e166e4dd56cdf4f0bc375621300597a23191a3b1048785eae9",
+      "line_text": "### 7.6.4 Фиксированные 1024 ускорителя: как пересмотреть выбор при увеличении суперузла",
+      "kind": "heading"
+    },
+    "chapter8.md:104": {
+      "line_sha256": "989ea763dce299ed15acffc955205b16d277f11029986763862200e6a4a5b063",
+      "line_text": "### 8.2.1 Как повторное использование весов повышает эффективность пакетной обработки",
+      "kind": "heading"
+    },
+    "chapter8.md:165": {
+      "line_sha256": "97f751b395c743eb4ebd9de36878d5bc8b974bf95dfec9b55651c89e15630a64",
+      "line_text": "### 8.2.2 От фиксированного пакета к непрерывной пакетной обработке",
+      "kind": "heading"
+    },
+    "chapter8.md:191": {
+      "line_sha256": "ce2f510d5a3515d41db666fd5ca1876dd15a9552bce40ccd4c5c913b8752a149",
+      "line_text": "### 8.2.3 Влияние длинного prefill на генерацию и блочное выполнение",
+      "kind": "heading"
+    },
+    "chapter8.md:218": {
+      "line_sha256": "932e67a9bb931d0303494d1028f28b446237dd698cb442f4f94d627e0659eaf4",
+      "line_text": "### 8.2.4 Бюджет токенов, динамические формы и время выполнения",
+      "kind": "heading"
+    },
+    "chapter8.md:232": {
+      "line_sha256": "95006c1e60951bf1636a3a3df795573f47753ce98e8c65602baa4b4565b5d412",
+      "line_text": "### 8.3.1 Резервирование, фрагментация и страничное распределение",
+      "kind": "heading"
+    },
+    "chapter8.md:24": {
+      "line_sha256": "04b7079a3ffe5ae784af02573d6f5d7b431d6a54aabb802dd8531fc9d2fb46b5",
+      "line_text": "### 8.1.1 Ресурсы выполнения и жизненный цикл запроса",
+      "kind": "heading"
+    },
+    "chapter8.md:268": {
+      "line_sha256": "2434a793ec8fe4d1643663395be5ffda95e2941767a813569a6a56d51cacdd39",
+      "line_text": "### 8.3.2 Совместное использование ветвями, копирование при записи и освобождение памяти",
+      "kind": "heading"
+    },
+    "chapter8.md:3": {
+      "line_sha256": "b4cbb61444327501d9640f43429b8288d320140d8d77f834584573f288abff30",
+      "line_text": "# Глава 8. Оптимизация инференса",
+      "kind": "heading"
+    },
+    "chapter8.md:310": {
+      "line_sha256": "9bd492c7bb6ffc1b2b9e3b75c9892a6b8c998c1e696cb6102cf4001357c61965",
+      "line_text": "### 8.3.3 Повторное использование префиксов в диалогах и AI-агентах",
+      "kind": "heading"
+    },
+    "chapter8.md:354": {
+      "line_sha256": "076fdf817f183b6234677ee584702b594087e6701eaf16c8ade17163c41bb205",
+      "line_text": "### 8.3.4 Допуск в кэш, вытеснение, выгрузка и повторное вычисление",
+      "kind": "heading"
+    },
+    "chapter8.md:398": {
+      "line_sha256": "566c926c5d90830483101cf2f8759ba9e3ab1f70d6be932381dc709ad212e017",
+      "line_text": "### 8.4.2 Сжатие KV и стоимость чтения",
+      "kind": "heading"
+    },
+    "chapter8.md:432": {
+      "line_sha256": "dc22d9f3514f248ca3e7c7550cf0c4771839ffa728400dca1ad58ecb8329b604",
+      "line_text": "### 8.4.3 Выгрузка весов, предвыборка и перенос на каждом шаге",
+      "kind": "heading"
+    },
+    "chapter8.md:472": {
+      "line_sha256": "d27c68562c4d4cb38ee0dcb99e7e01aa513f279486f32c5b9e429e61524e7585",
+      "line_text": "### 8.4.4 Выбор объёма и скорости с учётом ограничений качества",
+      "kind": "heading"
+    },
+    "chapter8.md:504": {
+      "line_sha256": "e6a9566eb5f2507cddd14a0c97709329286dc2f43eb45c8daf2bde8032bcd52d",
+      "line_text": "### 8.5.1 Черновик, проверка, откат и корректность",
+      "kind": "heading"
+    },
+    "chapter8.md:52": {
+      "line_sha256": "cba62ab76c9065914f83c4e05c12b970076dd4dc620c1855f6beb57d06c820fd",
+      "line_text": "### 8.1.2 Требования к объёму хранения весов, KV и буферов среды выполнения",
+      "kind": "heading"
+    },
+    "chapter8.md:536": {
+      "line_sha256": "21b21e60cfe03752faf75f60747d0fe0edad6c9452d1ad67983a3149d050583c",
+      "line_text": "### 8.5.2 Время раунда и число выходных токенов",
+      "kind": "heading"
+    },
+    "chapter8.md:562": {
+      "line_sha256": "775114a43e6fe9b560f0283cb72661ff31ba2d3d9f3296182dcc223fde3b5204",
+      "line_text": "### 8.5.3 Источники черновика и последовательная либо параллельная генерация",
+      "kind": "heading"
+    },
+    "chapter8.md:572": {
+      "line_sha256": "563bb3160a716d203090e0d65dd8dd05cd41704ba19eebb5f9fe87f58cc3a240",
+      "line_text": "### 8.5.4 Динамический выбор длины черновика и конкуренция при параллельной обработке",
+      "kind": "heading"
+    },
+    "chapter8.md:598": {
+      "line_sha256": "152bbe04ba4f6e8e053b3d59702c6d5976ce550d010d011faaed6d7b0efaf88a",
+      "line_text": "### 8.6.1 Интенсивность поступления, очереди, допуск и отмена",
+      "kind": "heading"
+    },
+    "chapter8.md:616": {
+      "line_sha256": "8fad6067f378f1cc607b59355624d92474c23b0f8ea61171952e74431dfd5eda",
+      "line_text": "### 8.6.2 Эффективная пропускная способность с учётом качества и ограничений SLO",
+      "kind": "heading"
+    },
+    "chapter8.md:642": {
+      "line_sha256": "2ba996174e087a10994231404458567d6e41d404d05c49e8757e1c94ab68397d",
+      "line_text": "### 8.6.3 Конфигурация, ускоритель и полная стоимость задачи",
+      "kind": "heading"
+    },
+    "chapter9.md:100": {
+      "line_sha256": "6fa2ab11de6b4564952d3c700a0f5c1a056ed44d180970516f04e6c54920fc88",
+      "line_text": "### 9.2.2 Передача KV-кэша и потребление памяти на обеих сторонах",
+      "kind": "heading"
+    },
+    "chapter9.md:154": {
+      "line_sha256": "44c5de50ade19da07878c7083d3822830d4a33a2e995ac8b0c1d4aa149e0cba6",
+      "line_text": "### 9.2.3 Производительность этапов и соотношение числа экземпляров",
+      "kind": "heading"
+    },
+    "chapter9.md:216": {
+      "line_sha256": "bb92b6129d9bba46b1235a502ada923ac1fe95ad948a0ea203ae55b42ed8ba1a",
+      "line_text": "### 9.2.4 Границы выигрыша при разных запросах и нагрузках",
+      "kind": "heading"
+    },
+    "chapter9.md:240": {
+      "line_sha256": "e70d0a3265994f369afdce083f3b8ce977957e68c599322d301c318c009a47f7",
+      "line_text": "### 9.3.2 Совместная работа CPU и GPU",
+      "kind": "heading"
+    },
+    "chapter9.md:284": {
+      "line_sha256": "7024aaaabfee13afc6630b006c8eb797544364500458cfa66e14ea6cf05cfb2e",
+      "line_text": "### 9.3.3 Влияние ёмкости, параллелизма и повторного использования экспертов на возможности обслуживания",
+      "kind": "heading"
+    },
+    "chapter9.md:3": {
+      "line_sha256": "8d77f16f6f8afaf10949cdc854cb35cff59747c11b94ea20f925cf440f7e825c",
+      "line_text": "# Глава 9. Распределённый инференс",
+      "kind": "heading"
+    },
+    "chapter9.md:302": {
+      "line_sha256": "a3233b3dcbf180aec6ac2ff357e0cef8d7b29413e2efbbba5bc2e5b5eab2c031",
+      "line_text": "### 9.3.4 Межсерверное AF, разделение экспертов и конвейер микробатчей",
+      "kind": "heading"
+    },
+    "chapter9.md:352": {
+      "line_sha256": "05a80404f9e2de94a054f06b71706b69fba71f4980bdcf8b651bc9ae18dec7dc",
+      "line_text": "### 9.4.1 Перекос вычислений и коммуникаций при большом EP",
+      "kind": "heading"
+    },
+    "chapter9.md:426": {
+      "line_sha256": "d925afc314efa4d0a9bfba11890e6723a08a629dd5aa0101581293344efc25b9",
+      "line_text": "### 9.4.2 Реплики экспертов, размещение и динамическая корректировка",
+      "kind": "heading"
+    },
+    "chapter9.md:455": {
+      "line_sha256": "9f8f2f8c381283ecd207b8d9ce8286e5252c5f0f76456627578da3508e2c71c4",
+      "line_text": "### 9.4.3 Перекрытие распределения входов, вычислений и объединения результатов",
+      "kind": "heading"
+    },
+    "chapter9.md:497": {
+      "line_sha256": "fba088b91b7c215e536b5c4b1903421bf3f8166df2fd299132e2c48e788030fd",
+      "line_text": "### 9.5.1 Идентификаторы кэша, область совместного использования и доступность",
+      "kind": "heading"
+    },
+    "chapter9.md:509": {
+      "line_sha256": "35e6cf565d1d9ef2de52830735fb70bc6552a0df5835145d7e8b2d88ffda1fef",
+      "line_text": "### 9.5.2 Многоуровневое хранилище",
+      "kind": "heading"
+    },
+    "chapter9.md:595": {
+      "line_sha256": "7e53d44d11d2529249f90cf6d9b79578bed740462419c742f246d2f7c42a025f",
+      "line_text": "### 9.5.3 Персистентность, checkpoint и частичное повторное вычисление",
+      "kind": "heading"
+    },
+    "chapter9.md:609": {
+      "line_sha256": "2164722db88a835baeaf79f04b1d9732990a1fc1d398d918affa09409353c7c8",
+      "line_text": "### 9.5.4 Привязка к кэшу и маршрутизация запросов",
+      "kind": "heading"
+    },
+    "chapter9.md:63": {
+      "line_sha256": "12fe83c50c43fc5ac9b6c1bb2a2041d351c7bc0ba2bbcb1fce14af9135adb0e0",
+      "line_text": "### 9.1.2 Разделение вычислений и совместное использование состояния",
+      "kind": "heading"
+    },
+    "chapter9.md:674": {
+      "line_sha256": "50b0559bf509dc8cb328deb4643ee5e2935a486f0c115717fd4ba7ca241a1ceb",
+      "line_text": "### 9.6.1 Затраты на запуск и прогрев",
+      "kind": "heading"
+    },
+    "chapter9.md:696": {
+      "line_sha256": "910cb939b299c2ff9e872ba999a55041a2d88e1dc381de58b48c67e445abec2d",
+      "line_text": "### 9.6.2 Реконфигурация во время работы и передача состояния",
+      "kind": "heading"
+    },
+    "chapter9.md:716": {
+      "line_sha256": "3fea51f13743a9a2044ecf7f980627601040ee5cb71de044966149b13e613ff3",
+      "line_text": "### 9.6.3 Частичные сбои и восстановление потоковой генерации",
+      "kind": "heading"
+    },
+    "chapter9.md:734": {
+      "line_sha256": "82eb888f3f0b9cfb13bee3a209b486c3cd57adea4dd3895bf9ea0a9bf31e2e54",
+      "line_text": "### 9.7.1 Сочетание реплик, PD, AF и общего KV-кэша",
+      "kind": "heading"
+    },
+    "chapter9.md:752": {
+      "line_sha256": "c90354715303595f1ba25fec1fe746cb556e9e438c18f9ed9cb0e3406bb173c5",
+      "line_text": "### 9.7.2 Сравнение схем при одинаковом качестве и одинаковых ограничениях по ресурсам",
+      "kind": "heading"
+    },
+    "chapter9.md:76": {
+      "line_sha256": "403ad6b02ef6c71d8974bafc44877cc1634452d505fb489f3a2dff9a92344db4",
+      "line_text": "### 9.1.3 Путь выполнения одного запроса и время пребывания состояния",
+      "kind": "heading"
+    },
+    "chapter9.md:793": {
+      "line_sha256": "be682dec11467c6fc954ce7a8124a23ea6dd3ec14af0b9f46bf6c7c67250dcd6",
+      "line_text": "### 9.7.3 Корректировка развёртывания после изменения нагрузки",
+      "kind": "heading"
+    },
+    "chapter9.md:809": {
+      "line_sha256": "d8c793817618f6324d751bb9a33f25dab83dbebba5bc8e97d2fe7a0d5bab8e4e",
+      "line_text": "## Упражнения",
+      "kind": "heading"
+    },
+    "chapter9.md:90": {
+      "line_sha256": "c5c75fd4a9aedc5b6332111f3968224ffbade2c362b473e72b7607025c7f764e",
+      "line_text": "### 9.2.1 Зачем разделять Prefill и Decode",
+      "kind": "heading"
+    },
     "preface.md:120": {
       "line_sha256": "70a1e25e673310a3687fa5617a3b364b61851443642b2d585ce09fb820ae1e25",
       "line_text": "## Предварительные знания",

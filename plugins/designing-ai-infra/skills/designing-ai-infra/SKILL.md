@@ -17,3 +17,6 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
 - [ch04-accelerators.md](references/chapters/ch04-accelerators.md)
 - [ch05-operators-runtime.md](references/chapters/ch05-operators-runtime.md)
 - [ch06-supernodes.md](references/chapters/ch06-supernodes.md)
+- [ch07-datacenter-network.md](references/chapters/ch07-datacenter-network.md)
+- [ch08-inference-optimization.md](references/chapters/ch08-inference-optimization.md)
+- [ch09-distributed-inference.md](references/chapters/ch09-distributed-inference.md)
