@@ -1,7 +1,8 @@
 """Команды калькулятора из документов скилла выполняются и дают показанные числа.
 
 Проверяются SKILL.md и references/**/*.md, кроме полного текста книги
-(references/source-book/).
+(references/source-book/), и README.md репозитория. Команды README тоже
+запускаются из каталога скилла.
 
 1. Блоки кода. Команды — строки `python3 …` блока, в котором есть `calc.py`,
    с продолжениями через `\\` и многострочными кавычками. Каждая команда
@@ -91,13 +92,19 @@ def documents() -> list[Path]:
         for path in sorted((SKILL / "references").rglob("*.md"))
         if "source-book" not in path.relative_to(SKILL).parts
     ]
-    return [SKILL / "SKILL.md", *references]
+    return [SKILL / "SKILL.md", *references, ROOT / "README.md"]
+
+
+def label(path: Path) -> str:
+    """Путь документа в сообщениях: от каталога скилла, README — от корня."""
+    base = SKILL if path.is_relative_to(SKILL) else ROOT
+    return path.relative_to(base).as_posix()
 
 
 def parse_blocks(path: Path) -> tuple[list[Block], set[int]]:
     """Блоки кода по CommonMark и номера строк внутри них (с заборами)."""
     lines = path.read_text(encoding="utf-8").splitlines()
-    relative = path.relative_to(SKILL).as_posix()
+    relative = label(path)
     blocks: list[Block] = []
     inside: set[int] = set()
     index = 0
@@ -173,7 +180,7 @@ def command_blocks() -> list[CommandBlock]:
 def inline_spans() -> Iterator[tuple[str, int, str]]:
     for path in documents():
         _, inside = parse_blocks(path)
-        relative = path.relative_to(SKILL).as_posix()
+        relative = label(path)
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if number in inside:
                 continue
@@ -285,6 +292,23 @@ class DocCommandsTest(unittest.TestCase):
         # страховка от пустой проверки: разбор нашёл блоки и инлайн-вызовы
         self.assertGreater(len(self.blocks), 100)
         self.assertGreater(len(self.inline), 50)
+
+    def test_readme_commands_are_checked(self) -> None:
+        # README репозитория показывает команды калькулятора пользователю;
+        # они запускаются из каталога скилла, как команды SKILL.md
+        readme = [
+            command
+            for block in self.blocks
+            if block.path == "README.md"
+            for command in block.commands
+        ]
+        quoted = [
+            line.strip()
+            for line in (ROOT / "README.md").read_text(encoding="utf-8").splitlines()
+            if line.strip().startswith("python3 scripts/calc.py")
+        ]
+        self.assertTrue(quoted)
+        self.assertEqual(readme, quoted)
 
     def test_block_commands_are_calculator_calls(self) -> None:
         for block in self.blocks:

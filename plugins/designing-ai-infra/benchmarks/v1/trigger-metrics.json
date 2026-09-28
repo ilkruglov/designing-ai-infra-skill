@@ -5,7 +5,17 @@
     "negative": 18,
     "recall": 1.0,
     "false_trigger_rate": 0.0,
-    "runs_failed": 0
+    "runs_failed": 0,
+    "run": {
+      "date": "2026-09-28",
+      "installed_plugins": {
+        "designing-ai-infra": "0.1.0",
+        "developing-ai-agents": "0.7.1"
+      },
+      "model": "claude -p default",
+      "workers": 4
+    },
+    "note": "один прогон на установленных плагинах: designing-ai-infra 0.1.0 из локального marketplace (каталог плагина на 72a9b2c), developing-ai-agents 0.7.1 из GitHub marketplace; скрипт фиксирует вызов только своего skill"
   },
   "results": [
     {
