@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "book": {
+    "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
+    "translation_commit": "83f26c39ed5fe0e5a16c4f7191e0bebb42c86d94"
+  },
+  "anchors": {},
+  "allowed_inline": []
+}
