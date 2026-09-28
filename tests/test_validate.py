@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -791,6 +792,229 @@ class BenchmarkCoverageTests(unittest.TestCase):
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("benchmark covers a missing file", result.stdout)
+
+
+CALCULATOR_DIRECTORY = SKILL_DIRECTORY / "scripts" / "infra_calc"
+CALCULATOR_TESTS_DIRECTORY = SKILL_DIRECTORY / "scripts" / "tests"
+# chapter1.md:263 — заголовок «### 1.3.2 …», строка 265 — абзац под ним
+HEADING_ANCHOR = "references/source-book/chapter1.md:263"
+PARAGRAPH_ANCHOR = "references/source-book/chapter1.md:265"
+SAMPLE_CALL = "\n\ndef test_sample() -> None:\n    sample.public_fn()\n"
+
+
+class CalculatorCoverageTests(unittest.TestCase):
+    @staticmethod
+    def add_calculator(root: Path, test_text: str) -> None:
+        (root / CALCULATOR_DIRECTORY / "sample.py").write_text(
+            "def public_fn() -> int:\n    return 1\n\n\n"
+            "def _helper() -> int:\n    return 2\n",
+            encoding="utf-8",
+        )
+        (root / CALCULATOR_TESTS_DIRECTORY / "test_sample.py").write_text(
+            "from infra_calc import sample\n\n" + test_text, encoding="utf-8"
+        )
+
+    @staticmethod
+    def add_author_result(root: Path, content: bytes) -> str:
+        results = root / ".tmp" / "upcalc" / "calculations" / "results"
+        results.mkdir(parents=True, exist_ok=True)
+        (results / "sample.json").write_bytes(content)
+        return hashlib.sha256(content).hexdigest()
+
+    def test_rejects_public_function_without_test(self) -> None:
+        with repository_copy() as copied_root:
+            self.add_calculator(copied_root, f'ANCHORS = ("{HEADING_ANCHOR}",)\n')
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            "calculator function without anchored test: sample.public_fn",
+            result.stdout,
+        )
+        self.assertNotIn("sample._helper", result.stdout)
+
+    def test_rejects_function_tested_without_anchors(self) -> None:
+        with repository_copy() as copied_root:
+            self.add_calculator(copied_root, "ANCHORS = ()\n" + SAMPLE_CALL)
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            "calculator function without anchored test: sample.public_fn",
+            result.stdout,
+        )
+
+    def test_rejects_anchor_that_is_not_a_heading(self) -> None:
+        with repository_copy() as copied_root:
+            self.add_calculator(
+                copied_root, f'ANCHORS = ("{PARAGRAPH_ANCHOR}",)\n' + SAMPLE_CALL
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            f"calculator test anchor is not a heading: test_sample.py: {PARAGRAPH_ANCHOR}",
+            result.stdout,
+        )
+
+    def test_rejects_anchor_of_unknown_form(self) -> None:
+        with repository_copy() as copied_root:
+            self.add_calculator(
+                copied_root, 'ANCHORS = ("book/chapter1.md:263",)\n' + SAMPLE_CALL
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("calculator test anchor has unknown form", result.stdout)
+
+    def test_accepts_function_with_anchored_test(self) -> None:
+        with repository_copy() as copied_root:
+            self.add_calculator(
+                copied_root, f'ANCHORS = ("{HEADING_ANCHOR}",)\n' + SAMPLE_CALL
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_reads_annotated_anchors(self) -> None:
+        with repository_copy() as copied_root:
+            self.add_calculator(
+                copied_root,
+                f'ANCHORS: tuple[str, ...] = ("{HEADING_ANCHOR}",)\n' + SAMPLE_CALL,
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_rejects_author_result_with_wrong_hash(self) -> None:
+        with repository_copy() as copied_root:
+            self.add_author_result(copied_root, b'{"value": 1}\n')
+            wrong = hashlib.sha256(b'{"value": 2}\n').hexdigest()
+            anchor = f"calculations/results/sample.json#sha256={wrong}"
+            self.add_calculator(copied_root, f'ANCHORS = ("{anchor}",)\n' + SAMPLE_CALL)
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            f"calculator test anchor hash mismatch: test_sample.py: {anchor}",
+            result.stdout,
+        )
+
+    def test_accepts_author_result_with_matching_hash(self) -> None:
+        with repository_copy() as copied_root:
+            digest = self.add_author_result(copied_root, b'{"value": 1}\n')
+            anchor = f"calculations/results/sample.json#sha256={digest}"
+            self.add_calculator(copied_root, f'ANCHORS = ("{anchor}",)\n' + SAMPLE_CALL)
+
+            result = run_validator(copied_root)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_skips_hash_check_without_local_clone(self) -> None:
+        # копия репозитория не содержит .tmp/upcalc: форма проверяется, хеш — нет
+        with repository_copy() as copied_root:
+            anchor = f"calculations/results/absent.json#sha256={'0' * 64}"
+            self.add_calculator(copied_root, f'ANCHORS = ("{anchor}",)\n' + SAMPLE_CALL)
+
+            result = run_validator(copied_root)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+
+class DataIntegrityTests(unittest.TestCase):
+    @staticmethod
+    def edit_source(root: Path, relative: Path, change: Callable[[dict], None]) -> None:
+        path = root / relative
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        change(payload)
+        path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+
+    def test_rejects_hardware_snapshot_changed_after_recording(self) -> None:
+        with repository_copy() as copied_root:
+            path = copied_root / SKILL_DIRECTORY / "data" / "hardware.json"
+            path.write_bytes(path.read_bytes() + b"\n")
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("hardware.json sha256 mismatch with SOURCE.json", result.stdout)
+        self.assertIn(
+            f"hardware.json sha256 mismatch with {PLUGIN_DIRECTORY / 'SOURCE.json'}",
+            result.stdout,
+        )
+
+    def test_rejects_source_record_without_hash(self) -> None:
+        def drop_hash(payload: dict) -> None:
+            del payload["data"]["hardware_json"]["sha256"]
+
+        with repository_copy() as copied_root:
+            self.edit_source(copied_root, Path("SOURCE.json"), drop_hash)
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            "SOURCE.json lacks data.hardware_json.sha256: SOURCE.json", result.stdout
+        )
+
+    def test_rejects_root_source_path_that_does_not_resolve(self) -> None:
+        def move(payload: dict) -> None:
+            payload["data"]["hardware_json"]["path"] = "data/hardware.json"
+
+        with repository_copy() as copied_root:
+            self.edit_source(copied_root, Path("SOURCE.json"), move)
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            "SOURCE.json path does not resolve: SOURCE.json "
+            "data.hardware_json.path=data/hardware.json",
+            result.stdout,
+        )
+
+    def test_rejects_plugin_source_path_relative_to_repository_root(self) -> None:
+        # путь в SOURCE.json плагина отсчитывается от каталога плагина,
+        # поэтому путь от корня репозитория в нём не разрешается
+        rooted = (SKILL_DIRECTORY / "references" / "source-book").as_posix()
+
+        def reroot(payload: dict) -> None:
+            payload["bundled_sources"]["directory"] = rooted
+
+        with repository_copy() as copied_root:
+            self.edit_source(copied_root, PLUGIN_DIRECTORY / "SOURCE.json", reroot)
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            f"SOURCE.json path does not resolve: {PLUGIN_DIRECTORY / 'SOURCE.json'} "
+            f"bundled_sources.directory={rooted}",
+            result.stdout,
+        )
+
+    def test_rejects_cjk_artifact_in_references(self) -> None:
+        with repository_copy() as copied_root:
+            path = copied_root / SKILL_DIRECTORY / "references" / "chapters" / "x.md"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("# Глава\n\nНомер 对 из перевода\n", encoding="utf-8")
+
+            result = run_validator(copied_root)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            f"CJK artifact: {SKILL_DIRECTORY / 'references' / 'chapters' / 'x.md'}:3",
+            result.stdout,
+        )
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import re
@@ -12,6 +13,7 @@ from urllib.parse import unquote, urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from source_anchors import (
+    HEADING,
     LOCAL_SOURCE_ANCHOR,
     LOCK_RELATIVE_PATH,
     anchor_key,
@@ -90,6 +92,17 @@ CHAPTER_QUOTE = re.compile(
 CHAPTER_QUOTE_MARKER = re.compile(r"^>\s*«", re.MULTILINE)
 CHAPTERS_DIRECTORY = SKILL_DIRECTORY / "references" / "chapters"
 SKILL_LINE_LIMIT = 300
+CALC_DIRECTORY = SKILL_DIRECTORY / "scripts" / "infra_calc"
+CALC_TESTS_DIRECTORY = SKILL_DIRECTORY / "scripts" / "tests"
+# cli/result — обвязка, checks — проверки входов: формул книги в них нет
+CALC_EXCLUDED = {"__init__.py", "checks.py", "cli.py", "result.py"}
+AUTHOR_RESULT = re.compile(
+    r"^calculations/results/(?P<name>[\w.-]+\.json)#sha256=(?P<sha256>[0-9a-f]{64})$"
+)
+# Разреженный клон оригинала на пине; в git не входит и может отсутствовать
+AUTHOR_RESULTS_CLONE = Path(".tmp") / "upcalc" / "calculations" / "results"
+SOURCE_BOOK_DIRECTORY_NAME = "source-book"
+CJK = re.compile(r"[\u3000-\u9fff]")
 REFERENCE_PATH = re.compile(r"references/[A-Za-z0-9._/-]+\.md")
 SEMVER = re.compile(
     r"^(0|[1-9]\d*)\."
@@ -995,6 +1008,144 @@ def validate_skill_routing(root: Path, errors: list[str]) -> None:
         errors.append(f"SKILL.md lists missing reference file: {dangling}")
 
 
+def _test_anchors(tree: ast.Module) -> list[str]:
+    anchors: list[str] = []
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            targets = [node.target]
+        else:
+            continue
+        if not any(isinstance(t, ast.Name) and t.id == "ANCHORS" for t in targets):
+            continue
+        if isinstance(node.value, (ast.Tuple, ast.List)):
+            anchors = [
+                element.value
+                for element in node.value.elts
+                if isinstance(element, ast.Constant) and isinstance(element.value, str)
+            ]
+    return anchors
+
+
+def _check_test_anchor(
+    root: Path, test_name: str, anchor: str, errors: list[str]
+) -> None:
+    match = LOCAL_SOURCE_ANCHOR.fullmatch(anchor)
+    if match:
+        path = root / SKILL_DIRECTORY / match.group("path")
+        lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+        start = int(match.group("start"))
+        if not (1 <= start <= len(lines)) or not HEADING.match(lines[start - 1]):
+            errors.append(
+                f"calculator test anchor is not a heading: {test_name}: {anchor}"
+            )
+        return
+    author = AUTHOR_RESULT.match(anchor)
+    if not author:
+        errors.append(f"calculator test anchor has unknown form: {test_name}: {anchor}")
+        return
+    local = root / AUTHOR_RESULTS_CLONE / author.group("name")
+    if local.is_file():
+        actual = hashlib.sha256(local.read_bytes()).hexdigest()
+        if actual != author.group("sha256"):
+            errors.append(
+                f"calculator test anchor hash mismatch: {test_name}: {anchor} "
+                f"(local clone has {actual})"
+            )
+
+
+def validate_calculator_coverage(root: Path, errors: list[str]) -> None:
+    """Каждая публичная функция калькулятора вызывается в тесте с эталоном.
+
+    Эталон — якорь на заголовок книги или хешированный результат автора в
+    кортеже ANCHORS тестового модуля. Функция без такого теста выдаёт числа,
+    которые никто не сверял с книгой.
+    """
+    calc_dir = root / CALC_DIRECTORY
+    tests_dir = root / CALC_TESTS_DIRECTORY
+    if not calc_dir.is_dir():
+        return
+    anchored_text: list[str] = []
+    for test_file in sorted(tests_dir.glob("test_*.py")):
+        text = test_file.read_text(encoding="utf-8")
+        anchors = _test_anchors(ast.parse(text))
+        for anchor in anchors:
+            _check_test_anchor(root, test_file.name, anchor, errors)
+        if anchors:
+            anchored_text.append(text)
+    corpus = "\n".join(anchored_text)
+    for module in sorted(calc_dir.glob("*.py")):
+        if module.name in CALC_EXCLUDED:
+            continue
+        tree = ast.parse(module.read_text(encoding="utf-8"))
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef) and not node.name.startswith("_"):
+                call = rf"\b{re.escape(module.stem)}\.{re.escape(node.name)}\("
+                if not re.search(call, corpus):
+                    errors.append(
+                        "calculator function without anchored test: "
+                        f"{module.stem}.{node.name}"
+                    )
+
+
+def validate_data_integrity(root: Path, errors: list[str]) -> None:
+    """Снимок железа совпадает с записью в SOURCE.json, пути в ней разрешаются,
+    в текстах скилла нет CJK-остатков перевода.
+
+    SOURCE.json в корне отсчитывает пути от корня репозитория, SOURCE.json
+    плагина — от каталога плагина, как его видит установленный плагин.
+    """
+    data = root / SKILL_DIRECTORY / "data" / "hardware.json"
+    actual = hashlib.sha256(data.read_bytes()).hexdigest() if data.is_file() else None
+    for source, base in (
+        (Path("SOURCE.json"), root),
+        (PLUGIN_DIRECTORY / "SOURCE.json", root / PLUGIN_DIRECTORY),
+    ):
+        try:
+            payload = json.loads((root / source).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue  # отсутствие и неверный JSON уже сообщены общими проверками
+        for key, expect_directory in (
+            ("bundled_sources.directory", True),
+            ("data.hardware_json.path", False),
+        ):
+            value = _dotted(payload, key)
+            if not isinstance(value, str):
+                errors.append(f"SOURCE.json lacks {key}: {source}")
+                continue
+            target = base / value
+            if not (target.is_dir() if expect_directory else target.is_file()):
+                errors.append(
+                    f"SOURCE.json path does not resolve: {source} {key}={value}"
+                )
+        expected = _dotted(payload, "data.hardware_json.sha256")
+        if not isinstance(expected, str):
+            errors.append(f"SOURCE.json lacks data.hardware_json.sha256: {source}")
+        elif actual is not None and actual != expected:
+            errors.append(
+                f"hardware.json sha256 mismatch with {source}: "
+                f"recorded {expected}, actual {actual}"
+            )
+
+    references = root / SKILL_DIRECTORY / "references"
+    for document in sorted(references.rglob("*.md")):
+        if SOURCE_BOOK_DIRECTORY_NAME in document.relative_to(references).parts:
+            continue
+        lines = document.read_text(encoding="utf-8").splitlines()
+        for number, line in enumerate(lines, 1):
+            if CJK.search(line):
+                errors.append(f"CJK artifact: {document.relative_to(root)}:{number}")
+
+
+def _dotted(payload: object, key: str) -> object:
+    for part in key.split("."):
+        if not isinstance(payload, dict):
+            return None
+        payload = payload.get(part)
+    return payload
+
+
 def validate_repository(root: Path) -> list[str]:
     errors: list[str] = []
     line_counts: dict[Path, int] = {}
@@ -1059,6 +1210,8 @@ def validate_repository(root: Path) -> list[str]:
     lock = load_lock(root, errors)
     validate_source_lock(root, lock, errors)
     validate_chapter_quotes(root, errors)
+    validate_calculator_coverage(root, errors)
+    validate_data_integrity(root, errors)
     validate_skill_routing(root, errors)
     validate_benchmark_coverage(root, errors)
 
