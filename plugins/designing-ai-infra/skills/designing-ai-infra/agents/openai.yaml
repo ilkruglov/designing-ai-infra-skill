@@ -1,4 +1,4 @@
 interface:
   display_name: "Проектирование AI-инфраструктуры"
   short_description: "Сайзинг, capacity planning и стоимость AI-инфраструктуры"
-  default_prompt: "Используй $designing-ai-infra, чтобы посчитать сайзинг AI-инфраструктуры для моей задачи."
+  default_prompt: "Используй $designing-ai-infra, чтобы оценить сайзинг AI-инфраструктуры для моей задачи."

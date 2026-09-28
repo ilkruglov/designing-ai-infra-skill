@@ -1,0 +1,2 @@
+# Preserve bundled source text byte-for-byte from the pinned translation commit.
+plugins/designing-ai-infra/skills/designing-ai-infra/references/source-book/*.md whitespace=-blank-at-eol,-blank-at-eof

@@ -7,9 +7,22 @@ System Design» (https://github.com/bojieli, https://github.com/bojieli/ai-infra
 community edition (https://github.com/ilkruglov/ai-infra-book-ru), коммит
 83f26c39ed5fe0e5a16c4f7191e0bebb42c86d94.
 
-references/source-book/ — текст перевода без изменений.
-data/hardware.json — копия calculations/configs/hardware.json оригинала без изменений.
-scripts/infra_calc/ — формулы перенесены из calculations/src/infra_calc оригинала
-и переписаны; эталонные числа взяты из calculations/results оригинала.
+Атрибуция из NOTICE перевода (Apache License 2.0, §4(d)):
+AI Infra in Depth: Quantitative Analysis and System Design
+Copyright 2026 Bojie Li. Licensed under Apache License 2.0.
+Original: https://github.com/bojieli/ai-infra-book
+Pinned source: 56ecb425b07ea6d16e891cba87bf7db416927d09
+Русский перевод: community edition. Неофициальное издание сообщества.
+Third-party material retains its original copyright and license notices.
+
+Это неофициальное community-производное произведение; оно не заявляет
+об официальном одобрении автора книги.
+
+plugins/designing-ai-infra/skills/designing-ai-infra/references/source-book/ — текст перевода без изменений.
+plugins/designing-ai-infra/skills/designing-ai-infra/data/hardware.json — копия calculations/configs/hardware.json
+оригинала без изменений.
+plugins/designing-ai-infra/skills/designing-ai-infra/scripts/infra_calc/ — формулы перенесены из
+calculations/src/infra_calc оригинала и переписаны; эталонные числа взяты
+из calculations/results оригинала.
 
 Licensed under the Apache License, Version 2.0.
