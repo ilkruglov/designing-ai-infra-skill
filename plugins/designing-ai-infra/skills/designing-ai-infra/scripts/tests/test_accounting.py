@@ -106,8 +106,13 @@ class HybridTest(unittest.TestCase):
         self.assertEqual(accounting.fixed_state_bytes(s), (188_743_680, 4_423_680))
 
     def test_hybrid_parameters_are_not_guessed(self) -> None:
-        with self.assertRaises(model.UnsupportedArchitecture):
+        # chapter2.md:418: у гибридной модели формулы параметров нет — отказ с полем
+        # и подсказкой, где взять число (карточка модели, calc.py model --params)
+        with self.assertRaises(model.UnsupportedArchitecture) as caught:
             accounting.parameter_count(spec("qwen3.5-397b-a17b"))
+        self.assertEqual(caught.exception.fields, ["linear_attention"])
+        self.assertEqual(caught.exception.model_type, "qwen3_5_moe_text")
+        self.assertIn("calc.py model --params", str(caught.exception))
 
 
 class TensorParallelTest(unittest.TestCase):

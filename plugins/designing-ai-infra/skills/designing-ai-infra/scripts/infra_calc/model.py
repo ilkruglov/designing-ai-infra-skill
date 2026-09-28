@@ -18,6 +18,7 @@ AUTHOR_COMMANDS = {
     "deepseek_v4": "Используйте `python3 calculations/calc.py v4-forward` в репозитории оригинала на коммите 56ecb425.",
     "kimi_linear": "Используйте `python3 calculations/calc.py k3-forward` в репозитории оригинала на коммите 56ecb425.",
 }
+# Поля архитектуры, которые читают адаптеры поддержанных семейств.
 KNOWN_KEYS = {
     "model_type",
     "num_hidden_layers",
@@ -57,11 +58,9 @@ KNOWN_KEYS = {
     "linear_conv_kernel_dim",
     "text_config",
 }
-BENIGN_KEYS = {
+# Поля, которые на веса, KV и FLOPs не влияют: служебные, нормировка, RoPE, обучение.
+RUNTIME_KEYS = {
     "architectures",
-    "bos_token_id",
-    "eos_token_id",
-    "pad_token_id",
     "torch_dtype",
     "dtype",
     "rms_norm_eps",
@@ -80,16 +79,78 @@ BENIGN_KEYS = {
     "router_aux_loss_coef",
     "output_router_logits",
 }
+# Значения PretrainedConfig по умолчанию для генерации, токенов и вывода, которые
+# старые config.json записывают целиком. Архитектуру они не описывают; без этого
+# списка отказ для незнакомой архитектуры тонул бы в них.
+GENERATION_KEYS = {
+    "bos_token_id",
+    "eos_token_id",
+    "pad_token_id",
+    "sep_token_id",
+    "decoder_start_token_id",
+    "forced_bos_token_id",
+    "forced_eos_token_id",
+    "max_length",
+    "min_length",
+    "do_sample",
+    "early_stopping",
+    "num_beams",
+    "num_beam_groups",
+    "diversity_penalty",
+    "temperature",
+    "top_k",
+    "top_p",
+    "typical_p",
+    "repetition_penalty",
+    "length_penalty",
+    "no_repeat_ngram_size",
+    "encoder_no_repeat_ngram_size",
+    "bad_words_ids",
+    "num_return_sequences",
+    "output_scores",
+    "return_dict_in_generate",
+    "remove_invalid_values",
+    "exponential_decay_length_penalty",
+    "suppress_tokens",
+    "begin_suppress_tokens",
+    "output_attentions",
+    "output_hidden_states",
+    "return_dict",
+    "torchscript",
+    "use_bfloat16",
+    "tf_legacy_loss",
+    "pruned_heads",
+    "chunk_size_feed_forward",
+    "is_encoder_decoder",
+    "is_decoder",
+    "add_cross_attention",
+    "tie_encoder_decoder",
+    "cross_attention_hidden_size",
+    "finetuning_task",
+    "id2label",
+    "label2id",
+    "prefix",
+    "problem_type",
+    "task_specific_params",
+    "tokenizer_class",
+}
+BENIGN_KEYS = RUNTIME_KEYS | GENERATION_KEYS
 
 
 class UnsupportedArchitecture(ValueError):
-    def __init__(self, model_type: str, fields: list[str], hint: str = "") -> None:
+    def __init__(
+        self,
+        model_type: str,
+        fields: list[str],
+        hint: str = "",
+        *,
+        detail: str = "",
+    ) -> None:
         self.model_type = model_type
         self.fields = fields
-        message = (
-            f"архитектура {model_type!r} не поддержана калькулятором; "
-            f"поля: {', '.join(fields) or '—'}"
-        )
+        # detail заменяет перечень полей, когда причина — не поле, а сам model_type
+        detail = detail or f"поля: {', '.join(fields) or '—'}"
+        message = f"архитектура {model_type!r} не поддержана калькулятором; {detail}"
         if hint:
             message += f". {hint}"
         super().__init__(message)
@@ -161,12 +222,20 @@ def _parse_text(cfg: dict[str, Any]) -> ModelSpec:
         return _deepseek_v3(cfg)
     if model_type in {"qwen3_5_moe_text", "qwen3_next"}:
         return _hybrid(cfg, model_type)
+    hint = AUTHOR_COMMANDS.get(model_type, "Нужен адаптер с эталонным тестом.")
+    if not model_type:
+        raise UnsupportedArchitecture(
+            "не указан", ["model_type"], hint, detail="model_type не указан в config"
+        )
     unknown = sorted(set(cfg) - KNOWN_KEYS - BENIGN_KEYS)
-    raise UnsupportedArchitecture(
-        model_type or "не указан",
-        unknown,
-        AUTHOR_COMMANDS.get(model_type, "Нужен адаптер с эталонным тестом."),
-    )
+    if not unknown:
+        raise UnsupportedArchitecture(
+            model_type,
+            ["model_type"],
+            hint,
+            detail="незнакомый model_type; остальные поля config калькулятору знакомы",
+        )
+    raise UnsupportedArchitecture(model_type, unknown, hint)
 
 
 def _common(cfg: dict[str, Any], model_type: str, family: str) -> dict[str, Any]:
@@ -269,12 +338,20 @@ def _hybrid(cfg: dict[str, Any], model_type: str) -> ModelSpec:
         bad,
         "Поддержан только вариант без смещений в проекциях внимания, где каждый слой — MoE.",
     )
-    types = cfg.get("layer_types") or _layer_types_from_interval(cfg)
+    listed = cfg.get("layer_types")
+    types = listed or _layer_types_from_interval(cfg)
     full = sum(1 for t in types if t == "full_attention")
     linear = sum(1 for t in types if t == "linear_attention")
     if len(types) != int(cfg["num_hidden_layers"]) or full + linear != len(types):
+        # без списка типы выводятся из интервала — тогда виноваты оба поля
+        fields = (
+            ["layer_types"] if listed else ["layer_types", "full_attention_interval"]
+        )
         raise UnsupportedArchitecture(
-            model_type, ["layer_types"], "Нужен полный список типов слоёв."
+            model_type,
+            fields,
+            "Нужен полный список типов слоёв layer_types или целый "
+            "full_attention_interval ≥ 1.",
         )
     return ModelSpec(
         **_common(cfg, model_type, "hybrid_linear"),
