@@ -1,0 +1,15 @@
+{
+  "checkpoint-interval-book": {
+    "source": "calculations/results/checkpoint-interval-book.json",
+    "sha256": "e986d06ba47b7d0c13b54a99cc2abde1744d674eb470b26d9cf00e417ac0c6ad",
+    "parameters": 8190735360,
+    "checkpoint_payload_bytes": 114670295040,
+    "save_bandwidth_bytes_per_second": 7000000000,
+    "devices": 1024,
+    "device_mtbf_seconds": 29122560,
+    "recovery_seconds": 120,
+    "first_order_optimal_useful_interval_seconds": 965.2865142296354,
+    "poisson_optimal_useful_interval_seconds": 954.3965630587674,
+    "first_order_loss_at_60": 0.2782987736033755
+  }
+}
