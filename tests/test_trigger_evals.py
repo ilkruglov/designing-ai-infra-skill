@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -16,6 +17,19 @@ REQUIRED_KEYS = {"id", "query", "should_trigger", "reason"}
 # x — логика агента (уходит в developing-ai-agents), n — похожий словарь
 # или посторонняя задача.
 FALSE_CATEGORIES = ("near-miss:", "unrelated:")
+# Доля общих слов (Jaccard), выше которой запрос считается пересказом промпта
+# benchmark. Самые близкие пары набора дают около 0,16; пересказ с заменой
+# пары слов даёт больше 0,8. Порог 0,5 ловит пересказ и не мешает общей лексике.
+MAX_BENCHMARK_OVERLAP = 0.5
+
+
+def words(text: str) -> set[str]:
+    return set(re.findall(r"\w+", text.lower()))
+
+
+def overlap(left: str, right: str) -> float:
+    a, b = words(left), words(right)
+    return len(a & b) / len(a | b)
 
 
 def load_queries() -> list[dict]:
@@ -95,6 +109,8 @@ class TriggerSetTests(unittest.TestCase):
                 self.assertNotIn("designing-ai-infra", text)
                 self.assertNotIn("developing-ai-agents", text)
                 self.assertNotIn(text.strip(), prompts)
+                for prompt in prompts:
+                    self.assertLess(overlap(text, prompt), MAX_BENCHMARK_OVERLAP)
 
 
 if __name__ == "__main__":
