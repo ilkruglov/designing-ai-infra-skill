@@ -1116,6 +1116,28 @@ class NumbersAnchorTests(unittest.TestCase):
         self.assertIn("numbers.md row without anchor", result.stdout)
         self.assertIn("numbers.md:5", result.stdout)
 
+    def test_treats_aligned_separator_as_table_structure(self) -> None:
+        # выравнивание столбцов «---:» не делает разделитель строкой данных,
+        # а строка перед ним остаётся заголовком
+        with repository_copy() as copied_root:
+            self.numbers_path(copied_root).write_text(
+                "# Числа книги\n\n"
+                "| Величина | Значение | Модель или железо | Как использовать | Источник |\n"
+                "| :--- | ---: | :---: | --- | --- |\n"
+                "| Вес | 1 GB | модель | для примера | "
+                "`references/source-book/chapter1.md:3` |\n"
+                "| Вес | 2 GB | модель | без якоря | глава 1 |\n",
+                encoding="utf-8",
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertNotIn("numbers.md:3", result.stdout)
+        self.assertNotIn("numbers.md:4", result.stdout)
+        self.assertNotIn("numbers.md:5", result.stdout)
+        self.assertIn("numbers.md row without anchor", result.stdout)
+        self.assertIn("numbers.md:6", result.stdout)
+
     def test_accepts_numbers_rows_with_anchor(self) -> None:
         with repository_copy() as copied_root:
             self.numbers_path(copied_root).write_text(
