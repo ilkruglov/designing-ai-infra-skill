@@ -451,11 +451,11 @@ python3 scripts/calc.py edge --upload '8192000 B' --download '0 MB' --up-mbps 6.
 
 20 × 1,573 + 0,14 ≈ 31,6 s и 20 × 0,537 + 0,27 ≈ 11,0 s; `M ≈ 7,7` s; признаки ≈ 10,25 s. `--down-mbps 1` при нулевом скачивании не влияет на результат (аргумент обязателен и должен быть положительным).
 
-Нижние границы шага decode на устройствах (FLOPs 0 — считается только чтение; у телефона нет записи в снимке, пик задан заглушкой `--peak-tflops 1`, на `memory_seconds` при `--flops 0` он не влияет; `ridge_point` (11.7925 FLOP/B) и `compute_seconds` этих двух команд бессмысленны, и с ненулевым `--flops` заглушку использовать нельзя):
+Нижние границы шага decode на устройствах (FLOPs 0 — считается только чтение; у телефона нет записи в снимке и нет пика, поэтому `--memory-only`: граница только `R/β`, `compute_seconds` и `ridge_point` не вычисляются):
 
 ```bash
-python3 scripts/calc.py roofline --peak-tflops 1 --bandwidth 84.8e9 --flops 0 --bytes 16344778752
-python3 scripts/calc.py roofline --peak-tflops 1 --bandwidth 84.8e9 --flops 0 --bytes 5.47e9
+python3 scripts/calc.py roofline --memory-only --bandwidth 84.8e9 --flops 0 --bytes 16344778752
+python3 scripts/calc.py roofline --memory-only --bandwidth 84.8e9 --flops 0 --bytes 5.47e9
 python3 scripts/calc.py roofline --device rtx-pro6000-blackwell-ws --flops 0 --bytes 16344778752
 ```
 

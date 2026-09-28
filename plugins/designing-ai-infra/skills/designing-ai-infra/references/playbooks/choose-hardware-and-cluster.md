@@ -63,7 +63,7 @@ python3 scripts/calc.py device --device m3-ultra-80gpu-256gb
 **peak_flops**: не вычисляется
 ```
 
-У RTX 4090 пик с накоплением FP16 вдвое выше, чем с FP32: выбор пика — по накоплению, которое реально использует kernel. `gb200-nvl72` — 72 устройства, числа — суммы; `roofline` и `serving` примут его только с `--allow-aggregate` и посчитают границу при идеальном делении работы, которого глава 6 не обещает. Для Apple снимок хранит ёмкость и пропускную способность, но не пик — время чтения считается как `R/819e9`, а пик задаётся `--peak-tflops` по спецификации.
+У RTX 4090 пик с накоплением FP16 вдвое выше, чем с FP32: выбор пика — по накоплению, которое реально использует kernel. `gb200-nvl72` — 72 устройства, числа — суммы; `roofline` и `serving` примут его только с `--allow-aggregate` и посчитают границу при идеальном делении работы, которого глава 6 не обещает. Для Apple снимок хранит ёмкость и пропускную способность, но не пик — границу по чтению `R/β` даёт `roofline --memory-only --device m3-ultra-80gpu-256gb`, а для вычислительной границы пик задаётся `--peak-tflops` по спецификации.
 
 ### 3. Фильтр по ёмкости
 
@@ -74,8 +74,9 @@ python3 scripts/calc.py device --device m3-ultra-80gpu-256gb
 ```bash
 python3 scripts/calc.py serving --device rtx4090 --weights 16381470720 --weight-read 15136811008 \
   --decode-flops 19968032768 --kv-per-token 147456 --context 8192 --reserve 2147483648
-python3 scripts/calc.py serving --memory 160e9 --peak-tflops 989.4 --bandwidth 3.35e12 --weights 65.52e9 \
-  --weight-read 63.97e9 --decode-flops 0.34e12 --kv-per-token 262144 --context 131072 --reserve 4294967296
+python3 scripts/calc.py serving --device h100-sxm --config scripts/tests/fixtures/configs/qwen3-32b.json --tp 2 \
+  --weights 65524246528 --weight-read 63968421888 --decode-flops 338844975104 --kv-per-token 262144 \
+  --context 131072 --reserve 2147483648
 ```
 
 ```text
@@ -83,7 +84,7 @@ python3 scripts/calc.py serving --memory 160e9 --peak-tflops 989.4 --bandwidth 3
 **max_concurrent_requests** (верхняя граница): 2
 ```
 
-RTX 4090: четыре запроса 8K (с `--context 16384` — два). Вторая команда — Qwen3-32B в TP2 на двух H100 с памятью и резервом, сложенными по картам (веса 65,52 GB и KV 256 KiB на токен — числа главы 6): два сеанса 128K; `--memory 320e9 --reserve 8589934592` — 7, `640e9` / `17179869184` — 16. Сумма по картам совпадает с проверкой каждой карты только для GQA при TP не больше числа KV-голов (у Qwen3-32B их 8); для MLA сумма завышает ёмкость в p раз — KV считается на каждой карте целиком; остальные поля такого вызова не имеют смысла — они считают одну карту.
+RTX 4090: четыре запроса 8K (с `--context 16384` — два). Вторая команда — Qwen3-32B в TP2 на двух H100: `serving --tp 2 --config` получает значения всей модели (`model` по фикстуре, KV 256 KiB на токен) и проверяет каждую карту — два сеанса 128K при резерве 2 GiB на карту; `--tp 4` — 7, `--tp 8` — 16, как в главе 6, а `--tp 16` — 17: сверх 8 KV-голов KV дублируется. Для MLA калькулятор KV по картам не делит — каждая карта держит латентный кэш целиком.
 
 ### 4. Нижние границы времени на кандидатах
 
@@ -112,7 +113,7 @@ RTX 5090 и RTX PRO 6000 читают одинаково (9,12 ms), у втор�
 **Чем закрыть.**
 
 ```bash
-python3 scripts/calc.py ring --devices 8 --message 10240 --bandwidth 450e9 --alpha 0.822e-6
+python3 scripts/calc.py allreduce --devices 8 --message 10240 --bandwidth 450e9 --alpha 0.822e-6
 python3 scripts/calc.py ring --devices 16 --message 10240 --bandwidth 50e9 --alpha 3.76e-6
 python3 -c "import sys; sys.path.insert(0, 'scripts'); from infra_calc import collectives as c; \
 print([round(c.tp_step_seconds(29.35e-3, p, 128, 10240, 450e9, 0.822e-6)*1e3, 2) for p in (1, 2, 4, 8)])"
@@ -120,11 +121,13 @@ print([round(c.tp_step_seconds(29.35e-3, p, 128, 10240, 450e9, 0.822e-6)*1e3, 2)
 
 ```text
 **ring_allreduce_seconds**: 1.15478e-05 s
+**tree_allreduce_seconds**: 5.06853e-06 s
+**ring_tree_crossover_bytes**: 696282 B
 **ring_allreduce_seconds**: 0.000113184 s
 [29.35, 14.89, 7.97, 5.15]
 ```
 
-TP8 внутри NVLink — 11,55 μs на редукцию, × 128 ≈ 1,48 ms; кольцо TP16 через InfiniBand — ≈ 113 μs по модели (nccl-tests для 16 KiB — 32,74 μs), и TP16 на двух серверах (≈ 6,67 ms) медленнее TP8 (5,15 ms). `tp_step_seconds` делит локальную часть на p идеально и предела KV-голов не видит. Пример выбора главы 6: один сеанс 128K за 50 ms — только TP8 (41,2 ms на 8 шагов); четыре сеанса за 130 ms — четыре экземпляра TP2 (119,1 ms). Модель кольца не учитывает конкуренцию за ресурсы; для масштаба коллективов она сверяется с измерением.
+TP8 внутри NVLink — 11,55 μs на редукцию кольцом, × 128 ≈ 1,48 ms; дерево для 10 KiB — 5,07 μs: сообщение меньше точки равенства 680 KiB, и меньшее число раундов выигрывает; кольцо TP16 через InfiniBand — ≈ 113 μs по модели (nccl-tests для 16 KiB — 32,74 μs), и TP16 на двух серверах (≈ 6,67 ms) медленнее TP8 (5,15 ms). `tp_step_seconds` делит локальную часть на p идеально и предела KV-голов не видит. Пример выбора главы 6: один сеанс 128K за 50 ms — только TP8 (41,2 ms на 8 шагов); четыре сеанса за 130 ms — четыре экземпляра TP2 (119,1 ms). Модель кольца не учитывает конкуренцию за ресурсы; для масштаба коллективов она сверяется с измерением.
 
 ### 6. Сеть между серверами
 

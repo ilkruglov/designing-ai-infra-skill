@@ -28,7 +28,7 @@
 
 **Ridge point (точка пересечения)** — интенсивность `I* = P/R` (в обозначениях главы 1 — `Π/β`), где пересекаются две линии Roofline; выше неё узкое место — вычисления. Калькулятор печатает `ridge_point` в FLOP/B; в книге и конспектах это «точка пересечения». `references/source-book/chapter4.md:906`.
 
-**B\* (точка перехода по batch)** — размер batch, при котором время вычислений догоняет время чтения весов: `B* = b_W·Π/(2β)`, для H100 и 1 байта на параметр ≈ 147,7. Не учитывает KV: с длинным контекстом чтение KV догоняет веса раньше (`b_KV`). `references/chapters/ch01-ai-infra-basics.md`, `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter1.md:263`, `references/source-book/chapter8.md:104`.
+**B\* (точка перехода по batch)** — размер batch, при котором время вычислений догоняет время чтения весов: `B* = b_W·Π/(2β)`, для H100 и 1 байта на параметр ≈ 147,7. Не учитывает KV: с длинным контекстом чтение KV догоняет веса раньше (`b_KV`). Оба порога с KV — `calc.py batch-threshold`. `references/chapters/ch01-ai-infra-basics.md`, `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter1.md:263`, `references/source-book/chapter8.md:104`.
 
 **TTFT** — время до первого выходного токена: `TTFT = t_1 − t_a` от поступления запроса; включает очередь и prefill. `references/chapters/ch03-workloads.md`, `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter3.md:29`, `references/source-book/chapter8.md:82`.
 
@@ -124,7 +124,7 @@
 
 **AllReduce, ReduceScatter, AllGather, All-to-All** — полный результат у всех; свой сегмент суммы; весь тензор из сегментов; каждая карта получает то, что ей прислали. AllReduce = ReduceScatter + AllGather. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter6.md:454`.
 
-**α и кольцевой AllReduce** — α — время запуска одного раунда; кольцо: `T_ring = 2(n−1)α + 2(n−1)M/(nB)`. Для малых сообщений доминирует α и полоса почти не помогает; для крупных — наоборот. `calc.py ring`. `references/source-book/chapter6.md:473`.
+**α и кольцевой AllReduce** — α — время запуска одного раунда; кольцо: `T_ring = 2(n−1)α + 2(n−1)M/(nB)`. Для малых сообщений доминирует α и полоса почти не помогает; для крупных — наоборот. `calc.py ring`; кольцо против дерева и точка равенства — `calc.py allreduce`. `references/source-book/chapter6.md:473`.
 
 **Суперузел** — группа ускорителей, тесно взаимодействующих через высокоскоростной интерконнект; может занимать несколько серверов или вычислительных лотков. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter1.md:57`, `references/source-book/chapter6.md:13`.
 
@@ -168,13 +168,13 @@
 
 **Состояние обучения** — веса, градиенты, основные веса FP32 и два момента Adam: 16 байт на параметр при градиентах BF16 (18 при градиентах FP32). В MoE — по всем экспертам. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:59`.
 
-**ZeRO, FSDP** — шардирование состояния между GPU группы DP: этап 1 — основные веса и моменты, этап 2 — ещё градиенты, этап 3 — ещё веса; FSDP организует выполнение по тому же принципу. Постоянное состояние и пик памяти уменьшаются в разной степени. `calc.py training --dp`. `references/source-book/chapter10.md:151`.
+**ZeRO, FSDP** — шардирование состояния между GPU группы DP: этап 1 — основные веса и моменты, этап 2 — ещё градиенты, этап 3 — ещё веса; FSDP организует выполнение по тому же принципу. Постоянное состояние и пик памяти уменьшаются в разной степени. `calc.py training --dp`; по компонентам — `calc.py training-state --stage`. `references/source-book/chapter10.md:151`.
 
 **Повторное вычисление и выгрузка** — пересчёт активаций в обратном проходе вместо хранения; перенос состояния между GPU и CPU. `references/source-book/chapter10.md:205`, `references/source-book/chapter10.md:237`.
 
 **Fill–drain и 1F1B** — расписания конвейера: сначала все прямые проходы, потом все обратные; после прогрева — чередование одного прямого и одного обратного, активации ранних micro-batch освобождаются раньше. Пузырь у них одинаковый, различается резидентность активаций. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:322`.
 
-**Пузырь конвейера** — простой этапов при заполнении и опустошении конвейера. `references/source-book/chapter6.md:283`, `references/source-book/chapter10.md:322`.
+**Пузырь конвейера** — простой этапов при заполнении и опустошении конвейера; доля и время — `calc.py pipeline`. `references/source-book/chapter6.md:283`, `references/source-book/chapter10.md:322`.
 
 **Checkpoint** — сохранённое состояние, достаточное для продолжения обучения: веса, оба момента, номер шага, состояние learning rate, случайное состояние, состав следующего batch и ещё не упакованные токены. Асинхронный снимок пригоден для восстановления только после записи и фиксации. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:507`, `references/source-book/chapter10.md:527`.
 
@@ -182,7 +182,7 @@
 
 **Отстающий узел** — медленный участник синхронного шага; шаг определяется максимумом, а не средним. `references/source-book/chapter10.md:600`.
 
-**Критический batch (критический размер батча)** — размер batch, после которого добавление примеров лишь незначительно сокращает число шагов до того же значения функции потерь, а вычисления на шаг растут пропорционально; оценивается через масштаб шума градиента. Поэтому выше него добавленные карты почти не сокращают срок. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:21`.
+**Критический batch (критический размер батча)** — размер batch, после которого добавление примеров лишь незначительно сокращает число шагов до того же значения функции потерь, а вычисления на шаг растут пропорционально; оценивается через масштаб шума градиента. Поэтому выше него добавленные карты при пропорциональном росте batch почти не сокращают срок. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:21`, `references/source-book/chapter10.md:854`.
 
 **Rollout** — генерация траекторий в RL, за которой идут проверка средой, вознаграждение и обновление стратегии; единица работы — пригодный для обучения образец. `references/chapters/ch03-workloads.md`, `references/chapters/ch10-training-systems.md`, `references/source-book/chapter3.md:476`, `references/source-book/chapter10.md:629`.
 

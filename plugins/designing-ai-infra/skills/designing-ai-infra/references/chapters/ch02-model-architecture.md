@@ -359,7 +359,7 @@ V4.1 Flash: 40 слоёв = 20 причинного кодировщика + 20 
 
 Основные упражнения главы (`references/source-book/chapter2.md:913`):
 
-- 2-2 — FLOPs проекций и FFN, причинного внимания и словарной головы при B = 4, S = 4096, P = 1024 против B = 1, S = 4096, P = 4096 (одинаковое BP); экономия повторного использования префикса 6144 из 8K (`references/source-book/chapter2.md:146`).
+- 2-2 — FLOPs проекций и FFN, причинного внимания и словарной проекции последнего токена каждой последовательности при B = 4, S = 4096, P = 1024 против B = 1, S = 4096, P = 4096 (одинаковое BP); экономия повторного использования префикса 6144 из 8K (`references/source-book/chapter2.md:146`).
 - 2-5 — длина контекста, при которой растущее состояние сравнивается с фиксированным у Qwen3.6 и Kimi K3; состояние при 32K и 128K; сколько контекста помещается в 256 MiB (`references/source-book/chapter2.md:418`).
 - 2-7 — число помещающихся запросов: Qwen3-8B на RTX 4090 при 4K/8K/16K и резерве 2 или 3 GiB; 4-битная 70B (39,500 GB) на RTX 6000 Ada 48 GB при 8K и 32K (`references/source-book/chapter2.md:805`).
 
@@ -437,16 +437,19 @@ python3 scripts/calc.py serving --device rtx4090 --weights 16381470720 --weight-
 
 С `--context 4096` — 9, с `--context 16384` — 2. Для 4-битной 70B на H100 (`--device h100-sxm --weights 39.5e9 --weight-read 39.5e9 --decode-flops 160478265344 --kv-per-token 327680 --reserve 2147483648`): `--context 8192` — 14, `--context 32768` — 3; с `--weights 73.726e9` (8 бит) — 1.
 
-Порог batch, при котором чтение KV догоняет чтение весов (пример 2-2), — функция модуля `roofline`:
+Порог batch, при котором чтение KV догоняет чтение весов (пример 2-2), — `batch-threshold`:
 
 ```bash
-python3 -c "import sys; sys.path.insert(0, 'scripts'); from infra_calc import roofline; \
-print(roofline.batch_threshold(15136811008, 147456, 8192), roofline.batch_threshold(15136811008, 147456, 2048))"
+python3 scripts/calc.py batch-threshold --config scripts/tests/fixtures/configs/qwen3-8b.json --context 8192
+python3 scripts/calc.py batch-threshold --config scripts/tests/fixtures/configs/qwen3-8b.json --context 2048
 ```
 
 ```text
-13 51
+**kv_read_batch_threshold**: 13
+**kv_read_batch_threshold**: 51
 ```
+
+13 и 51, как в примере 2-2. С `--device` команда печатает и `compute_bound_batch_threshold` — batch, с которого шаг decode упирается в вычисления; для MoE оба порога — нижняя граница: при batch читается объединение экспертов (`model --batch`).
 
 Нижняя граница шага по F и R из `model` — `calc.py roofline` (глава 1); условие выигрыша MTP — `calc.py speculative` (глава 8).
 
