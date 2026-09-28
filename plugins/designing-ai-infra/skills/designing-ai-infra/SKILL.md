@@ -23,3 +23,5 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
 - [ch10-training-systems.md](references/chapters/ch10-training-systems.md)
 - [ch11-resource-scheduling.md](references/chapters/ch11-resource-scheduling.md)
 - [ch12-edge-cloud.md](references/chapters/ch12-edge-cloud.md)
+- [numbers.md](references/numbers.md)
+- [fallacies.md](references/fallacies.md)
