@@ -387,22 +387,23 @@ python3 scripts/calc.py model --config scripts/tests/fixtures/configs/deepseek-r
 ```
 
 ```text
-**weight_bytes**: 70 553 706 496 B
+**weight_bytes** (нижняя граница): 70 553 706 496 B
 **kv_bytes_per_token**: 327 680 B
 **kv_resident_bytes**: 2 684 354 560 B
 ```
 
-С `--weight-dtype bf16` (по умолчанию) — 141 107 412 992 B. Для int8 калькулятор даёт 70,55 GB без scale и высокоточных частей, книга — 73,73 GB: в `serving --weights` подставляется реальный размер чекпойнта, а не «параметры × байты».
+С `--weight-dtype bf16` (по умолчанию) — 141 107 412 992 B. Для int8 калькулятор помечает 70,55 GB как нижнюю границу: «параметры × байты» не включает scale и части в BF16, книга даёт 73,73 GB. Известные накладные расходы прибавляет `--quant-overhead-bytes 3.18e9` (получается 73 733 706 496 B); в `serving --weights` подставляется реальный размер чекпойнта.
 
-Пересчёт единиц (модуль `units`, из Python):
+Пересчёт единиц:
 
 ```bash
-python3 -c "import sys; sys.path.insert(0, 'scripts'); from infra_calc import units; \
-print(units.to_unit(141107412992, 'GiB'), units.megabits_per_second_to_bytes(400000))"
+python3 scripts/calc.py units --size "141107412992 B" --to GiB --mbps 400000
 ```
 
 ```text
-131.41651916503906 50000000000.0
+**size_bytes**: 1.41107e+11 B
+**size_GiB**: 131.417 GiB
+**link_bytes_per_second**: 5e+10 B/s
 ```
 
 141,11 GB = 131,42 GiB; 400 Gbit/s = 50 GB/s.

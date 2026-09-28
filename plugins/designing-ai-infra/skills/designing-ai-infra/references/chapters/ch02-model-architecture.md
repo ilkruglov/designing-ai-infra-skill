@@ -415,7 +415,7 @@ python3 scripts/calc.py serving --device rtx4090 --weights 16381470720 --weight-
 ```
 
 ```text
-**max_concurrent_requests**: 4
+**max_concurrent_requests** (верхняя граница): 4
 ```
 
 С `--context 4096` — 9, с `--context 16384` — 2. Для 4-битной 70B на H100 (`--device h100-sxm --weights 39.5e9 --weight-read 39.5e9 --decode-flops 160478265344 --kv-per-token 327680 --reserve 2147483648`): `--context 8192` — 14, `--context 32768` — 3; с `--weights 73.726e9` (8 бит) — 1.

@@ -246,7 +246,7 @@ python3 scripts/calc.py serving --device h100-sxm --weights 73.73e9 --weight-rea
 ```
 
 ```text
-**max_concurrent_requests**: 1
+**max_concurrent_requests** (верхняя граница): 1
 **tpot_lower_bound_seconds** (нижняя граница): 0.0216968 s
 **tokens_per_second_upper_bound** (верхняя граница): 46.0897 tok/s
 ```

@@ -384,20 +384,28 @@ python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --weights 1638
 
 Книга даёт 22,89 ms и 2795,66 шага/с, считая «прочитать и записать не менее 41,02 GB»; калькулятор считает только чтение `(R_W + B·R_KV)/β`. С `--context 2743` (плюс KV нового токена) получается 2795,70 — расхождение в пределах 0,1 %. `--decode-flops` не влияет на результат (шаг ограничен памятью).
 
-Потребность по окнам (модуль `queueing`, из Python):
+Потребность по окнам: равномерная смесь и вторая минута с загрузкой двух карт по 2796,34 шага/с, затем закон Литтла:
 
 ```bash
-python3 -c "import sys; sys.path.insert(0, 'scripts'); from infra_calc import queueing; \
-c = {'long_in': (8192, 256), 'long_out': (1024, 2048)}; \
-print(queueing.demand({'long_in': 2, 'long_out': 2}, c), queueing.demand({'long_in': 0.4, 'long_out': 3.6}, c), \
-queueing.utilization(7471.2, 2 * 2796.34), queueing.littles_law_in_system(2, 10))"
+python3 scripts/calc.py queueing --class long_in=8192:256 --class long_out=1024:2048 \
+  --rate long_in=2 --rate long_out=2
+python3 scripts/calc.py queueing --class long_in=8192:256 --class long_out=1024:2048 \
+  --rate long_in=0.4 --rate long_out=3.6 --decode-capacity 5592.68
+python3 scripts/calc.py queueing --arrival-rate 2 --time-in-system 10
 ```
 
 ```text
-(18432, 4604) (6963.200000000001, 7471.2) 1.3358890549790081 20
+**input_tokens_per_second**: 18432 tok/s
+**decode_steps_per_second**: 4604 step/s
+
+**input_tokens_per_second**: 6963.2 tok/s
+**decode_steps_per_second**: 7471.2 step/s
+**decode_utilization**: 1.33589
+
+**in_system**: 20
 ```
 
-Загрузка второй минуты ≈ 1,34 > 1 — очередь растёт; `littles_law_in_system(2, 10)` — 20 задач, одновременно ждущих инструмент (упражнение 3-2), × 1 GiB = 20 GiB состояния.
+Загрузка второй минуты ≈ 1,34 > 1 — очередь растёт; закон Литтла при 2 задачах/с и 10 с — 20 задач, одновременно ждущих инструмент (упражнение 3-2), × 1 GiB = 20 GiB состояния.
 
 FLOPs обучения и сверка с 6ND (раздел 3.4.3):
 
@@ -431,7 +439,7 @@ python3 scripts/calc.py training --device h100-sxm --config scripts/tests/fixtur
 
 ```text
 **training_seconds**: 2.17787e+06 s
-- входные данные: total_flops=1.7652e+24, ...
+- входные данные: total_flops=1.7652e+24 FLOP, total_tokens=3.6e+13 tok, devices=2 048, mfu=0.4, ...
 ```
 
 ≈ 25,2 дня; `total_flops` 1,7652·10²⁴ выше табличных 1,728·10²⁴, потому что калькулятор берёт 8,19B параметров и внимание на длине 4096, а таблица — 8B × 36T × 6.
