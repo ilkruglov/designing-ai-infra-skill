@@ -65,12 +65,14 @@ class TriggerSetTests(unittest.TestCase):
         ids = [query["id"] for query in load_queries()]
         self.assertEqual(len(ids), len(set(ids)))
 
-    def test_set_is_balanced_18_to_18(self) -> None:
+    def test_set_has_18_true_and_19_false(self) -> None:
+        # 18 целевых и 19 посторонних: x07 добавлен в пару к целевому p19 набора
+        # developing-ai-agents (стоимость задачи агента растёт от контекста)
         queries = load_queries()
         positive = [q for q in queries if q["should_trigger"]]
         negative = [q for q in queries if not q["should_trigger"]]
         self.assertEqual(18, len(positive))
-        self.assertEqual(18, len(negative))
+        self.assertEqual(19, len(negative))
 
     def test_id_prefix_matches_expected_outcome(self) -> None:
         expected = {"p": True, "w": True, "x": False, "n": False}
@@ -79,9 +81,10 @@ class TriggerSetTests(unittest.TestCase):
                 self.assertIn(query["id"][0], expected)
                 self.assertEqual(expected[query["id"][0]], query["should_trigger"])
 
-    def test_six_cross_skill_cases_route_to_agent_skill(self) -> None:
+    def test_seven_cross_skill_cases_route_to_agent_skill(self) -> None:
         cross = [q for q in load_queries() if q["id"].startswith("x")]
-        self.assertEqual(6, len(cross))
+        self.assertEqual(7, len(cross))
+        self.assertIn("x07", {q["id"] for q in cross})
         for query in cross:
             with self.subTest(query=query["id"]):
                 self.assertTrue(query["reason"].startswith("developing-ai-agents:"))
