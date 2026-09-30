@@ -112,7 +112,7 @@
 
 **Micro-batch** — часть batch, которую конвейер обрабатывает как независимую единицу; утилизация конвейера `b/(q + b − 1)`. `references/source-book/chapter6.md:300`, `references/source-book/chapter10.md:307`.
 
-**PD-разделение (разделение PD, Prefill–Decode)** — prefill и decode выполняются на разных ресурсах со своими очередями и batch; KV передаётся от P к D один раз. В однородном примере книги потребность этапов в GPU-секундах фиксирована; при изменении batch и параллелизма она требует пересчёта. Изоляция очередей влияет на задержку и goodput при SLO; рост общего throughput не гарантирован. `references/chapters/ch09-distributed-inference.md`, `references/source-book/chapter9.md:3`, `references/source-book/chapter9.md:90`, `references/source-book/chapter9.md:154`.
+**PD-разделение (разделение PD, Prefill–Decode)** — prefill и decode выполняются на разных ресурсах со своими очередями и batch; KV передаётся от P к D один раз. В однородном кластере, по автору, GPU-секунды на запрос не меняются и пропускная способность не растёт; выгода — изоляция очередей и стабильный ITL. Русское издание ограничивает вывод условиями примера: при другом batch или параллелизме этапов GPU-секунды оцениваются заново, goodput при SLO — отдельно от throughput. `references/chapters/ch09-distributed-inference.md`, `references/source-book/chapter9.md:3`, `references/source-book/chapter9.md:90`, `references/source-book/chapter9.md:154`.
 
 **AF-разделение (разделение AF)** — внимание и сеть прямого распространения каждого слоя, включая экспертов, выполняются на разных ресурсах; активации передаются туда и обратно на каждом слое и шаге. `references/chapters/ch09-distributed-inference.md`, `references/source-book/chapter9.md:3`, `references/source-book/chapter9.md:304`.
 
