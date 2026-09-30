@@ -113,7 +113,7 @@ class HardwareTest(unittest.TestCase):
 
     def test_snapshot_is_dated(self) -> None:
         # дата коммита d0cc188b: git -C .tmp/upcalc log -1 --format=%cs d0cc188b
-        self.assertIn("2026-09-26", hardware.SNAPSHOT)
+        self.assertIn("2026-09-30", hardware.SNAPSHOT)
 
 
 class ScopeTest(unittest.TestCase):

@@ -146,7 +146,7 @@ python3 scripts/calc.py device --device rtx-pro6000-blackwell-ws | grep -E '^(С
 ```
 
 ```text
-Снимок железа: bojieli/ai-infra-book@d0cc188b (2026-09-26), calculations/configs/hardware.json
+Снимок железа: bojieli/ai-infra-book@d0cc188b (2026-09-30), calculations/configs/hardware.json
 **bandwidth**: 1.792e+12 B/s
 **peak_flops**: 5.038e+14 FLOP/s
 ```

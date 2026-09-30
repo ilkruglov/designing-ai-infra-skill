@@ -183,7 +183,7 @@ class RooflineCommandTest(unittest.TestCase):
         )
         self.assertEqual(code, 0)
         self.assertIn("(нижняя граница)", out)
-        self.assertIn("d0cc188b (2026-09-26)", out)
+        self.assertIn("d0cc188b (2026-09-30)", out)
         self.assertIn("references/source-book/chapter1.md:263", out)
         # входы — в том же виде, что и значения, а не 140000000000.0
         self.assertIn("flops=1.4e+11", out)
