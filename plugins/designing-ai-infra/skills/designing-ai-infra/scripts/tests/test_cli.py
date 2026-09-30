@@ -23,10 +23,10 @@ ANCHORS = (
     "references/source-book/chapter3.md:442",
     "references/source-book/chapter3.md:611",
     "references/source-book/chapter2.md:542",
-    "references/source-book/chapter6.md:147",
-    "references/source-book/chapter6.md:407",
-    "references/source-book/chapter6.md:489",
-    "references/source-book/chapter6.md:721",
+    "references/source-book/chapter6.md:148",
+    "references/source-book/chapter6.md:408",
+    "references/source-book/chapter6.md:490",
+    "references/source-book/chapter6.md:722",
     "references/source-book/chapter8.md:52",
     "references/source-book/chapter8.md:268",
     "references/source-book/chapter8.md:536",
@@ -218,7 +218,7 @@ class RooflineCommandTest(unittest.TestCase):
         self.assertIn("--peak-tflops", message)
 
     def test_aggregate_is_refused_without_opt_in(self) -> None:
-        # chapter6.md:727: «GB200 NVL72 объединяет 72 GPU» — стойка, а не карта
+        # chapter6.md:728: «GB200 NVL72 объединяет 72 GPU» — стойка, а не карта
         message = fails(
             "roofline", "--device", "gb200-nvl72", "--flops", "1", "--bytes", "1"
         )
@@ -454,7 +454,7 @@ class OtherCommandsTest(unittest.TestCase):
         self.assertEqual(round(budget * 1e3, 1), 8.7)
 
     def test_ring(self) -> None:
-        # chapter6.md:515-517: M = 10 KiB, B = 450 GB/s, α = 0,822 μs, TP8:
+        # chapter6.md:516-518: M = 10 KiB, B = 450 GB/s, α = 0,822 μs, TP8:
         # «каждая карта отправляет 17,5 KiB, ... а одна операция — около 11,55 μs»
         v = values(
             "ring",
@@ -570,7 +570,7 @@ class DeviceCommandTest(unittest.TestCase):
         self.assertIn("TOPS", notes)
 
     def test_aggregate_shows_count_and_scope(self) -> None:
-        # chapter6.md:727: «GB200 NVL72 объединяет 72 GPU и 36 CPU Grace»
+        # chapter6.md:728: «GB200 NVL72 объединяет 72 GPU и 36 CPU Grace»
         v = values("device", "--device", "gb200-nvl72")
         self.assertEqual(v["device_count"]["value"], 72)
         self.assertEqual(v["device_count"]["inputs"]["scope"], "gpu_aggregate")
@@ -828,7 +828,7 @@ class SpeculativeRoundsCommandTest(unittest.TestCase):
 
 class AllreduceCommandTest(unittest.TestCase):
     def test_ring_and_tree_book(self) -> None:
-        # chapter6.md:540: для 8 карт и 10 KiB дерево «около 5,07 μs, что меньше 11,55 μs
+        # chapter6.md:541: для 8 карт и 10 KiB дерево «около 5,07 μs, что меньше 11,55 μs
         # у кольцевого алгоритма»; «точка пересечения ... примерно на 680 KiB»
         v = values(
             "allreduce", "--devices", "8", "--message", "10240",
@@ -840,7 +840,7 @@ class AllreduceCommandTest(unittest.TestCase):
         self.assertEqual(round(v["ring_tree_crossover_bytes"]["value"] / 1024, -1), 680)
 
     def test_large_message_ring_wins(self) -> None:
-        # chapter6.md:540: 80 MiB — кольцо «около 0,34 ms», дерево «около 1,12 ms»
+        # chapter6.md:541: 80 MiB — кольцо «около 0,34 ms», дерево «около 1,12 ms»
         v = values(
             "allreduce", "--devices", "8", "--message", str(80 * 2**20),
             "--bandwidth", "450e9", "--alpha", "0.822e-6",
@@ -891,7 +891,7 @@ class ModelParallelCommandTest(unittest.TestCase):
     QWEN3_32B = str(CONFIGS / "qwen3-32b.json")
 
     def test_kv_per_device_book(self) -> None:
-        # chapter6.md:223: «При контексте 128K состояние каждой KV-головы занимает 4 GiB:
+        # chapter6.md:224: «При контексте 128K состояние каждой KV-головы занимает 4 GiB:
         # суммарно 32 GiB на восьми картах и 64 GiB на шестнадцати»
         for tp in ("8", "16"):
             with self.subTest(tp=tp):
@@ -908,7 +908,7 @@ class ModelParallelCommandTest(unittest.TestCase):
                 self.assertEqual(v["kv_bytes_per_token_per_device"]["value"], 32_768)
         notes = " ".join(v["kv_bytes_per_token_per_device"]["notes"])
         self.assertIn("дублиру", notes)
-        # chapter6.md:155: «BF16-веса плотной модели Qwen3-32B занимают около 65,52 GB»
+        # chapter6.md:156: «BF16-веса плотной модели Qwen3-32B занимают около 65,52 GB»
         v = values("model", "--config", self.QWEN3_32B, "--tp", "2")
         self.assertEqual(
             round(v["weight_bytes_per_device"]["value"] * 2 / 1e9, 2), 65.52
@@ -931,7 +931,7 @@ class ExpertUnionCommandTest(unittest.TestCase):
     QWEN3_30B = str(CONFIGS / "qwen3-30b-a3b.json")
 
     def test_uniform_routing_union(self) -> None:
-        # шаблон sizing-sheet и формула (6-8), chapter6.md:438: U(4) ≈ 29.123 при E = 128, k = 8
+        # шаблон sizing-sheet и формула (6-8), chapter6.md:439: U(4) ≈ 29.123 при E = 128, k = 8
         v = values("model", "--config", self.QWEN3_30B, "--batch", "4")
         union = v["experts_per_layer_at_batch"]
         self.assertEqual(round(union["value"], 3), 29.123)
@@ -942,7 +942,7 @@ class ExpertUnionCommandTest(unittest.TestCase):
         )
 
     def test_uniform_read_is_an_estimate_not_a_bound(self) -> None:
-        # U(B) по формуле (6-8), chapter6.md:407, — ожидание при равномерной независимой
+        # U(B) по формуле (6-8), chapter6.md:408, — ожидание при равномерной независимой
         # маршрутизации; неравномерная затрагивает меньше экспертов, вплоть до U = k.
         # Нижняя граница чтения шага — decode_weight_read_bytes (U = k)
         v = values("model", "--config", self.QWEN3_30B, "--batch", "16")
@@ -1159,8 +1159,8 @@ class ServingSplitTest(unittest.TestCase):
         self.assertAlmostEqual(step, (20480 * 8192 + 64_880_640) / 1e12)
 
     def test_tp_capacity_book_table(self) -> None:
-        # chapter6.md:170: «Число запросов 128K/32K на двух H100 | 2/10 | 7/29 | 31/117»,
-        # chapter6.md:169: на одной H100 — 0/1, 1/5, 3/11; chapter6.md:155: Qwen3-32B на
+        # chapter6.md:171: «Число запросов 128K/32K на двух H100 | 2/10 | 7/29 | 31/117»,
+        # chapter6.md:170: на одной H100 — 0/1, 1/5, 3/11; chapter6.md:156: Qwen3-32B на
         # четырёх картах — семь сессий 128K, на восьми — шестнадцать; резерв 2 GiB на карту
         qwen32 = values("model", "--config", ModelParallelCommandTest.QWEN3_32B)
         cases = (
@@ -1186,8 +1186,8 @@ class ServingSplitTest(unittest.TestCase):
                         self.assertEqual(v["max_concurrent_requests"]["value"], count)
 
     def test_tp_step_local_part_book(self) -> None:
-        # chapter6.md:519-524: «Локальный доступ к памяти» 29,35 / 14,68 / 7,34 / 3,67 ms при
-        # TP1/2/4/8; chapter6.md:241: 63,97 GB весов и 34,36 GB KV при s = 131 064
+        # chapter6.md:520-525: «Локальный доступ к памяти» 29,35 / 14,68 / 7,34 / 3,67 ms при
+        # TP1/2/4/8; chapter6.md:242: 63,97 GB весов и 34,36 GB KV при s = 131 064
         for tp, expected in ((1, 29.35), (2, 14.68), (4, 7.34), (8, 3.67)):
             with self.subTest(tp=tp):
                 v = values(
@@ -1246,13 +1246,14 @@ class ServingSplitTest(unittest.TestCase):
         step = v["tpot_lower_bound_seconds"]
         self.assertIn("kv_request_per_device", step["inputs"])
         self.assertNotIn("kv_request", step["inputs"])
-        # chapter6.md:1182 (сноска [^dense-moe] к разделу 6.2.2, заголовок
-        # chapter6.md:147): ⌊(n·(80 GB − 2 GiB) − W)/S⌋ — состояние S делится на n карт.
+        # chapter6.md:1183 (сноска [^dense-moe] к разделу 6.2.2, заголовок
+        # chapter6.md:148): ⌊(n·(80 GB − 2 GiB) − W)/S⌋ — состояние S делится на n карт.
         # Заметка ссылается только на заголовок раздела: строка сноски сдвигается
         # при обновлении книги, а заголовок проверяет lock
         notes = " ".join(v["max_concurrent_requests"]["notes"])
         self.assertIn("S/TP", notes)
-        self.assertEqual(re.findall(r"chapter6\.md:(\d+)", notes), ["147"])
+        heading = cli.A_CH6_TP.rsplit("/", 1)[1]
+        self.assertEqual(re.findall(r"chapter6\.md:\d+", notes), [heading])
 
     def test_quantized_weights_per_device_keep_lower_bound(self) -> None:
         # chapter1.md:205: 8-битные веса 73.73 GB против 70.55 GB по формуле

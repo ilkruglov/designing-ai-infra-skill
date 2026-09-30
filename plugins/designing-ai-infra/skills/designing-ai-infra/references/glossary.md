@@ -70,7 +70,7 @@
 
 **CED** — причинный кодировщик-декодировщик DeepSeek V4.1 Flash: большинство входных токенов не проходит основную часть декодировщика, а каждый генерируемый токен проходит все слои. Экономию prefill нельзя переносить на decode. `references/chapters/ch02-model-architecture.md`, `references/source-book/chapter2.md:454`.
 
-**Engram** — модуль V4.1 Flash, который по n-грамме получает дополнительное представление из таблицы; параметры таблицы считаются отдельно от основной части. `references/source-book/chapter2.md:3`, `references/source-book/chapter6.md:1020`.
+**Engram** — модуль V4.1 Flash, который по n-грамме получает дополнительное представление из таблицы; параметры таблицы считаются отдельно от основной части. `references/source-book/chapter2.md:3`, `references/source-book/chapter6.md:1021`.
 
 **6ND** — оценка FLOPs обучения: 6 × параметры × токены. Поэлементный расчёт учитывает внимание и отличается на длинных последовательностях. `calc.py training` печатает обе оценки. `references/chapters/ch03-workloads.md`, `references/source-book/chapter3.md:442`.
 
@@ -102,37 +102,37 @@
 
 ## Параллелизм и распределённый инференс
 
-**DP, TP, SP, CP, PP, EP** — параллелизм по данным (копии модели, разные образцы), тензорный (части матриц слоя, сложение частичных сумм), по последовательности (позиции в поточечных операторах внутри группы TP), контекста (позиции одной последовательности во внимании), конвейерный (группы слоёв) и экспертный (части набора экспертов). Разбиваемые измерения: B, H, S, S, L, E. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter6.md:80`, `references/source-book/chapter6.md:133`.
+**DP, TP, SP, CP, PP, EP** — параллелизм по данным (копии модели, разные образцы), тензорный (части матриц слоя, сложение частичных сумм), по последовательности (позиции в поточечных операторах внутри группы TP), контекста (позиции одной последовательности во внимании), конвейерный (группы слоёв) и экспертный (части набора экспертов). Разбиваемые измерения: B, H, S, S, L, E. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter6.md:80`, `references/source-book/chapter6.md:134`.
 
-**Предел KV-голов при TP** — если карт TP больше, чем KV-голов, KV-кэш дублируется. `references/source-book/chapter6.md:147`. Правило для GQA/MHA; компактный кэш MLA хранит одну латентную переменную на токен и слой, общую для всех голов (`references/source-book/chapter9.md:100`), поэтому при TP не делится вовсе (вывод из 2.3.2 и 6.2.2, числового примера TP для MLA в книге нет), а `num_key_value_heads` в config MLA — не число разделимых голов.
+**Предел KV-голов при TP** — если карт TP больше, чем KV-голов, KV-кэш дублируется. `references/source-book/chapter6.md:148`. Правило для GQA/MHA; компактный кэш MLA хранит одну латентную переменную на токен и слой, общую для всех голов (`references/source-book/chapter9.md:100`), поэтому при TP не делится вовсе (вывод из 2.3.2 и 6.2.2, числового примера TP для MLA в книге нет), а `num_key_value_heads` в config MLA — не число разделимых голов.
 
-**Ring Attention** — способ планирования передачи K и V по кольцу; параллелизм контекста — способ разделения работы, это не синонимы. `references/source-book/chapter6.md:271`.
+**Ring Attention** — способ планирования передачи K и V по кольцу; параллелизм контекста — способ разделения работы, это не синонимы. `references/source-book/chapter6.md:272`.
 
-**Dispatch и combine** — два обмена All-to-All при EP: отправка входа токена к картам выбранных экспертов и возврат результатов со взвешенным сложением. `references/source-book/chapter6.md:328`.
+**Dispatch и combine** — два обмена All-to-All при EP: отправка входа токена к картам выбранных экспертов и возврат результатов со взвешенным сложением. `references/source-book/chapter6.md:329`.
 
-**Micro-batch** — часть batch, которую конвейер обрабатывает как независимую единицу; утилизация конвейера `b/(q + b − 1)`. `references/source-book/chapter6.md:299`, `references/source-book/chapter10.md:307`.
+**Micro-batch** — часть batch, которую конвейер обрабатывает как независимую единицу; утилизация конвейера `b/(q + b − 1)`. `references/source-book/chapter6.md:300`, `references/source-book/chapter10.md:307`.
 
 **PD-разделение (разделение PD, Prefill–Decode)** — prefill и decode выполняются на разных ресурсах со своими очередями и batch; KV передаётся от P к D один раз. В однородном примере книги потребность этапов в GPU-секундах фиксирована; при изменении batch и параллелизма она требует пересчёта. Изоляция очередей влияет на задержку и goodput при SLO; рост общего throughput не гарантирован. `references/chapters/ch09-distributed-inference.md`, `references/source-book/chapter9.md:3`, `references/source-book/chapter9.md:90`, `references/source-book/chapter9.md:154`.
 
-**AF-разделение (разделение AF)** — внимание и сеть прямого распространения каждого слоя, включая экспертов, выполняются на разных ресурсах; активации передаются туда и обратно на каждом слое и шаге. `references/chapters/ch09-distributed-inference.md`, `references/source-book/chapter9.md:3`, `references/source-book/chapter9.md:302`.
+**AF-разделение (разделение AF)** — внимание и сеть прямого распространения каждого слоя, включая экспертов, выполняются на разных ресурсах; активации передаются туда и обратно на каждом слое и шаге. `references/chapters/ch09-distributed-inference.md`, `references/source-book/chapter9.md:3`, `references/source-book/chapter9.md:304`.
 
 **Реплика и общий KV** — полная копия модели и её состояния, принимающая запросы независимо; общий KV позволяет другим экземплярам использовать оставленное состояние. `references/source-book/chapter9.md:63`.
 
-**Маршрутизация с учётом кэша** — выбор экземпляра с учётом того, где уже лежит KV префикса и какая там очередь: `T_first = max(Q, R) + C` (очередь, получение префикса, вычисление); экземпляр с кэшем, но длинной очередью, может проиграть. `references/chapters/ch09-distributed-inference.md`, `references/source-book/chapter9.md:609`.
+**Маршрутизация с учётом кэша** — выбор экземпляра с учётом того, где уже лежит KV префикса и какая там очередь: `T_first = max(Q, R) + C` (очередь, получение префикса, вычисление); экземпляр с кэшем, но длинной очередью, может проиграть. `references/chapters/ch09-distributed-inference.md`, `references/source-book/chapter9.md:611`.
 
 ## Коммуникации, суперузлы и сеть
 
-**AllReduce, ReduceScatter, AllGather, All-to-All** — полный результат у всех; свой сегмент суммы; весь тензор из сегментов; каждая карта получает то, что ей прислали. AllReduce = ReduceScatter + AllGather. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter6.md:470`.
+**AllReduce, ReduceScatter, AllGather, All-to-All** — полный результат у всех; свой сегмент суммы; весь тензор из сегментов; каждая карта получает то, что ей прислали. AllReduce = ReduceScatter + AllGather. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter6.md:471`.
 
-**α и кольцевой AllReduce** — α — время запуска одного раунда; кольцо: `T_ring = 2(n−1)α + 2(n−1)M/(nB)`. Для малых сообщений доминирует α и полоса почти не помогает; для крупных — наоборот. `calc.py ring`; кольцо против дерева и точка равенства — `calc.py allreduce`. `references/source-book/chapter6.md:489`.
+**α и кольцевой AllReduce** — α — время запуска одного раунда; кольцо: `T_ring = 2(n−1)α + 2(n−1)M/(nB)`. Для малых сообщений доминирует α и полоса почти не помогает; для крупных — наоборот. `calc.py ring`; кольцо против дерева и точка равенства — `calc.py allreduce`. `references/source-book/chapter6.md:490`.
 
 **Суперузел** — группа ускорителей, тесно взаимодействующих через высокоскоростной интерконнект; может занимать несколько серверов или вычислительных лотков. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter1.md:57`, `references/source-book/chapter6.md:13`.
 
 **Scale-up и scale-out** — интерконнект внутри суперузла (например, NVLink) для совместных вычислений с малыми издержками; сетевые карты и коммутируемая сеть между суперузлами. `references/source-book/chapter1.md:57`.
 
-**Unified Bus (UB)** — межсоединение Huawei, дающее устройствам прямой доступ к памяти других устройств без промежуточных уровней передачи сообщений. `references/source-book/chapter1.md:401`, `references/source-book/chapter6.md:751`.
+**Unified Bus (UB)** — межсоединение Huawei, дающее устройствам прямой доступ к памяти других устройств без промежуточных уровней передачи сообщений. `references/source-book/chapter1.md:401`, `references/source-book/chapter6.md:752`.
 
-**Пул памяти** — заимствование памяти других устройств суперузла при нехватке локальной ёмкости. `references/source-book/chapter6.md:838`.
+**Пул памяти** — заимствование памяти других устройств суперузла при нехватке локальной ёмкости. `references/source-book/chapter6.md:839`.
 
 **Rail (рельс), многорельсовая топология** — путь между сетевыми картами с одинаковыми номерами на разных серверах через один коммутатор; i-я NIC каждого сервера подключена к i-му leaf-коммутатору. Обмен пар с одинаковым `i mod 8` остаётся в одной rail. `references/chapters/ch07-datacenter-network.md`, `references/source-book/chapter7.md:17`, `references/source-book/chapter7.md:299`.
 
@@ -174,7 +174,7 @@
 
 **Fill–drain и 1F1B** — расписания конвейера: сначала все прямые проходы, потом все обратные; после прогрева — чередование одного прямого и одного обратного, активации ранних micro-batch освобождаются раньше. Пузырь у них одинаковый, различается резидентность активаций. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:328`.
 
-**Пузырь конвейера** — простой этапов при заполнении и опустошении конвейера; доля и время — `calc.py pipeline`. `references/source-book/chapter6.md:299`, `references/source-book/chapter10.md:328`.
+**Пузырь конвейера** — простой этапов при заполнении и опустошении конвейера; доля и время — `calc.py pipeline`. `references/source-book/chapter6.md:300`, `references/source-book/chapter10.md:328`.
 
 **Checkpoint** — сохранённое состояние, достаточное для продолжения обучения: веса, оба момента, номер шага, состояние learning rate, случайное состояние, состав следующего batch и ещё не упакованные токены. Асинхронный снимок пригоден для восстановления только после записи и фиксации. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:513`, `references/source-book/chapter10.md:533`.
 

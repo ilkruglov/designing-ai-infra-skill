@@ -57,9 +57,9 @@ A_CH3_QUEUE = f"{BOOK}/chapter3.md:75"
 A_CH3_PRICE = f"{BOOK}/chapter3.md:209"
 A_CH3_STATE = f"{BOOK}/chapter3.md:384"
 A_CH3_TRAIN = f"{BOOK}/chapter3.md:442"
-A_CH6_TP = f"{BOOK}/chapter6.md:147"
-A_CH6_UNION = f"{BOOK}/chapter6.md:407"
-A_CH6_RING = f"{BOOK}/chapter6.md:489"
+A_CH6_TP = f"{BOOK}/chapter6.md:148"
+A_CH6_UNION = f"{BOOK}/chapter6.md:408"
+A_CH6_RING = f"{BOOK}/chapter6.md:490"
 A_CH7_TIME = f"{BOOK}/chapter7.md:938"
 A_CH8_MEM = f"{BOOK}/chapter8.md:52"
 A_CH8_SHARED = f"{BOOK}/chapter8.md:268"
@@ -1443,8 +1443,7 @@ def _serving(args: argparse.Namespace) -> list[Result]:
         if state_div > 1:
             tp_notes.append(
                 "фиксированное состояние S делится на TP: S/TP на карту, как в "
-                "⌊(n·(80 GB − 2 GiB) − W)/S⌋ книги "
-                "(references/source-book/chapter6.md:147)"
+                f"⌊(n·(80 GB − 2 GiB) − W)/S⌋ книги ({A_CH6_TP})"
             )
     state = {"fixed_state": state_total} if state_total else {}
 

@@ -1458,7 +1458,7 @@ class PinTests(unittest.TestCase):
     константы scripts/build_source_lock.py, остальные записи с ними сверяются."""
 
     UPSTREAM = "d0cc188b68f49584fd21e05518a5d0f0db79aaf5"
-    TRANSLATION = "cb502e11cd89ba2e42999c8dc037b9a05c0e6fe4"
+    TRANSLATION = "ec343c9d23a69dca5a4922b242c26b77b1025e6d"
     OTHER = "0123456789abcdef0123456789abcdef01234567"
 
     def mutate(self, relative: Path, old: str, new: str) -> list[str]:
@@ -1545,7 +1545,7 @@ class PinTests(unittest.TestCase):
             [],
             self.append_line(
                 template,
-                "ilkruglov/ai-infra-book@cb502e11 и bojieli/ai-infra-book@d0cc188b68f4",
+                "ilkruglov/ai-infra-book@ec343c9d и bojieli/ai-infra-book@d0cc188b68f4",
             ),
         )
 
@@ -1581,7 +1581,7 @@ class PinTests(unittest.TestCase):
         line = (
             "Чтение на 16345e6 байт, пин 1.0195e12 B/s, blob 0123abcd0123abcd, "
             "sha256 `0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`; "
-            "оригинал на коммите `d0cc188b68f`, перевод на `cb502e11`, commit cb502e1."
+            "оригинал на коммите `d0cc188b68f`, перевод на `ec343c9d`, commit ec343c9."
         )
         self.assertEqual([], self.append_line(template, line))
         errors = self.append_line(template, "Перевод на коммите `cb502e1d`.")
@@ -1675,21 +1675,31 @@ class CodeCommentQuoteTests(unittest.TestCase):
     """Цитата книги в комментарии кода сверяется со строкой, на которую он
     ссылается: после сдвига текста книги такой номер иначе молча устаревает."""
 
-    COMMENT = "chapter6.md:534: «Четыре карты сначала выполняют попарную редукцию"
+    # Ссылка ищется в самом тесте: номер строки меняется при обновлении книги
+    COMMENT = re.compile(
+        r"chapter6\.md:(?P<line>\d+): «Четыре карты сначала выполняют попарную"
+    )
 
     @staticmethod
     def collectives_test(root: Path) -> Path:
         return root / SKILL_DIRECTORY / "scripts" / "tests" / "test_collectives.py"
 
+    def shifted_comment(self, text: str) -> tuple[str, str, str]:
+        """Комментарий с верной ссылкой, он же со ссылкой на строку выше и
+        неверная ссылка."""
+        match = self.COMMENT.search(text)
+        self.assertIsNotNone(match)
+        assert match is not None
+        wrong = f"chapter6.md:{int(match.group('line')) - 1}"
+        shifted = match.group(0).replace(match.group(0).split(": ")[0], wrong)
+        return match.group(0), shifted, wrong
+
     def test_rejects_comment_quote_absent_from_referenced_line(self) -> None:
         with repository_copy() as copied_root:
             path = self.collectives_test(copied_root)
             text = path.read_text(encoding="utf-8")
-            self.assertIn(self.COMMENT, text)
-            path.write_text(
-                text.replace(self.COMMENT, self.COMMENT.replace(":534", ":518")),
-                encoding="utf-8",
-            )
+            original, shifted, wrong = self.shifted_comment(text)
+            path.write_text(text.replace(original, shifted), encoding="utf-8")
 
             result = run_validator(copied_root)
 
@@ -1697,16 +1707,14 @@ class CodeCommentQuoteTests(unittest.TestCase):
         self.assertEqual(1, len(errors), result.stdout)
         self.assertIn("code comment quote not found at referenced line", errors[0])
         self.assertIn("test_collectives.py:", errors[0])
-        self.assertIn("chapter6.md:518", errors[0])
+        self.assertIn(wrong, errors[0])
 
     def test_ignores_quotes_outside_comments(self) -> None:
         with repository_copy() as copied_root:
             path = self.collectives_test(copied_root)
-            path.write_text(
-                path.read_text(encoding="utf-8")
-                + f'\nNOTE = "{self.COMMENT.replace(":534", ":518")}"\n',
-                encoding="utf-8",
-            )
+            text = path.read_text(encoding="utf-8")
+            _, shifted, _ = self.shifted_comment(text)
+            path.write_text(text + f'\nNOTE = "{shifted}"\n', encoding="utf-8")
 
             result = run_validator(copied_root)
 

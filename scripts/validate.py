@@ -95,7 +95,7 @@ CHAPTERS_DIRECTORY = SKILL_DIRECTORY / "references" / "chapters"
 SKILL_LINE_LIMIT = 300
 CALC_DIRECTORY = SKILL_DIRECTORY / "scripts" / "infra_calc"
 CALC_TESTS_DIRECTORY = SKILL_DIRECTORY / "scripts" / "tests"
-# Ссылка на строку книги в комментарии кода: «chapter6.md:534» или полный путь
+# Ссылка на строку книги в комментарии кода: «chapter6.md:535» или полный путь
 CODE_COMMENT_ANCHOR = re.compile(
     r"(?<![\w-])(?:references/source-book/)?"
     r"(?P<name>chapter\d+\.md|preface\.md):(?P<start>\d+)(?:-(?P<end>\d+))?"

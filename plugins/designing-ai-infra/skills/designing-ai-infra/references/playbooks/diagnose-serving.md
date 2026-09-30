@@ -154,4 +154,4 @@ python3 scripts/calc.py roofline --peak-tflops 503.8 --bandwidth 1.792e12 --flop
 - Почему прогноз расходится с измерением: `references/chapters/ch04-accelerators.md`; `references/source-book/chapter4.md:1003`.
 - Три вида времени, хост как узкое место, CUDA Graph, Амдал на запросе: `references/chapters/ch05-operators-runtime.md`; `references/source-book/chapter5.md:96`, `references/source-book/chapter5.md:792`, `references/source-book/chapter5.md:816`, `references/source-book/chapter5.md:970`.
 - Очередь при достаточной средней мощности и заполненный пул KV: `references/chapters/ch03-workloads.md`; `references/source-book/chapter3.md:75`.
-- Коллективы, перекрытие и готовность данных: `references/chapters/ch06-supernodes.md`, `references/chapters/ch07-datacenter-network.md`; `references/source-book/chapter6.md:556`, `references/source-book/chapter7.md:834`.
+- Коллективы, перекрытие и готовность данных: `references/chapters/ch06-supernodes.md`, `references/chapters/ch07-datacenter-network.md`; `references/source-book/chapter6.md:557`, `references/source-book/chapter7.md:834`.

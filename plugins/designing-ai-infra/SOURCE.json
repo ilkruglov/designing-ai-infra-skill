@@ -10,7 +10,7 @@
   "translation": {
     "repository": "https://github.com/ilkruglov/ai-infra-book",
     "branch": "main",
-    "commit": "cb502e11cd89ba2e42999c8dc037b9a05c0e6fe4",
+    "commit": "ec343c9d23a69dca5a4922b242c26b77b1025e6d",
     "path": "book-ru/book"
   },
   "bundled_sources": {
@@ -22,11 +22,11 @@
       "chapter2.md": "5ef148c48e826efb21a72822ccb53633a9c69f490d76452cb8b26e28352eb407",
       "chapter3.md": "6dc1e6ac666f0b311d340f27088e551345cc6cb70f2bbd9d8c1071cc87ed2955",
       "chapter4.md": "21da1ad93b8796e195bfb97c2fab1cae9649d86aba81d8f9d955ffbedfca1d4c",
-      "chapter5.md": "333068df825027d7b8d8f6a73c9e8c67b24dfe04d8466f4e467d89cb4834330d",
-      "chapter6.md": "4a2096bdedbc38f37640759a4fe847644484146c1c97da3697db562954ffa5e5",
+      "chapter5.md": "bab6aaeaf650f3c59b2e3de2e61aec2dd06c9bf2d384c6e602ddc0a2fe73d8e0",
+      "chapter6.md": "b3665e4f5e97e38ac3d2ba5418dcc45ea472d91bf72415744fb674f9e3dc3341",
       "chapter7.md": "078b8369cb71854927e692fbcc461c1eb081306274fa2cf72f5063cf3080ee14",
       "chapter8.md": "86f65a3aef97c3ddf9b516a8e82bee784a7bd0345503ec98c32266f5e9055906",
-      "chapter9.md": "74c422370f9a60ccab22d6c548a0ba5811e4b90d6f815556fe3d955fc327050d",
+      "chapter9.md": "24ed1341cabeeb42d569b1193200f6fc86e99d5591441c3c67a450d8573dfa20",
       "chapter10.md": "8c6f94721e9d2db0b9d27934eedb8edc1aed15ee563410f97bfc38480d5b66dc",
       "chapter11.md": "6ef70920b274dfea8a5769618a23dc357d3dc6a29e480d01ec0897f2d1217dfc",
       "chapter12.md": "ad77c3f5bc8d3f489eacdeff3c112f628aac0a20e42770e8dff086427c6f0958"

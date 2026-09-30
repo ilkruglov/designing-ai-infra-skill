@@ -4,7 +4,7 @@
 
 | Источник | Репозиторий | Пин |
 |---|---|---|
-| Перевод | `https://github.com/ilkruglov/ai-infra-book`, ветка `main`, каталог `book-ru/book` | `cb502e11cd89ba2e42999c8dc037b9a05c0e6fe4` |
+| Перевод | `https://github.com/ilkruglov/ai-infra-book`, ветка `main`, каталог `book-ru/book` | `ec343c9d23a69dca5a4922b242c26b77b1025e6d` |
 | Оригинал и калькуляторы автора | `https://github.com/bojieli/ai-infra-book` | `d0cc188b68f49584fd21e05518a5d0f0db79aaf5` |
 | Снимок ускорителей `data/hardware.json` | `calculations/configs/hardware.json` оригинала на том же пине | sha256 `9c4639ec65ca3b808923a7f332114f800c7930635b6fdac08f49686cddbf0ba2` |
 
@@ -61,14 +61,14 @@
 | CUDA Graph, динамические формы, persistent kernel | `references/source-book/chapter5.md:816`, `references/source-book/chapter5.md:868`, `references/source-book/chapter5.md:900` | `references/chapters/ch05-operators-runtime.md` |
 | От локального выигрыша к запросу: Амдал и критический путь | `references/source-book/chapter5.md:930`, `references/source-book/chapter5.md:942`, `references/source-book/chapter5.md:970` | `references/chapters/ch05-operators-runtime.md` |
 | Экземпляр и суперузел; сквозной пример Qwen3-235B-A22B | `references/source-book/chapter6.md:13`, `references/source-book/chapter6.md:25`, `references/source-book/chapter6.md:70` | `references/chapters/ch06-supernodes.md` |
-| Шесть видов параллелизма; DP и TP | `references/source-book/chapter6.md:80`, `references/source-book/chapter6.md:133`, `references/source-book/chapter6.md:147` | `references/chapters/ch06-supernodes.md` |
-| SP и CP | `references/source-book/chapter6.md:259`, `references/source-book/chapter6.md:271` | `references/chapters/ch06-supernodes.md` |
-| PP и EP | `references/source-book/chapter6.md:299`, `references/source-book/chapter6.md:328` | `references/chapters/ch06-supernodes.md` |
-| Комбинирование видов параллелизма и масштаб модели | `references/source-book/chapter6.md:368`, `references/source-book/chapter6.md:407`, `references/source-book/chapter6.md:445` | `references/chapters/ch06-supernodes.md` |
-| Коллективные коммуникации: ring, tree, конкуренция с вычислениями | `references/source-book/chapter6.md:470`, `references/source-book/chapter6.md:489`, `references/source-book/chapter6.md:556` | `references/chapters/ch06-supernodes.md` |
-| Физическая организация суперузлов: топологии, NVLink, TPU, Unified Bus | `references/source-book/chapter6.md:615`, `references/source-book/chapter6.md:721`, `references/source-book/chapter6.md:751` | `references/chapters/ch06-supernodes.md` |
-| Пул памяти и общая ёмкость под KV | `references/source-book/chapter6.md:820`, `references/source-book/chapter6.md:838`, `references/source-book/chapter6.md:863` | `references/chapters/ch06-supernodes.md` |
-| Размер суперузла и выбор стратегии разбиения | `references/source-book/chapter6.md:889`, `references/source-book/chapter6.md:978`, `references/source-book/chapter6.md:1020` | `references/chapters/ch06-supernodes.md` |
+| Шесть видов параллелизма; DP и TP | `references/source-book/chapter6.md:80`, `references/source-book/chapter6.md:134`, `references/source-book/chapter6.md:148` | `references/chapters/ch06-supernodes.md` |
+| SP и CP | `references/source-book/chapter6.md:260`, `references/source-book/chapter6.md:272` | `references/chapters/ch06-supernodes.md` |
+| PP и EP | `references/source-book/chapter6.md:300`, `references/source-book/chapter6.md:329` | `references/chapters/ch06-supernodes.md` |
+| Комбинирование видов параллелизма и масштаб модели | `references/source-book/chapter6.md:369`, `references/source-book/chapter6.md:408`, `references/source-book/chapter6.md:446` | `references/chapters/ch06-supernodes.md` |
+| Коллективные коммуникации: ring, tree, конкуренция с вычислениями | `references/source-book/chapter6.md:471`, `references/source-book/chapter6.md:490`, `references/source-book/chapter6.md:557` | `references/chapters/ch06-supernodes.md` |
+| Физическая организация суперузлов: топологии, NVLink, TPU, Unified Bus | `references/source-book/chapter6.md:616`, `references/source-book/chapter6.md:722`, `references/source-book/chapter6.md:752` | `references/chapters/ch06-supernodes.md` |
+| Пул памяти и общая ёмкость под KV | `references/source-book/chapter6.md:821`, `references/source-book/chapter6.md:839`, `references/source-book/chapter6.md:864` | `references/chapters/ch06-supernodes.md` |
+| Размер суперузла и выбор стратегии разбиения | `references/source-book/chapter6.md:890`, `references/source-book/chapter6.md:979`, `references/source-book/chapter6.md:1021` | `references/chapters/ch06-supernodes.md` |
 | Модель трафика, rail, сеть Clos, переподписка | `references/source-book/chapter7.md:17`, `references/source-book/chapter7.md:41` | `references/chapters/ch07-datacenter-network.md` |
 | DP между серверами и иерархические кольца | `references/source-book/chapter7.md:120` | `references/chapters/ch07-datacenter-network.md` |
 | TP, PP и EP между серверами | `references/source-book/chapter7.md:208`, `references/source-book/chapter7.md:239` | `references/chapters/ch07-datacenter-network.md` |
@@ -89,11 +89,11 @@
 | Поток запросов, эффективная пропускная способность, стоимость конфигурации | `references/source-book/chapter8.md:598`, `references/source-book/chapter8.md:616`, `references/source-book/chapter8.md:642` | `references/chapters/ch08-inference-optimization.md` |
 | Реплики, PD, AF, общий KV; время пребывания состояния | `references/source-book/chapter9.md:17`, `references/source-book/chapter9.md:63`, `references/source-book/chapter9.md:76` | `references/chapters/ch09-distributed-inference.md` |
 | PD-разделение: передача KV и соотношение пулов | `references/source-book/chapter9.md:90`, `references/source-book/chapter9.md:100`, `references/source-book/chapter9.md:154` | `references/chapters/ch09-distributed-inference.md` |
-| AF-разделение: CPU и GPU, межсерверное AF | `references/source-book/chapter9.md:240`, `references/source-book/chapter9.md:284`, `references/source-book/chapter9.md:302` | `references/chapters/ch09-distributed-inference.md` |
-| Перекос при большом EP и реплики экспертов | `references/source-book/chapter9.md:352`, `references/source-book/chapter9.md:426`, `references/source-book/chapter9.md:455` | `references/chapters/ch09-distributed-inference.md` |
-| Распределённый KV: многоуровневое хранилище, персистентность, маршрутизация с учётом кэша | `references/source-book/chapter9.md:509`, `references/source-book/chapter9.md:595`, `references/source-book/chapter9.md:609` | `references/chapters/ch09-distributed-inference.md` |
-| Запуск, реконфигурация, частичные сбои | `references/source-book/chapter9.md:674`, `references/source-book/chapter9.md:696`, `references/source-book/chapter9.md:716` | `references/chapters/ch09-distributed-inference.md` |
-| Сравнение схем развёртывания | `references/source-book/chapter9.md:734`, `references/source-book/chapter9.md:752`, `references/source-book/chapter9.md:793` | `references/chapters/ch09-distributed-inference.md` |
+| AF-разделение: CPU и GPU, межсерверное AF | `references/source-book/chapter9.md:242`, `references/source-book/chapter9.md:286`, `references/source-book/chapter9.md:304` | `references/chapters/ch09-distributed-inference.md` |
+| Перекос при большом EP и реплики экспертов | `references/source-book/chapter9.md:354`, `references/source-book/chapter9.md:428`, `references/source-book/chapter9.md:457` | `references/chapters/ch09-distributed-inference.md` |
+| Распределённый KV: многоуровневое хранилище, персистентность, маршрутизация с учётом кэша | `references/source-book/chapter9.md:511`, `references/source-book/chapter9.md:597`, `references/source-book/chapter9.md:611` | `references/chapters/ch09-distributed-inference.md` |
+| Запуск, реконфигурация, частичные сбои | `references/source-book/chapter9.md:676`, `references/source-book/chapter9.md:698`, `references/source-book/chapter9.md:718` | `references/chapters/ch09-distributed-inference.md` |
+| Сравнение схем развёртывания | `references/source-book/chapter9.md:736`, `references/source-book/chapter9.md:754`, `references/source-book/chapter9.md:795` | `references/chapters/ch09-distributed-inference.md` |
 | Задача обучения, критический batch, состояние обучения | `references/source-book/chapter10.md:21`, `references/source-book/chapter10.md:59` | `references/chapters/ch10-training-systems.md` |
 | Нижняя граница обучения по вычислениям и MFU | `references/source-book/chapter10.md:116` | `references/chapters/ch10-training-systems.md` |
 | ZeRO/FSDP, повторное вычисление, выгрузка | `references/source-book/chapter10.md:151`, `references/source-book/chapter10.md:211`, `references/source-book/chapter10.md:243` | `references/chapters/ch10-training-systems.md` |

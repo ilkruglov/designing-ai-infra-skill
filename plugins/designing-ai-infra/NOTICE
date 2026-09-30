@@ -6,15 +6,25 @@ System Design» (https://github.com/bojieli, https://github.com/bojieli/ai-infra
 коммит оригинала d0cc188b68f49584fd21e05518a5d0f0db79aaf5, и на русском переводе
 community edition (https://github.com/ilkruglov/ai-infra-book, ветка
 main, каталог book-ru/book), коммит
-cb502e11cd89ba2e42999c8dc037b9a05c0e6fe4.
+ec343c9d23a69dca5a4922b242c26b77b1025e6d.
 
-Атрибуция из NOTICE перевода (Apache License 2.0, §4(d)):
+Атрибуция из NOTICE перевода (Apache License 2.0, §4(d)). Строки приведены
+дословно; строки о PDF, инструментах сборки и шрифтах опущены — PDF, инструменты
+и шрифты в скилл не входят:
 AI Infra in Depth: Quantitative Analysis and System Design
 Copyright 2026 Bojie Li. Licensed under Apache License 2.0.
 Original: https://github.com/bojieli/ai-infra-book
 Pinned source: d0cc188b68f49584fd21e05518a5d0f0db79aaf5
+
 Русский перевод: community edition. Неофициальное издание сообщества.
+Издание содержит редакционные уточнения; отступления от оригинала явно помечены и сопровождаются обоснованием.
+Полное русское издание: предисловие и 12 глав.
+[...]
 Third-party material retains its original copyright and license notices.
+
+Русское издание явно помечает редакционные уточнения и отступления от текста
+автора; скилл передаёт такие места как уточнения издания, а не как утверждения
+автора.
 
 Это неофициальное community-производное произведение; оно не заявляет
 об официальном одобрении автора книги.

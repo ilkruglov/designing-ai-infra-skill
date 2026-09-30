@@ -303,5 +303,5 @@ python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --weights 1638
 - Нагрузка во времени, очередь при достаточной средней мощности, метрики: `references/chapters/ch03-workloads.md`; `references/source-book/chapter3.md:29`, `references/source-book/chapter3.md:75`.
 - Бюджет памяти, batch, калибровка MBU и выбор конфигурации: `references/chapters/ch08-inference-optimization.md`; `references/source-book/chapter8.md:52`, `references/source-book/chapter8.md:642`.
 - Сжатие KV, выгрузка весов, качество формата: `references/source-book/chapter8.md:398`, `references/source-book/chapter8.md:432`, `references/source-book/chapter8.md:472`. Спекулятивное декодирование, `E[N]`, источник и длина черновика: `references/source-book/chapter8.md:536`, `references/source-book/chapter8.md:562`, `references/source-book/chapter8.md:572`.
-- TP и предел KV-голов: `references/chapters/ch06-supernodes.md`; `references/source-book/chapter6.md:147`.
+- TP и предел KV-голов: `references/chapters/ch06-supernodes.md`; `references/source-book/chapter6.md:148`.
 - Быстрый путь и таблица команд: `references/cheatsheet.md`; числа книги: `references/numbers.md`; даты и сверка спецификаций: «Drift gate» в `references/source-map.md`.

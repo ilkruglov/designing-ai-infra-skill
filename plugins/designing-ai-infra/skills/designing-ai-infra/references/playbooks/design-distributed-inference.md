@@ -161,8 +161,8 @@ python3 scripts/calc.py roofline --peak-tflops 21.3 --bandwidth 220e9 --flops 38
 
 - Конспект главы 9: `references/chapters/ch09-distributed-inference.md`.
 - Способы организации и время пребывания состояния: `references/source-book/chapter9.md:63`, `references/source-book/chapter9.md:76`.
-- Передача KV, PD в однородном и гетерогенном кластере, состав запросов: `references/source-book/chapter9.md:100`, `references/source-book/chapter9.md:154`, `references/source-book/chapter9.md:216`.
-- Эксперты на CPU, межсерверное AF, перекос и реплики: `references/source-book/chapter9.md:240`, `references/source-book/chapter9.md:302`, `references/source-book/chapter9.md:352`, `references/source-book/chapter9.md:426`.
-- Многоуровневое хранилище и маршрутизация: `references/source-book/chapter9.md:509`, `references/source-book/chapter9.md:609`.
-- Запуск, отказы, сравнение схем и пересмотр: `references/source-book/chapter9.md:674`, `references/source-book/chapter9.md:716`, `references/source-book/chapter9.md:752`, `references/source-book/chapter9.md:793`.
+- Передача KV, PD в однородном и гетерогенном кластере, состав запросов: `references/source-book/chapter9.md:100`, `references/source-book/chapter9.md:154`, `references/source-book/chapter9.md:218`.
+- Эксперты на CPU, межсерверное AF, перекос и реплики: `references/source-book/chapter9.md:242`, `references/source-book/chapter9.md:304`, `references/source-book/chapter9.md:354`, `references/source-book/chapter9.md:428`.
+- Многоуровневое хранилище и маршрутизация: `references/source-book/chapter9.md:511`, `references/source-book/chapter9.md:611`.
+- Запуск, отказы, сравнение схем и пересмотр: `references/source-book/chapter9.md:676`, `references/source-book/chapter9.md:718`, `references/source-book/chapter9.md:754`, `references/source-book/chapter9.md:795`.
 - Скорости этапов и калибровка 50 %: `references/chapters/ch08-inference-optimization.md`; TP2×EP4 и dispatch/combine: `references/chapters/ch06-supernodes.md`; матрица трафика EP и перенос V4.1: `references/chapters/ch07-datacenter-network.md`.

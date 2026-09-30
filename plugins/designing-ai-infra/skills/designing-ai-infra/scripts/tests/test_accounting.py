@@ -12,8 +12,8 @@ ANCHORS = (
     "references/source-book/chapter2.md:418",
     "references/source-book/chapter2.md:542",
     "references/source-book/chapter3.md:611",
-    "references/source-book/chapter6.md:147",
-    "references/source-book/chapter6.md:407",
+    "references/source-book/chapter6.md:148",
+    "references/source-book/chapter6.md:408",
     "references/source-book/chapter8.md:52",
     "calculations/results/kv-comparison-n8192-b1.json#sha256=1a45a55edf05115855d798572a84cec00dddee2418589e2fdc3aed968441a257",
     "calculations/results/chapter2-model-comparison.json#sha256=8d8192a345eb560c3642fc93b4f3ece38740059b09642f266b352d8fc8c1a83e",
@@ -173,7 +173,7 @@ class HybridTest(unittest.TestCase):
 
 class TensorParallelTest(unittest.TestCase):
     def test_gqa_kv_split_and_duplication_book(self) -> None:
-        # chapter6.md:223: «У Qwen3-32B есть 8 KV-голов, поэтому при TP8 на каждую карту
+        # chapter6.md:224: «У Qwen3-32B есть 8 KV-голов, поэтому при TP8 на каждую карту
         # приходится по одной. При TP16 ... обе карты должны хранить состояние этой
         # KV-головы. При контексте 128K состояние каждой KV-головы занимает 4 GiB:
         # суммарно 32 GiB на восьми картах и 64 GiB на шестнадцати.»
@@ -194,13 +194,13 @@ class TensorParallelTest(unittest.TestCase):
 
     def test_mla_latent_is_not_split(self) -> None:
         # chapter2.md:334: MLA хранит на токен одну скрытую переменную до повышающей
-        # проекции, общую для всех голов; chapter6.md:223: TP делит внимание по головам —
+        # проекции, общую для всех голов; chapter6.md:224: TP делит внимание по головам —
         # поэтому каждая карта TP хранит латентный KV целиком
         s = spec("deepseek-v3")
         self.assertEqual(accounting.tp_kv_divisor(s, 8), 1)
 
     def test_hybrid_state_split(self) -> None:
-        # chapter6.md:170: «Число запросов 128K/32K на двух H100 | 2/10 | 7/29 | 31/117»;
+        # chapter6.md:171: «Число запросов 128K/32K на двух H100 | 2/10 | 7/29 | 31/117»;
         # 31/117 у Qwen3.6 получается, только если фиксированное состояние линейных
         # слоёв делится между двумя картами (проверка в test_cli)
         s = spec("qwen3.6-35b-a3b")
@@ -209,7 +209,7 @@ class TensorParallelTest(unittest.TestCase):
         self.assertEqual(accounting.tp_fixed_state_divisor(spec("qwen3-8b"), 4), 1)
 
     def test_tp_must_divide_heads(self) -> None:
-        # chapter6.md:223: «Голову нельзя разделить дальше: это минимальная единица
+        # chapter6.md:224: «Голову нельзя разделить дальше: это минимальная единица
         # распределения»
         for name, tp in (("qwen3-8b", 3), ("qwen3-32b", 6), ("qwen3-30b-a3b", 0)):
             with self.subTest(name=name, tp=tp), self.assertRaises(ValueError):
@@ -223,8 +223,8 @@ class TensorParallelTest(unittest.TestCase):
 
 class ExpertUnionTest(unittest.TestCase):
     def test_expected_experts_book(self) -> None:
-        # chapter6.md:438, формула (6-8): E[E_active] = E[1 − (1 − k/E)^m];
-        # chapter6.md:441: «При $E=128,k=8,m=8$ ожидается около 52 активных экспертов, а
+        # chapter6.md:439, формула (6-8): E[E_active] = E[1 − (1 − k/E)^m];
+        # chapter6.md:442: «При $E=128,k=8,m=8$ ожидается около 52 активных экспертов, а
         # идеальный объём чтения составляет приблизительно 1,8 GiB» (36 MiB на эксперта)
         experts = accounting.expected_active_experts(128, 8, 8)
         self.assertEqual(round(experts), 52)
@@ -240,7 +240,7 @@ class ExpertUnionTest(unittest.TestCase):
         # qwen3-30b-a3b-decode-b64-s8192-balanced.json: expert_union_per_layer 128,
         # weight_read_once_per_operator_bytes 60 442 177 536; автор добавляет 64 строки
         # эмбеддингов по 2048 × 2 байта, которые decode_weight_read_bytes не считает;
-        # chapter6.md:166: «Чтение весов за шаг (batch 64, контекст 32K) | ... | 60,44 GB»
+        # chapter6.md:167: «Чтение весов за шаг (batch 64, контекст 32K) | ... | 60,44 GB»
         s = spec("qwen3-30b-a3b")
         read = accounting.batch_decode_weight_read_bytes(s, 128)
         self.assertEqual(read, 60_442_177_536 - 64 * 2048 * 2)
