@@ -1874,6 +1874,17 @@ class CodeCommentQuoteTests(unittest.TestCase):
         self.assertEqual([[], []], errors)
         self.assertEqual(1, len(wrong), wrong)
 
+    def test_reports_missing_book_file(self) -> None:
+        with repository_copy() as copied_root:
+            errors = self.comment_errors(
+                copied_root, f"# chapter99.md:1: «{self.PHRASE}»\n"
+            )
+
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("book file missing", errors[0])
+        self.assertIn("chapter99.md:1", errors[0])
+        self.assertNotIn("out of range", errors[0])
+
     def test_rejects_anchor_beyond_end_of_book_file(self) -> None:
         with repository_copy() as copied_root:
             errors = self.comment_errors(

@@ -1384,8 +1384,8 @@ def validate_code_comment_quotes(root: Path, errors: list[str]) -> None:
     на той же строке комментария или, если там её нет, первая «…» в следующих
     строках того же комментария до следующей ссылки. Её часть до конца строки
     или до пропуска («...», «…») обязана дословно (после нормализации) входить
-    в строку или диапазон строк книги. Номер за концом файла книги — ошибка;
-    ссылка без цитаты не проверяется — сверить её не с чем.
+    в строку или диапазон строк книги. Отсутствующий файл книги и номер за его
+    концом — ошибки; ссылка без цитаты не проверяется — сверить её не с чем.
     """
     scripts_root = root / SKILL_DIRECTORY / "scripts"
     book_root = root / SKILL_DIRECTORY / "references" / "source-book"
@@ -1415,13 +1415,17 @@ def validate_code_comment_quotes(root: Path, errors: list[str]) -> None:
                         else None
                     )
                 name = match.group("name")
-                if name not in line_cache:
-                    book_path = book_root / name
-                    line_cache[name] = (
-                        book_path.read_text(encoding="utf-8").splitlines()
-                        if book_path.is_file()
-                        else []
+                book_path = book_root / name
+                if not book_path.is_file():
+                    errors.append(
+                        "code comment book file missing: "
+                        f"{relative_path}:{number} -> {match.group(0)}"
                     )
+                    continue
+                if name not in line_cache:
+                    line_cache[name] = book_path.read_text(
+                        encoding="utf-8"
+                    ).splitlines()
                 book = line_cache[name]
                 start = int(match.group("start"))
                 end = int(match.group("end") or start)
