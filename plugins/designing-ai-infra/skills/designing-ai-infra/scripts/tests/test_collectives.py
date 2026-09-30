@@ -15,7 +15,7 @@ ANCHORS = (
 
 class RingTest(unittest.TestCase):
     def test_tp8_example(self) -> None:
-        # chapter6.md:501, формула (6-9): M = 10 KiB, B = 450 GB/s, α = 0.822 μs;
+        # chapter6.md:517, формула (6-9): M = 10 KiB, B = 450 GB/s, α = 0.822 μs;
         # «каждая карта отправляет 17,5 KiB, ... а одна операция — около 11,55 μs»
         seconds = collectives.ring_allreduce_seconds(8, 10 * 1024, 450e9, 0.822e-6)
         self.assertEqual(round(seconds * 1e6, 2), 11.55)
@@ -24,7 +24,7 @@ class RingTest(unittest.TestCase):
         )
 
     def test_tp_step_table(self) -> None:
-        # chapter6.md:503-508, таблица «Число карт TP | Локальный доступ к памяти | 128 редукций |
+        # chapter6.md:519-524, таблица «Число карт TP | Локальный доступ к памяти | 128 редукций |
         # Время шага»: 29,35 / 14,89 / 7,97 / 5,15 ms
         steps = [
             round(
@@ -62,7 +62,7 @@ class RingTest(unittest.TestCase):
         self.assertAlmostEqual(pairwise, 6.0120256e-4, places=12)
 
     def test_tree_rounds(self) -> None:
-        # chapter6.md:518: «Четыре карты сначала выполняют попарную редукцию ... для редукции
+        # chapter6.md:534: «Четыре карты сначала выполняют попарную редукцию ... для редукции
         # требуется два раунда; широковещательная рассылка занимает ещё два раунда, итого четыре.»
         self.assertEqual(collectives.tree_allreduce_rounds(4), 4)
 
@@ -72,7 +72,7 @@ class RingTest(unittest.TestCase):
         self.assertEqual(collectives.tree_allreduce_rounds(5), 6)
 
     def test_tree_time_book_and_author(self) -> None:
-        # chapter6.md:524, формула (6-10): «Для восьми карт и 10 KiB время составляет около
+        # chapter6.md:540, формула (6-10): «Для восьми карт и 10 KiB время составляет около
         # 5,07 μs»; «80 MiB ... кольцевому алгоритму потребуется около 0,34 ms, а древовидному —
         # около 1,12 ms»; tree-qwen3-32b-t1-p8-h100.json и tree-qwen3-32b-t8192-p8-h100.json:
         # all_reduce_modeled_seconds 5.068533333333334e-06 и 0.0011234130666666667
@@ -94,7 +94,7 @@ class RingTest(unittest.TestCase):
         self.assertEqual(collectives.tree_allreduce_seconds(1, 1e6, 1e9, 1e-5), 0)
 
     def test_crossover_book(self) -> None:
-        # chapter6.md:524: «Если приравнять две формулы, точка пересечения будет находиться
+        # chapter6.md:540: «Если приравнять две формулы, точка пересечения будет находиться
         # примерно на 680 KiB» (8 карт, 0,822 μs, 450 GB/s)
         crossover = collectives.ring_tree_crossover_bytes(8, 450e9, 0.822e-6)
         self.assertEqual(round(crossover / 1024, -1), 680)

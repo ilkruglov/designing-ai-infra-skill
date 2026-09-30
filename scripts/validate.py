@@ -95,6 +95,15 @@ CHAPTERS_DIRECTORY = SKILL_DIRECTORY / "references" / "chapters"
 SKILL_LINE_LIMIT = 300
 CALC_DIRECTORY = SKILL_DIRECTORY / "scripts" / "infra_calc"
 CALC_TESTS_DIRECTORY = SKILL_DIRECTORY / "scripts" / "tests"
+# Ссылка на строку книги в комментарии кода: «chapter6.md:534» или полный путь
+CODE_COMMENT_ANCHOR = re.compile(
+    r"(?<![\w-])(?:references/source-book/)?"
+    r"(?P<name>chapter\d+\.md|preface\.md):(?P<start>\d+)(?:-(?P<end>\d+))?"
+)
+# Цитата в комментарии обрывается закрывающей кавычкой, пропуском «...» или
+# концом строки комментария
+CODE_COMMENT_QUOTE_END = re.compile(r"»|\.\.\.|…")
+CODE_COMMENT_QUOTE_MIN = 8
 # cli/result — обвязка, checks — проверки входов: формул книги в них нет
 CALC_EXCLUDED = {"__init__.py", "checks.py", "cli.py", "result.py"}
 AUTHOR_RESULT = re.compile(
@@ -1300,6 +1309,58 @@ def validate_calculator_coverage(root: Path, errors: list[str]) -> None:
                 )
 
 
+def validate_code_comment_quotes(root: Path, errors: list[str]) -> None:
+    """Цитата книги в комментарии кода есть на строке, на которую он ссылается.
+
+    Номера строк в комментариях тестов и калькулятора не попадают в lock и
+    после сдвига текста книги молча устаревают. Проверяется часть цитаты,
+    стоящая на той же строке комментария после ссылки: она обязана дословно
+    (после нормализации) входить в строку или диапазон строк книги. Ссылка без
+    цитаты не проверяется — сверить её не с чем.
+    """
+    scripts_root = root / SKILL_DIRECTORY / "scripts"
+    book_root = root / SKILL_DIRECTORY / "references" / "source-book"
+    if not scripts_root.is_dir():
+        return
+    line_cache: dict[str, list[str]] = {}
+    for code_path in sorted(scripts_root.rglob("*.py")):
+        relative_path = code_path.relative_to(root)
+        if is_excluded_path(relative_path.parts):
+            continue
+        lines = code_path.read_text(encoding="utf-8").splitlines()
+        for number, line in enumerate(lines, start=1):
+            if not line.lstrip().startswith("#"):
+                continue
+            matches = list(CODE_COMMENT_ANCHOR.finditer(line))
+            for index, match in enumerate(matches):
+                stop = matches[index + 1].start() if index + 1 < len(matches) else None
+                segment = line[match.end() : stop]
+                opening = segment.find("«")
+                if opening < 0:
+                    continue
+                quote = CODE_COMMENT_QUOTE_END.split(segment[opening + 1 :])[0]
+                # в строковых литералах и комментариях LaTeX пишут как «\\frac»
+                needle = normalize(quote.replace("\\\\", "\\"))
+                if len(needle) < CODE_COMMENT_QUOTE_MIN:
+                    continue
+                name = match.group("name")
+                if name not in line_cache:
+                    book_path = book_root / name
+                    line_cache[name] = (
+                        book_path.read_text(encoding="utf-8").splitlines()
+                        if book_path.is_file()
+                        else []
+                    )
+                start = int(match.group("start"))
+                end = int(match.group("end") or start)
+                window = normalize(" ".join(line_cache[name][start - 1 : end]))
+                if needle not in window:
+                    errors.append(
+                        "code comment quote not found at referenced line: "
+                        f"{relative_path}:{number} -> {match.group(0)}"
+                    )
+
+
 def validate_data_integrity(root: Path, errors: list[str]) -> None:
     """Снимок железа совпадает с записью в SOURCE.json, пути в ней разрешаются,
     в текстах скилла нет CJK-остатков перевода.
@@ -1542,6 +1603,7 @@ def validate_repository(root: Path) -> list[str]:
     validate_chapter_quotes(root, errors)
     validate_numbers_anchors(root, errors)
     validate_calculator_coverage(root, errors)
+    validate_code_comment_quotes(root, errors)
     validate_data_integrity(root, errors)
     validate_pins(root, lock, errors)
     validate_skill_routing(root, errors)

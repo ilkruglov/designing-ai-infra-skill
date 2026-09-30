@@ -26,9 +26,9 @@ AUTHOR = json.loads(
 
 class PipelineTest(unittest.TestCase):
     def test_bubble(self) -> None:
-        # chapter10.md:336: «При $p=4,m=8$ получаем $u=8/11\approx72.7\%$.»
+        # chapter10.md:342: «При $p=4,m=8$ получаем $u=8/11\approx72.7\%$.»
         self.assertEqual(round(training.pipeline_utilization(4, 8) * 100, 1), 72.7)
-        # chapter10.md:338: «Без учёта передачи данных планирование fill–drain занимает
+        # chapter10.md:344: «Без учёта передачи данных планирование fill–drain занимает
         # $(8+4-1)\times30=330$ ms»; прямой проход 10 ms, обратный 20 ms
         self.assertEqual(training.fill_drain_seconds(4, 8, 10e-3, 20e-3), 11 * 30e-3)
 
@@ -72,12 +72,12 @@ class PipelineTest(unittest.TestCase):
 
 class InterleavedPipelineTest(unittest.TestCase):
     def test_bubble_ratio_book_and_author(self) -> None:
-        # chapter10.md:365: доля пузырей чередующегося 1F1B «\\frac{1}{v}\\cdot\\frac{p-1}{m}»;
+        # chapter10.md:371: доля пузырей чередующегося 1F1B «\\frac{1}{v}\\cdot\\frac{p-1}{m}»;
         # training-pipeline-interleaved-m8.json: bubble_bound_1f1b_fraction 0.375,
         # bubble_bound_interleaved_fraction 0.1875 (p = 4, m = 8, v = 2)
         self.assertEqual(training.pipeline_bubble_ratio(4, 8), 0.375)
         self.assertEqual(training.pipeline_bubble_ratio(4, 8, 2), 0.1875)
-        # chapter10.md:406: «при 16 micro-batch доля пузырей 1F1B снижается с 37.5% до 18.8%»;
+        # chapter10.md:412: «при 16 micro-batch доля пузырей 1F1B снижается с 37.5% до 18.8%»;
         # training-pipeline-interleaved-m16.json: bubble_bound_interleaved_fraction 0.09375
         self.assertEqual(round(training.pipeline_bubble_ratio(4, 16) * 100, 1), 18.8)
         self.assertEqual(training.pipeline_bubble_ratio(4, 16, 2), 0.09375)
@@ -91,7 +91,7 @@ class InterleavedPipelineTest(unittest.TestCase):
         )
 
     def test_step_seconds(self) -> None:
-        # chapter10.md:338: fill–drain «(8+4-1)\\times30=330» ms без передач
+        # chapter10.md:344: fill–drain «(8+4-1)\\times30=330» ms без передач
         self.assertAlmostEqual(
             training.pipeline_step_seconds(4, 8, 10e-3, 20e-3), 330e-3
         )
@@ -142,12 +142,12 @@ class CheckpointTest(unittest.TestCase):
         )
 
     def test_book_job_mtbf(self) -> None:
-        # chapter10.md:570: «задание на 1024 ускорителях прерывалось в среднем раз в 7,9 часа»
+        # chapter10.md:576: «задание на 1024 ускорителях прерывалось в среднем раз в 7,9 часа»
         self.assertEqual(round(1 / self.rate / 3600, 1), 7.9)
 
     def test_first_order_optimum_and_loss(self) -> None:
         # checkpoint-interval-book.json: first_order_optimal_useful_interval_seconds и
-        # first_order_loss для интервала 60 s; chapter10.md:570: «около 965 s»
+        # first_order_loss для интервала 60 s; chapter10.md:576: «около 965 s»
         self.assertAlmostEqual(
             training.checkpoint_optimal_interval(self.save, self.rate),
             AUTHOR["first_order_optimal_useful_interval_seconds"],
@@ -231,7 +231,7 @@ class CommonShockTest(unittest.TestCase):
         )
 
     def test_loss_spike_book(self) -> None:
-        # chapter10.md:619-620: λ = λ_hw + λ_spike; chapter10.md:623: 48 ускорителей,
+        # chapter10.md:625-626: λ = λ_hw + λ_spike; chapter10.md:629: 48 ускорителей,
         # MTBF около 337 дней, всплеск раз в семь дней: «При том же τ=600 s
         # дополнительные затраты увеличиваются с 2,80% до 2,87%, а оптимальный период
         # сохранения сокращается примерно с 4 458 s до 3 150 s. При интервале 1800 s
@@ -264,7 +264,7 @@ class ShardingTest(unittest.TestCase):
         )
 
     def test_zero_stages_on_eight_gpus(self) -> None:
-        # chapter10.md:190-193: таблица «Обычный DP | 122.1», «ZeRO-1 | 42.0»,
+        # chapter10.md:196-199: таблица «Обычный DP | 122.1», «ZeRO-1 | 42.0»,
         # «ZeRO-2 | 28.6», «ZeRO-3 | 15.3» GiB на GPU; градиенты BF16, 16 байт на параметр
         gib = [
             round(

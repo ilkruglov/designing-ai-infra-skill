@@ -1671,5 +1671,47 @@ class NumbersAnchorTests(unittest.TestCase):
         self.assertNotIn("numbers.md row without anchor", result.stdout)
 
 
+class CodeCommentQuoteTests(unittest.TestCase):
+    """Цитата книги в комментарии кода сверяется со строкой, на которую он
+    ссылается: после сдвига текста книги такой номер иначе молча устаревает."""
+
+    COMMENT = "chapter6.md:534: «Четыре карты сначала выполняют попарную редукцию"
+
+    @staticmethod
+    def collectives_test(root: Path) -> Path:
+        return root / SKILL_DIRECTORY / "scripts" / "tests" / "test_collectives.py"
+
+    def test_rejects_comment_quote_absent_from_referenced_line(self) -> None:
+        with repository_copy() as copied_root:
+            path = self.collectives_test(copied_root)
+            text = path.read_text(encoding="utf-8")
+            self.assertIn(self.COMMENT, text)
+            path.write_text(
+                text.replace(self.COMMENT, self.COMMENT.replace(":534", ":518")),
+                encoding="utf-8",
+            )
+
+            result = run_validator(copied_root)
+
+        errors = error_lines(result)
+        self.assertEqual(1, len(errors), result.stdout)
+        self.assertIn("code comment quote not found at referenced line", errors[0])
+        self.assertIn("test_collectives.py:", errors[0])
+        self.assertIn("chapter6.md:518", errors[0])
+
+    def test_ignores_quotes_outside_comments(self) -> None:
+        with repository_copy() as copied_root:
+            path = self.collectives_test(copied_root)
+            path.write_text(
+                path.read_text(encoding="utf-8")
+                + f'\nNOTE = "{self.COMMENT.replace(":534", ":518")}"\n',
+                encoding="utf-8",
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
