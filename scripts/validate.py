@@ -1309,14 +1309,36 @@ def validate_calculator_coverage(root: Path, errors: list[str]) -> None:
                 )
 
 
+def _comment_quote(lines: list[str], number: int, segment: str) -> str | None:
+    """Цитата «…», относящаяся к ссылке: в остатке строки после ссылки, а если
+    там её нет — первая «…» в следующих строках того же комментария до строки
+    со следующей ссылкой. Строка со следующей ссылкой не просматривается:
+    цитата перед ссылкой («как «19.23 ms» (chapter8.md:655)») относится к ней.
+    Цитата обрывается на », «...», «…» или конце строки."""
+    candidates = [segment]
+    for following in lines[number:]:
+        if not following.lstrip().startswith("#"):
+            break
+        if CODE_COMMENT_ANCHOR.search(following):
+            break
+        candidates.append(following)
+    for candidate in candidates:
+        opening = candidate.find("«")
+        if opening >= 0:
+            return CODE_COMMENT_QUOTE_END.split(candidate[opening + 1 :])[0]
+    return None
+
+
 def validate_code_comment_quotes(root: Path, errors: list[str]) -> None:
     """Цитата книги в комментарии кода есть на строке, на которую он ссылается.
 
     Номера строк в комментариях тестов и калькулятора не попадают в lock и
-    после сдвига текста книги молча устаревают. Проверяется часть цитаты,
-    стоящая на той же строке комментария после ссылки: она обязана дословно
-    (после нормализации) входить в строку или диапазон строк книги. Ссылка без
-    цитаты не проверяется — сверить её не с чем.
+    после сдвига текста книги молча устаревают. Цитата ссылки — «…» после неё
+    на той же строке комментария или, если там её нет, первая «…» в следующих
+    строках того же комментария до следующей ссылки. Её часть до конца строки
+    или до пропуска («...», «…») обязана дословно (после нормализации) входить
+    в строку или диапазон строк книги. Номер за концом файла книги — ошибка;
+    ссылка без цитаты не проверяется — сверить её не с чем.
     """
     scripts_root = root / SKILL_DIRECTORY / "scripts"
     book_root = root / SKILL_DIRECTORY / "references" / "source-book"
@@ -1333,16 +1355,18 @@ def validate_code_comment_quotes(root: Path, errors: list[str]) -> None:
                 continue
             matches = list(CODE_COMMENT_ANCHOR.finditer(line))
             for index, match in enumerate(matches):
-                stop = matches[index + 1].start() if index + 1 < len(matches) else None
+                last = index + 1 == len(matches)
+                stop = None if last else matches[index + 1].start()
                 segment = line[match.end() : stop]
-                opening = segment.find("«")
-                if opening < 0:
-                    continue
-                quote = CODE_COMMENT_QUOTE_END.split(segment[opening + 1 :])[0]
-                # в строковых литералах и комментариях LaTeX пишут как «\\frac»
-                needle = normalize(quote.replace("\\\\", "\\"))
-                if len(needle) < CODE_COMMENT_QUOTE_MIN:
-                    continue
+                if last:
+                    quote = _comment_quote(lines, number, segment)
+                else:
+                    opening = segment.find("«")
+                    quote = (
+                        CODE_COMMENT_QUOTE_END.split(segment[opening + 1 :])[0]
+                        if opening >= 0
+                        else None
+                    )
                 name = match.group("name")
                 if name not in line_cache:
                     book_path = book_root / name
@@ -1351,9 +1375,23 @@ def validate_code_comment_quotes(root: Path, errors: list[str]) -> None:
                         if book_path.is_file()
                         else []
                     )
+                book = line_cache[name]
                 start = int(match.group("start"))
                 end = int(match.group("end") or start)
-                window = normalize(" ".join(line_cache[name][start - 1 : end]))
+                if start < 1 or end < start or end > len(book):
+                    errors.append(
+                        "code comment anchor out of range: "
+                        f"{relative_path}:{number} -> {match.group(0)} "
+                        f"(file has {len(book)} lines)"
+                    )
+                    continue
+                if quote is None:
+                    continue
+                # в строковых литералах и комментариях LaTeX пишут как «\\frac»
+                needle = normalize(quote.replace("\\\\", "\\"))
+                if len(needle) < CODE_COMMENT_QUOTE_MIN:
+                    continue
+                window = normalize(" ".join(book[start - 1 : end]))
                 if needle not in window:
                     errors.append(
                         "code comment quote not found at referenced line: "

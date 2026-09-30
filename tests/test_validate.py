@@ -1720,6 +1720,98 @@ class CodeCommentQuoteTests(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
+    PHRASE = "Четыре карты сначала выполняют попарную редукцию"
+
+    @staticmethod
+    def phrase_line(root: Path) -> int:
+        """Номер строки chapter6.md с фразой PHRASE в копии книги."""
+        book = root / SKILL_DIRECTORY / "references" / "source-book" / "chapter6.md"
+        for number, line in enumerate(
+            book.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            if CodeCommentQuoteTests.PHRASE in line:
+                return number
+        raise AssertionError("phrase missing from chapter6.md")
+
+    @staticmethod
+    def comment_errors(root: Path, comment: str) -> list[str]:
+        """Ошибки проверки цитат для модуля, состоящего из комментария."""
+        sample = root / SKILL_DIRECTORY / "scripts" / "comment_sample.py"
+        sample.write_text(comment, encoding="utf-8")
+        result = run_validator(root)
+        return [line for line in error_lines(result) if "comment_sample.py" in line]
+
+    def test_checks_quote_on_following_comment_line(self) -> None:
+        with repository_copy() as copied_root:
+            line = self.phrase_line(copied_root)
+            wrong = self.comment_errors(
+                copied_root,
+                f"# chapter6.md:{line - 1}, пример:\n#     «{self.PHRASE}»\n",
+            )
+            right = self.comment_errors(
+                copied_root,
+                f"# chapter6.md:{line}, пример:\n#     «{self.PHRASE}»\n",
+            )
+
+        self.assertEqual(1, len(wrong), wrong)
+        self.assertIn("code comment quote not found at referenced line", wrong[0])
+        self.assertIn(f"chapter6.md:{line - 1}", wrong[0])
+        self.assertEqual([], right)
+
+    def test_quote_on_following_line_stops_at_next_anchor(self) -> None:
+        # цитата после второй ссылки не приписывается первой
+        with repository_copy() as copied_root:
+            line = self.phrase_line(copied_root)
+            errors = self.comment_errors(
+                copied_root,
+                f"# chapter6.md:{line - 1}: без цитаты;\n"
+                f"# chapter6.md:{line}: «{self.PHRASE}»\n",
+            )
+
+        self.assertEqual([], errors)
+
+    def test_checks_quote_against_line_range(self) -> None:
+        with repository_copy() as copied_root:
+            line = self.phrase_line(copied_root)
+            inside = self.comment_errors(
+                copied_root, f"# chapter6.md:{line - 2}-{line}: «{self.PHRASE}»\n"
+            )
+            outside = self.comment_errors(
+                copied_root,
+                f"# chapter6.md:{line + 1}-{line + 3}: «{self.PHRASE}»\n",
+            )
+
+        self.assertEqual([], inside)
+        self.assertEqual(1, len(outside), outside)
+        self.assertIn(f"chapter6.md:{line + 1}-{line + 3}", outside[0])
+
+    def test_checks_only_text_before_ellipsis(self) -> None:
+        with repository_copy() as copied_root:
+            line = self.phrase_line(copied_root)
+            errors = [
+                self.comment_errors(
+                    copied_root,
+                    f"# chapter6.md:{line}: «Четыре карты сначала{mark} нет в книге»\n",
+                )
+                for mark in (" ...", " …")
+            ]
+            wrong = self.comment_errors(
+                copied_root, f"# chapter6.md:{line}: «Четыре карты потом ... »\n"
+            )
+
+        self.assertEqual([[], []], errors)
+        self.assertEqual(1, len(wrong), wrong)
+
+    def test_rejects_anchor_beyond_end_of_book_file(self) -> None:
+        with repository_copy() as copied_root:
+            errors = self.comment_errors(
+                copied_root, f"# chapter6.md:999999: «{self.PHRASE}»\n"
+            )
+
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("code comment anchor out of range", errors[0])
+        self.assertIn("chapter6.md:999999", errors[0])
+
 
 if __name__ == "__main__":
     unittest.main()

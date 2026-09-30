@@ -15,7 +15,7 @@ ANCHORS = (
 
 class RingTest(unittest.TestCase):
     def test_tp8_example(self) -> None:
-        # chapter6.md:518, формула (6-9): M = 10 KiB, B = 450 GB/s, α = 0.822 μs;
+        # chapter6.md:516-518, формула (6-9): M = 10 KiB, B = 450 GB/s, α = 0.822 μs;
         # «каждая карта отправляет 17,5 KiB, ... а одна операция — около 11,55 μs»
         seconds = collectives.ring_allreduce_seconds(8, 10 * 1024, 450e9, 0.822e-6)
         self.assertEqual(round(seconds * 1e6, 2), 11.55)
