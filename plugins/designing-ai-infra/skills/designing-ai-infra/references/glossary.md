@@ -12,7 +12,7 @@
 
 **Пик нужной точности** — пиковая матричная производительность задана для точности входа (BF16, FP8, FP4), точности накопления (FP32 или FP16) и вида вычислений (плотные или со структурной разреженностью). Пик FP8 нельзя подставлять в задачу BF16, разреженный — в плотную. В калькуляторе — `--precision`, `--accumulator`, `--sparsity`. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:152`.
 
-**BF16, FP16, FP8, FP4, int8** — форматы чисел: 2, 2, 1 и 0,5 байта на значение (int8 — 1 байт). BF16 имеет диапазон FP32 и короткую мантиссу, FP16 требует масштабирования функции потерь при обучении, FP8 — блочного масштабирования. Квантованные веса занимают больше, чем произведение числа параметров на байты формата: добавляются scale и части в высокой точности. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:59`, `references/source-book/chapter4.md:314`, `references/source-book/chapter8.md:386`.
+**BF16, FP16, FP8, FP4, int8** — форматы чисел: 2, 2, 1 и 0,5 байта на значение (int8 — 1 байт). BF16 имеет диапазон FP32 и короткую мантиссу, FP16 требует масштабирования функции потерь при обучении, FP8 — блочного масштабирования. Квантованные веса занимают больше, чем произведение числа параметров на байты формата: добавляются scale и части в высокой точности. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:59`, `references/source-book/chapter4.md:329`, `references/source-book/chapter8.md:386`.
 
 ## Модель времени и метрики
 
@@ -24,9 +24,9 @@
 
 **Арифметическая интенсивность** — FLOP на прочитанный байт, `I = F/R`. Если I меньше `Π/β`, дольше чтение; если больше — вычисления. `calc.py roofline` печатает `arithmetic_intensity`. `references/source-book/chapter1.md:263`.
 
-**Roofline** — модель «линия крыши»: достижимая производительность `≤ min(P, R·I)` (обозначения главы 4: P — пик, R — пропускная способность памяти, I — FLOP на байт; в главе 1 те же величины — Π и β); наклонная часть — предел памяти, горизонтальная — предел матричного блока. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:906`.
+**Roofline** — модель «линия крыши»: достижимая производительность `≤ min(P, R·I)` (обозначения главы 4: P — пик, R — пропускная способность памяти, I — FLOP на байт; в главе 1 те же величины — Π и β); наклонная часть — предел памяти, горизонтальная — предел матричного блока. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:921`.
 
-**Ridge point (точка пересечения)** — интенсивность `I* = P/R` (в обозначениях главы 1 — `Π/β`), где пересекаются две линии Roofline; выше неё узкое место — вычисления. Калькулятор печатает `ridge_point` в FLOP/B; в книге и конспектах это «точка пересечения». `references/source-book/chapter4.md:906`.
+**Ridge point (точка пересечения)** — интенсивность `I* = P/R` (в обозначениях главы 1 — `Π/β`), где пересекаются две линии Roofline; выше неё узкое место — вычисления. Калькулятор печатает `ridge_point` в FLOP/B; в книге и конспектах это «точка пересечения». `references/source-book/chapter4.md:921`.
 
 **B\* (точка перехода по batch)** — размер batch, при котором время вычислений догоняет время чтения весов: `B* = b_W·Π/(2β)`, для H100 и 1 байта на параметр ≈ 147,7. Не учитывает KV: с длинным контекстом чтение KV догоняет веса раньше (`b_KV`). Оба порога с KV — `calc.py batch-threshold`. `references/chapters/ch01-ai-infra-basics.md`, `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter1.md:263`, `references/source-book/chapter8.md:104`.
 
@@ -44,9 +44,9 @@
 
 **Площадь состояния** — ёмкость, умноженная на время её занятости, `A_M = ∫ M(t) dt`: 1 GiB на 10 s — 10 GiB·s. Ожидание инструмента тоже занимает ёмкость. `references/chapters/ch03-workloads.md`, `references/source-book/chapter3.md:29`.
 
-**Закон Амдала** — ускорение доли f времени в s раз даёт `1/((1 − f) + f/s)`, не больше `1/(1 − f)`. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:101`, `references/source-book/chapter5.md:772`.
+**Закон Амдала** — ускорение доли f времени в s раз даёт `1/((1 − f) + f/s)`, не больше `1/(1 − f)`. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:101`, `references/source-book/chapter5.md:930`.
 
-**Закон Литтла** — среднее число в системе равно интенсивности поступления, умноженной на время пребывания: `L = λ·W`. Применяется к запросам, транзакциям памяти в полёте и слотам сетевых запросов. `calc.py queueing`. `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter8.md:598`, `references/source-book/chapter4.md:420`.
+**Закон Литтла** — среднее число в системе равно интенсивности поступления, умноженной на время пребывания: `L = λ·W`. Применяется к запросам, транзакциям памяти в полёте и слотам сетевых запросов. `calc.py queueing`. `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter8.md:598`, `references/source-book/chapter4.md:435`.
 
 ## Модель и её состояние
 
@@ -70,7 +70,7 @@
 
 **CED** — причинный кодировщик-декодировщик DeepSeek V4.1 Flash: большинство входных токенов не проходит основную часть декодировщика, а каждый генерируемый токен проходит все слои. Экономию prefill нельзя переносить на decode. `references/chapters/ch02-model-architecture.md`, `references/source-book/chapter2.md:454`.
 
-**Engram** — модуль V4.1 Flash, который по n-грамме получает дополнительное представление из таблицы; параметры таблицы считаются отдельно от основной части. `references/source-book/chapter2.md:3`, `references/source-book/chapter6.md:1004`.
+**Engram** — модуль V4.1 Flash, который по n-грамме получает дополнительное представление из таблицы; параметры таблицы считаются отдельно от основной части. `references/source-book/chapter2.md:3`, `references/source-book/chapter6.md:1020`.
 
 **6ND** — оценка FLOPs обучения: 6 × параметры × токены. Поэлементный расчёт учитывает внимание и отличается на длинных последовательностях. `calc.py training` печатает обе оценки. `references/chapters/ch03-workloads.md`, `references/source-book/chapter3.md:442`.
 
@@ -102,15 +102,15 @@
 
 ## Параллелизм и распределённый инференс
 
-**DP, TP, SP, CP, PP, EP** — параллелизм по данным (копии модели, разные образцы), тензорный (части матриц слоя, сложение частичных сумм), по последовательности (позиции в поточечных операторах внутри группы TP), контекста (позиции одной последовательности во внимании), конвейерный (группы слоёв) и экспертный (части набора экспертов). Разбиваемые измерения: B, H, S, S, L, E. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter6.md:80`, `references/source-book/chapter6.md:117`.
+**DP, TP, SP, CP, PP, EP** — параллелизм по данным (копии модели, разные образцы), тензорный (части матриц слоя, сложение частичных сумм), по последовательности (позиции в поточечных операторах внутри группы TP), контекста (позиции одной последовательности во внимании), конвейерный (группы слоёв) и экспертный (части набора экспертов). Разбиваемые измерения: B, H, S, S, L, E. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter6.md:80`, `references/source-book/chapter6.md:133`.
 
-**Предел KV-голов при TP** — если карт TP больше, чем KV-голов, KV-кэш дублируется. `references/source-book/chapter6.md:131`. Правило для GQA/MHA; компактный кэш MLA хранит одну латентную переменную на токен и слой, общую для всех голов (`references/source-book/chapter9.md:100`), поэтому при TP не делится вовсе (вывод из 2.3.2 и 6.2.2, числового примера TP для MLA в книге нет), а `num_key_value_heads` в config MLA — не число разделимых голов.
+**Предел KV-голов при TP** — если карт TP больше, чем KV-голов, KV-кэш дублируется. `references/source-book/chapter6.md:147`. Правило для GQA/MHA; компактный кэш MLA хранит одну латентную переменную на токен и слой, общую для всех голов (`references/source-book/chapter9.md:100`), поэтому при TP не делится вовсе (вывод из 2.3.2 и 6.2.2, числового примера TP для MLA в книге нет), а `num_key_value_heads` в config MLA — не число разделимых голов.
 
-**Ring Attention** — способ планирования передачи K и V по кольцу; параллелизм контекста — способ разделения работы, это не синонимы. `references/source-book/chapter6.md:255`.
+**Ring Attention** — способ планирования передачи K и V по кольцу; параллелизм контекста — способ разделения работы, это не синонимы. `references/source-book/chapter6.md:271`.
 
-**Dispatch и combine** — два обмена All-to-All при EP: отправка входа токена к картам выбранных экспертов и возврат результатов со взвешенным сложением. `references/source-book/chapter6.md:312`.
+**Dispatch и combine** — два обмена All-to-All при EP: отправка входа токена к картам выбранных экспертов и возврат результатов со взвешенным сложением. `references/source-book/chapter6.md:328`.
 
-**Micro-batch** — часть batch, которую конвейер обрабатывает как независимую единицу; утилизация конвейера `b/(q + b − 1)`. `references/source-book/chapter6.md:283`, `references/source-book/chapter10.md:301`.
+**Micro-batch** — часть batch, которую конвейер обрабатывает как независимую единицу; утилизация конвейера `b/(q + b − 1)`. `references/source-book/chapter6.md:299`, `references/source-book/chapter10.md:307`.
 
 **PD-разделение (разделение PD, Prefill–Decode)** — prefill и decode выполняются на разных ресурсах со своими очередями и batch; KV передаётся от P к D один раз. В однородном примере книги потребность этапов в GPU-секундах фиксирована; при изменении batch и параллелизма она требует пересчёта. Изоляция очередей влияет на задержку и goodput при SLO; рост общего throughput не гарантирован. `references/chapters/ch09-distributed-inference.md`, `references/source-book/chapter9.md:3`, `references/source-book/chapter9.md:90`, `references/source-book/chapter9.md:154`.
 
@@ -122,17 +122,17 @@
 
 ## Коммуникации, суперузлы и сеть
 
-**AllReduce, ReduceScatter, AllGather, All-to-All** — полный результат у всех; свой сегмент суммы; весь тензор из сегментов; каждая карта получает то, что ей прислали. AllReduce = ReduceScatter + AllGather. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter6.md:454`.
+**AllReduce, ReduceScatter, AllGather, All-to-All** — полный результат у всех; свой сегмент суммы; весь тензор из сегментов; каждая карта получает то, что ей прислали. AllReduce = ReduceScatter + AllGather. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter6.md:470`.
 
-**α и кольцевой AllReduce** — α — время запуска одного раунда; кольцо: `T_ring = 2(n−1)α + 2(n−1)M/(nB)`. Для малых сообщений доминирует α и полоса почти не помогает; для крупных — наоборот. `calc.py ring`; кольцо против дерева и точка равенства — `calc.py allreduce`. `references/source-book/chapter6.md:473`.
+**α и кольцевой AllReduce** — α — время запуска одного раунда; кольцо: `T_ring = 2(n−1)α + 2(n−1)M/(nB)`. Для малых сообщений доминирует α и полоса почти не помогает; для крупных — наоборот. `calc.py ring`; кольцо против дерева и точка равенства — `calc.py allreduce`. `references/source-book/chapter6.md:489`.
 
 **Суперузел** — группа ускорителей, тесно взаимодействующих через высокоскоростной интерконнект; может занимать несколько серверов или вычислительных лотков. `references/chapters/ch06-supernodes.md`, `references/source-book/chapter1.md:57`, `references/source-book/chapter6.md:13`.
 
 **Scale-up и scale-out** — интерконнект внутри суперузла (например, NVLink) для совместных вычислений с малыми издержками; сетевые карты и коммутируемая сеть между суперузлами. `references/source-book/chapter1.md:57`.
 
-**Unified Bus (UB)** — межсоединение Huawei, дающее устройствам прямой доступ к памяти других устройств без промежуточных уровней передачи сообщений. `references/source-book/chapter1.md:401`, `references/source-book/chapter6.md:735`.
+**Unified Bus (UB)** — межсоединение Huawei, дающее устройствам прямой доступ к памяти других устройств без промежуточных уровней передачи сообщений. `references/source-book/chapter1.md:401`, `references/source-book/chapter6.md:751`.
 
-**Пул памяти** — заимствование памяти других устройств суперузла при нехватке локальной ёмкости. `references/source-book/chapter6.md:822`.
+**Пул памяти** — заимствование памяти других устройств суперузла при нехватке локальной ёмкости. `references/source-book/chapter6.md:838`.
 
 **Rail (рельс), многорельсовая топология** — путь между сетевыми картами с одинаковыми номерами на разных серверах через один коммутатор; i-я NIC каждого сервера подключена к i-му leaf-коммутатору. Обмен пар с одинаковым `i mod 8` остаётся в одной rail. `references/chapters/ch07-datacenter-network.md`, `references/source-book/chapter7.md:17`, `references/source-book/chapter7.md:299`.
 
@@ -148,7 +148,7 @@
 
 ## Ускоритель и операторы
 
-**HBM** — видеопамять ускорителя с высокой пропускной способностью; её β задаёт нижнюю границу чтения весов и KV. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:356`.
+**HBM** — видеопамять ускорителя с высокой пропускной способностью; её β задаёт нижнюю границу чтения весов и KV. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:371`.
 
 **Kernel, launch, stream, event** — программа, выполняемая ускорителем; её асинхронная отправка хостом; очередь заданий; отметка завершения. Время отправки и время готовности результата различаются. `references/chapters/ch05-operators-runtime.md`, `references/source-book/chapter5.md:25`, `references/source-book/chapter5.md:69`.
 
@@ -158,11 +158,11 @@
 
 **FlashAttention** — поблочное вычисление внимания с онлайн-Softmax: полные матрицы оценок S и P не хранятся, вместо них держатся максимум, сумма экспонент и взвешенная сумма V. `references/chapters/ch05-operators-runtime.md`, `references/source-book/chapter5.md:401`.
 
-**Двойная буферизация** — загрузка следующего блока, пока обрабатывается текущий. `references/source-book/chapter4.md:500`, `references/source-book/chapter5.md:369`.
+**Двойная буферизация** — загрузка следующего блока, пока обрабатывается текущий. `references/source-book/chapter4.md:515`, `references/source-book/chapter5.md:369`.
 
-**CUDA Graph** — заранее захваченная последовательность kernel, отправляемая одной операцией; экономит время хоста, но требует фиксированных форм и копирования входа. `references/source-book/chapter5.md:658`.
+**CUDA Graph** — заранее захваченная последовательность kernel, отправляемая одной операцией; экономит время хоста, но требует фиксированных форм и копирования входа. `references/source-book/chapter5.md:816`.
 
-**Persistent kernel** — kernel, который постоянно работает на ускорителе, берёт задачи из очереди и проверяет готовность по флагам: следующий оператор стартует по готовому блоку, а не по завершению всего kernel. `references/source-book/chapter5.md:742`.
+**Persistent kernel** — kernel, который постоянно работает на ускорителе, берёт задачи из очереди и проверяет готовность по флагам: следующий оператор стартует по готовому блоку, а не по завершению всего kernel. `references/source-book/chapter5.md:900`.
 
 ## Обучение
 
@@ -170,21 +170,21 @@
 
 **ZeRO, FSDP** — шардирование состояния между GPU группы DP: этап 1 — основные веса и моменты, этап 2 — ещё градиенты, этап 3 — ещё веса; FSDP организует выполнение по тому же принципу. Постоянное состояние и пик памяти уменьшаются в разной степени. `calc.py training --dp`; по компонентам — `calc.py training-state --stage`. `references/source-book/chapter10.md:151`.
 
-**Повторное вычисление и выгрузка** — пересчёт активаций в обратном проходе вместо хранения; перенос состояния между GPU и CPU. `references/source-book/chapter10.md:205`, `references/source-book/chapter10.md:237`.
+**Повторное вычисление и выгрузка** — пересчёт активаций в обратном проходе вместо хранения; перенос состояния между GPU и CPU. `references/source-book/chapter10.md:211`, `references/source-book/chapter10.md:243`.
 
-**Fill–drain и 1F1B** — расписания конвейера: сначала все прямые проходы, потом все обратные; после прогрева — чередование одного прямого и одного обратного, активации ранних micro-batch освобождаются раньше. Пузырь у них одинаковый, различается резидентность активаций. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:322`.
+**Fill–drain и 1F1B** — расписания конвейера: сначала все прямые проходы, потом все обратные; после прогрева — чередование одного прямого и одного обратного, активации ранних micro-batch освобождаются раньше. Пузырь у них одинаковый, различается резидентность активаций. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:328`.
 
-**Пузырь конвейера** — простой этапов при заполнении и опустошении конвейера; доля и время — `calc.py pipeline`. `references/source-book/chapter6.md:283`, `references/source-book/chapter10.md:322`.
+**Пузырь конвейера** — простой этапов при заполнении и опустошении конвейера; доля и время — `calc.py pipeline`. `references/source-book/chapter6.md:299`, `references/source-book/chapter10.md:328`.
 
-**Checkpoint** — сохранённое состояние, достаточное для продолжения обучения: веса, оба момента, номер шага, состояние learning rate, случайное состояние, состав следующего batch и ещё не упакованные токены. Асинхронный снимок пригоден для восстановления только после записи и фиксации. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:507`, `references/source-book/chapter10.md:527`.
+**Checkpoint** — сохранённое состояние, достаточное для продолжения обучения: веса, оба момента, номер шага, состояние learning rate, случайное состояние, состав следующего batch и ещё не упакованные токены. Асинхронный снимок пригоден для восстановления только после записи и фиксации. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:513`, `references/source-book/chapter10.md:533`.
 
-**Период checkpoint** — интервал τ, минимизирующий долю потерь `c/τ + λτ/2 + λr`; оптимум первого порядка `τ* = √(2c/λ)`. `calc.py checkpoint`. `references/source-book/chapter10.md:553`.
+**Период checkpoint** — интервал τ, минимизирующий долю потерь `c/τ + λτ/2 + λr`; оптимум первого порядка `τ* = √(2c/λ)`. `calc.py checkpoint`. `references/source-book/chapter10.md:559`.
 
-**Отстающий узел** — медленный участник синхронного шага; шаг определяется максимумом, а не средним. `references/source-book/chapter10.md:600`.
+**Отстающий узел** — медленный участник синхронного шага; шаг определяется максимумом, а не средним. `references/source-book/chapter10.md:606`.
 
-**Критический batch (критический размер батча)** — размер batch, после которого добавление примеров лишь незначительно сокращает число шагов до того же значения функции потерь, а вычисления на шаг растут пропорционально; оценивается через масштаб шума градиента. Поэтому выше него добавленные карты при пропорциональном росте batch почти не сокращают срок. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:21`, `references/source-book/chapter10.md:854`.
+**Критический batch (критический размер батча)** — размер batch, после которого добавление примеров лишь незначительно сокращает число шагов до того же значения функции потерь, а вычисления на шаг растут пропорционально; оценивается через масштаб шума градиента. Поэтому выше него добавленные карты при пропорциональном росте batch почти не сокращают срок. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:21`, `references/source-book/chapter10.md:860`.
 
-**Rollout** — генерация траекторий в RL, за которой идут проверка средой, вознаграждение и обновление стратегии; единица работы — пригодный для обучения образец. `references/chapters/ch03-workloads.md`, `references/chapters/ch10-training-systems.md`, `references/source-book/chapter3.md:476`, `references/source-book/chapter10.md:629`.
+**Rollout** — генерация траекторий в RL, за которой идут проверка средой, вознаграждение и обновление стратегии; единица работы — пригодный для обучения образец. `references/chapters/ch03-workloads.md`, `references/chapters/ch10-training-systems.md`, `references/source-book/chapter3.md:476`, `references/source-book/chapter10.md:635`.
 
 ## Среды, стоимость, устройство и облако
 

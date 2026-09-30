@@ -1,6 +1,6 @@
 {
   "name": "designing-ai-infra",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Инженерный skill для количественного проектирования AI-инфраструктуры: сайзинг инференса и обучения, память, KV, FLOPs, roofline, параллелизм, сети, стоимость. Основан на книге Bojie Li «AI Infra in Depth».",
   "author": {
     "name": "ilkruglov",

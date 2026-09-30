@@ -22,18 +22,18 @@ ANCHORS = (
     "references/source-book/chapter3.md:442",
     "references/source-book/chapter3.md:611",
     "references/source-book/chapter2.md:542",
-    "references/source-book/chapter6.md:131",
-    "references/source-book/chapter6.md:391",
-    "references/source-book/chapter6.md:473",
-    "references/source-book/chapter6.md:705",
+    "references/source-book/chapter6.md:147",
+    "references/source-book/chapter6.md:407",
+    "references/source-book/chapter6.md:489",
+    "references/source-book/chapter6.md:721",
     "references/source-book/chapter8.md:52",
     "references/source-book/chapter8.md:268",
     "references/source-book/chapter8.md:536",
     "references/source-book/chapter8.md:598",
     "references/source-book/chapter10.md:151",
-    "references/source-book/chapter10.md:322",
-    "references/source-book/chapter10.md:553",
-    "references/source-book/chapter10.md:600",
+    "references/source-book/chapter10.md:328",
+    "references/source-book/chapter10.md:559",
+    "references/source-book/chapter10.md:606",
     "references/source-book/chapter11.md:62",
     "references/source-book/chapter11.md:515",
     "references/source-book/chapter2.md:236",
@@ -154,7 +154,7 @@ class RooflineCommandTest(unittest.TestCase):
         # chapter1.md:268: «\frac{140\ \mathrm{GFLOPs}}{989400\ \mathrm{GFLOP/s}}\approx0{,}1415\ \mathrm{ms}»
         self.assertEqual(round(v["compute_seconds"]["value"] * 1e3, 4), 0.1415)
         self.assertEqual(v["step_lower_bound_seconds"]["bound"], "lower")
-        self.assertIn("56ecb425", data["hardware_snapshot"])
+        self.assertIn("d0cc188b", data["hardware_snapshot"])
 
     def test_format_before_command(self) -> None:
         code, out = call(
@@ -182,7 +182,7 @@ class RooflineCommandTest(unittest.TestCase):
         )
         self.assertEqual(code, 0)
         self.assertIn("(нижняя граница)", out)
-        self.assertIn("56ecb425 (2026-09-26)", out)
+        self.assertIn("d0cc188b (2026-09-26)", out)
         self.assertIn("references/source-book/chapter1.md:263", out)
         # входы — в том же виде, что и значения, а не 140000000000.0
         self.assertIn("flops=1.4e+11", out)
@@ -702,7 +702,7 @@ class CheckpointCommonShockTest(unittest.TestCase):
         )
         self.assertEqual(
             v["first_order_loss_at_interval"]["anchor"],
-            "references/source-book/chapter10.md:600",
+            "references/source-book/chapter10.md:606",
         )
         self.assertEqual(
             v["first_order_loss_at_interval"]["inputs"]["common_job_mtbf"], 604800
@@ -941,7 +941,7 @@ class ExpertUnionCommandTest(unittest.TestCase):
         )
 
     def test_uniform_read_is_an_estimate_not_a_bound(self) -> None:
-        # U(B) по формуле (6-8), chapter6.md:391, — ожидание при равномерной независимой
+        # U(B) по формуле (6-8), chapter6.md:407, — ожидание при равномерной независимой
         # маршрутизации; неравномерная затрагивает меньше экспертов, вплоть до U = k.
         # Нижняя граница чтения шага — decode_weight_read_bytes (U = k)
         v = values("model", "--config", self.QWEN3_30B, "--batch", "16")
@@ -974,7 +974,7 @@ class ExpertUnionCommandTest(unittest.TestCase):
 
     def test_explicit_union_matches_author(self) -> None:
         # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --tokens 1 --routing balanced
-        # (код автора на 56ecb425): expert_union_per_layer 32, weight_read_once_per_operator_bytes
+        # (код автора на d0cc188b): expert_union_per_layer 32, weight_read_once_per_operator_bytes
         # 16 955 387 904, из них 4 × 2048 × 2 байта — строки эмбеддингов
         v = values(
             "model", "--config", self.QWEN3_30B, "--batch", "4",
@@ -1245,11 +1245,11 @@ class ServingSplitTest(unittest.TestCase):
         step = v["tpot_lower_bound_seconds"]
         self.assertIn("kv_request_per_device", step["inputs"])
         self.assertNotIn("kv_request", step["inputs"])
-        # chapter6.md:1164 (сноска к разделу 6.2.2, заголовок chapter6.md:131):
+        # chapter6.md:1164 (сноска к разделу 6.2.2, заголовок chapter6.md:147):
         # ⌊(n·(80 GB − 2 GiB) − W)/S⌋ — состояние S делится на n карт
         notes = " ".join(v["max_concurrent_requests"]["notes"])
         self.assertIn("S/TP", notes)
-        self.assertIn("chapter6.md:131", notes)
+        self.assertIn("chapter6.md:147", notes)
         self.assertNotIn("chapter6.md:1164", notes)
 
     def test_quantized_weights_per_device_keep_lower_bound(self) -> None:

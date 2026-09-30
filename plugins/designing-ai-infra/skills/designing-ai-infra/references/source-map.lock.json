@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "book": {
-    "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
-    "translation_commit": "c791c07c8370155474d84b635d41d142f54f4fc9"
+    "upstream_commit": "d0cc188b68f49584fd21e05518a5d0f0db79aaf5",
+    "translation_commit": "cb502e11cd89ba2e42999c8dc037b9a05c0e6fe4"
   },
   "anchors": {
     "chapter1.md:101": {
@@ -105,22 +105,22 @@
       "line_text": "### 10.2.1 Параллелизм данных и шардирование состояния в ZeRO/FSDP",
       "kind": "heading"
     },
-    "chapter10.md:205": {
-      "line_sha256": "966bfd3032eaf2cfc9e5b569d98b3674542d1cfc545a2b0e5c6ff7d517fe6517",
-      "line_text": "### 10.2.2 Сохранение активаций и выборочное повторное вычисление",
-      "kind": "heading"
-    },
     "chapter10.md:21": {
       "line_sha256": "6251371f89e6e054c6cbeb271dd45ea085552ea84a74a94e4266eec69612fa9d",
       "line_text": "### 10.1.1 Задача обучения, обучаемые параметры и критерий завершения",
       "kind": "heading"
     },
-    "chapter10.md:237": {
+    "chapter10.md:211": {
+      "line_sha256": "966bfd3032eaf2cfc9e5b569d98b3674542d1cfc545a2b0e5c6ff7d517fe6517",
+      "line_text": "### 10.2.2 Сохранение активаций и выборочное повторное вычисление",
+      "kind": "heading"
+    },
+    "chapter10.md:243": {
       "line_sha256": "6304539d035e29c562af55870b134af339196410e24065751f4cd81d208bd0c0",
       "line_text": "### 10.2.3 Выгрузка между CPU и GPU и время использования буферов",
       "kind": "heading"
     },
-    "chapter10.md:275": {
+    "chapter10.md:281": {
       "line_sha256": "b724dde7d598d35094739e9b277826a52490f7d3bcbd2d9e3dbf62274944e0c0",
       "line_text": "### 10.2.4 Распределение состояния по GPU и топология соединений в комбинированных схемах параллелизма",
       "kind": "heading"
@@ -130,42 +130,42 @@
       "line_text": "# Глава 10. Системы обучения",
       "kind": "heading"
     },
-    "chapter10.md:301": {
+    "chapter10.md:307": {
       "line_sha256": "a8d4162c2a9d3553dc923405d66b0079a7212152464e81253b758f97dec1a366",
       "line_text": "### 10.3.1 Micro-batch, накопление градиентов и обновление параметров",
       "kind": "heading"
     },
-    "chapter10.md:322": {
+    "chapter10.md:328": {
       "line_sha256": "dd8b712ba3f4d913e87ea091f3e889835cc024906f4ddbc336aa77df58641dfa",
       "line_text": "### 10.3.2 Конвейерное планирование, пузыри и жизненный цикл активаций",
       "kind": "heading"
     },
-    "chapter10.md:408": {
+    "chapter10.md:414": {
       "line_sha256": "32aaf373779c140655229c0acc0cb4539960491a9b8f01006a88e8e1e07c5590",
       "line_text": "### 10.3.3 Зависимости обратного прохода, группировка градиентов в буферы и перекрытие коммуникаций",
       "kind": "heading"
     },
-    "chapter10.md:438": {
+    "chapter10.md:444": {
       "line_sha256": "bb9dc9db2cf39092fefabe23f17d73d4b39ccf05ccf0064d0d9a8924e4e2cec4",
       "line_text": "### 10.3.4 Изменения планирования для MoE и длинного контекста",
       "kind": "heading"
     },
-    "chapter10.md:491": {
+    "chapter10.md:497": {
       "line_sha256": "36e43759652a4ab0d6b14f970c4f94b0bb2d4718464019b2ce08f34429672509",
       "line_text": "### 10.4.1 Чтение, упаковка и предварительная загрузка данных",
       "kind": "heading"
     },
-    "chapter10.md:507": {
+    "chapter10.md:513": {
       "line_sha256": "c154927f5136f853497bdb4e991699065fb41652f1eee778976158613a993a31",
       "line_text": "### 10.4.2 Восстанавливаемое состояние и преобразование раскладки",
       "kind": "heading"
     },
-    "chapter10.md:527": {
+    "chapter10.md:533": {
       "line_sha256": "88b3bba5224356b0da068107c30f4764bc1f6ec6f9be6f5277c7d60f9d7b2523",
       "line_text": "### 10.4.3 Синхронное и асинхронное сохранение, конкуренция за пропускную способность",
       "kind": "heading"
     },
-    "chapter10.md:553": {
+    "chapter10.md:559": {
       "line_sha256": "64e22c8a7ee617369e3dfb9e8ab7b3fdde18c2dfabc05c0d84ba3ac43debe0c0",
       "line_text": "### 10.4.4 Масштаб сбоев, период сохранения и эффективный прогресс обучения",
       "kind": "heading"
@@ -175,57 +175,57 @@
       "line_text": "### 10.1.2 Параметры, градиенты, оптимизатор и активации",
       "kind": "heading"
     },
-    "chapter10.md:600": {
+    "chapter10.md:606": {
       "line_sha256": "05ec734f98b90abbc251c187ee981930cf0cac58ca122078dcc36f90f61dd40e",
       "line_text": "### 10.4.5 Отстающие и медленные узлы",
       "kind": "heading"
     },
-    "chapter10.md:629": {
+    "chapter10.md:635": {
       "line_sha256": "03aabd6eed5be084000ebf92b09ff3c7ba72937e9cc89ffad94c9c2dcf149d1e",
       "line_text": "### 10.5.1 Одна итерация генерации ответов, проверки и обновления параметров",
       "kind": "heading"
     },
-    "chapter10.md:645": {
+    "chapter10.md:651": {
       "line_sha256": "e47fd1231ca6e85523aad9924d06bac1a51aabc4f059f21004e2b7cbf8f31408",
       "line_text": "### 10.5.2 Распределение ресурсов между этапами и синхронизация весов",
       "kind": "heading"
     },
-    "chapter10.md:685": {
+    "chapter10.md:691": {
       "line_sha256": "f3e7b3ac1f497c92f688108d03283f4cdf8f7b2a113ca28bde0d38fce1a9b620",
       "line_text": "### 10.5.3 Асинхронное обучение, версии стратегии и восстановление длинных траекторий",
       "kind": "heading"
     },
-    "chapter10.md:739": {
+    "chapter10.md:745": {
       "line_sha256": "729ba22fc5488976ff6561ce1fbc4dadc2a87ae6e2575ce3bc9577dbcf29dc3e",
       "line_text": "### 10.5.4 Повторное воспроизведение экспертной маршрутизации и согласованность обучения и инференса",
       "kind": "heading"
     },
-    "chapter10.md:765": {
+    "chapter10.md:771": {
       "line_sha256": "9d686a25d6289b701eaedc29ad5e56005cd75b9dc158848e522683629ddc5395",
       "line_text": "### 10.6.1 Сводный учёт ёмкости, времени шага, остановок и восстановления",
       "kind": "heading"
     },
-    "chapter10.md:798": {
+    "chapter10.md:804": {
       "line_sha256": "aff25ac78076dd8963a1cbd0279de0471e5c4f0db8ba75d5b88365babe8c869a",
       "line_text": "### 10.6.2 Область применимости кластера из 4090",
       "kind": "heading"
     },
-    "chapter10.md:814": {
+    "chapter10.md:820": {
       "line_sha256": "7883b91be7f3abaecadda51b55abba1f5241f7ec91c8c1a3df62f51f88112b78",
       "line_text": "### 10.6.3 Узкие места и выбор после замены оборудования",
       "kind": "heading"
     },
-    "chapter10.md:832": {
+    "chapter10.md:838": {
       "line_sha256": "1f4185f769d013f6ed402d9f94fe26bded8fd474a597e5ae7463526259cc9e9d",
       "line_text": "### 10.6.4 Чувствительность к масштабу модели, объёму данных и сроку",
       "kind": "heading"
     },
-    "chapter10.md:854": {
+    "chapter10.md:860": {
       "line_sha256": "6418caff27bade53cee5eaf6059fef370501fa587a66c3e8e154284a292da34e",
       "line_text": "## Распространённые заблуждения",
       "kind": "heading"
     },
-    "chapter10.md:866": {
+    "chapter10.md:872": {
       "line_sha256": "bc5e5edd0489715f070ff6914e0684428c92ce2b3edf919819d543c5bab04d8f",
       "line_text": "## Упражнения и эксперименты",
       "kind": "heading"
@@ -705,7 +705,17 @@
       "line_text": "## Итоги главы",
       "kind": "heading"
     },
-    "chapter4.md:1041": {
+    "chapter4.md:1003": {
+      "line_sha256": "eebd6641c901c8b38c054c555d7cf5d145410efba902781e4eb1207dd46da5f9",
+      "line_text": "### 4.8.3 Почему прогнозы расходятся с измерениями",
+      "kind": "heading"
+    },
+    "chapter4.md:104": {
+      "line_sha256": "2d3110bdf9eede33eca2a1ff131e206a144b2056dc82e7396f970e1f9b8592d3",
+      "line_text": "### 4.1.3 Ограничения площади чипа, энергопотребления и корпуса",
+      "kind": "heading"
+    },
+    "chapter4.md:1056": {
       "line_sha256": "314f9d8a45e6a4c10fafa08a426a5e3f5df55f383f01ee7013b8b81639efccff",
       "line_text": "### 4.8.4 Выбор между ёмкостью, скоростью, энергопотреблением и стоимостью",
       "kind": "heading"
@@ -715,17 +725,17 @@
       "line_text": "### 4.1.1 Требования матричного умножения к вычислениям и данным",
       "kind": "heading"
     },
-    "chapter4.md:214": {
+    "chapter4.md:229": {
       "line_sha256": "3501a3f5b4a7ce15e7829c013bc42a16215c82123f9f4b3fade9b0f76a45435e",
       "line_text": "### 4.2.1 Почему матричные блоки подходят для нейронных сетей",
       "kind": "heading"
     },
-    "chapter4.md:250": {
+    "chapter4.md:265": {
       "line_sha256": "dfa5c50d978d061cf1ff621a5f490f724ec3fb93eb8565c6d410a5a739d98f6d",
       "line_text": "### 4.2.2 За какую работу отвечают векторные и управляющие блоки",
       "kind": "heading"
     },
-    "chapter4.md:274": {
+    "chapter4.md:289": {
       "line_sha256": "23e658de104104201194bbaa09ffd50e83744ef7b8034d6e16f8ba8de31cb458",
       "line_text": "### 4.2.3 Как NVIDIA, Ascend и Apple выполняют вычисление внимания",
       "kind": "heading"
@@ -735,49 +745,44 @@
       "line_text": "# Глава 4. Архитектура ускорителей",
       "kind": "heading"
     },
-    "chapter4.md:314": {
+    "chapter4.md:329": {
       "line_sha256": "d99dcab620fecb711fff431bcec69754611571db80114f7e8d45c7f6eb55ed07",
       "line_text": "### 4.2.4 Как низкая точность изменяет объём вычислений, данных и затраты на преобразование",
       "kind": "heading"
     },
-    "chapter4.md:356": {
+    "chapter4.md:371": {
       "line_sha256": "b43f7e62cc1463483d18b0e75dcf9776497dfd8bfde62123101ebe5f9cbb0496",
       "line_text": "### 4.3.1 Видеопамять и унифицированная память",
       "kind": "heading"
     },
-    "chapter4.md:396": {
+    "chapter4.md:411": {
       "line_sha256": "a186ea39d084d02682b56d10d145d4bb3cad77e5acf7b48ad177d1869e628c60",
       "line_text": "### 4.3.2 Кэши, внутрикристальные буферы и регистры",
       "kind": "heading"
     },
-    "chapter4.md:420": {
+    "chapter4.md:435": {
       "line_sha256": "da80f1326d9a1204fc889bac499603825ed622cde69e6600bf5a958a99158149",
       "line_text": "### 4.3.3 Что именно ограничивают ёмкость, пропускная способность и задержка",
       "kind": "heading"
     },
-    "chapter4.md:500": {
+    "chapter4.md:515": {
       "line_sha256": "c435ecdb2fa9b57155d4bfdf0935cacfc0a295a099f4a43bcbc566f1e72be7df",
       "line_text": "### 4.4.2 Асинхронное перемещение и двойная буферизация",
       "kind": "heading"
     },
-    "chapter4.md:563": {
+    "chapter4.md:578": {
       "line_sha256": "7f4e89d01baee6a8704bb9e9923c4608c82821207d6800b7d68132933d95951d",
       "line_text": "### 4.4.3 Передача данных между вычислительными блоками",
       "kind": "heading"
     },
-    "chapter4.md:595": {
+    "chapter4.md:610": {
       "line_sha256": "d19d41480a1e293971fece23734dd62e605e93e3fe9f62c1b340b87096e52c48",
       "line_text": "### 4.4.4 Передача между SM: fence и уровни синхронизации",
       "kind": "heading"
     },
-    "chapter4.md:623": {
+    "chapter4.md:638": {
       "line_sha256": "2c7838ef35c2fdb2f757119a4e7841715f90a5085192ee9740f1c1e2d9e9d99c",
       "line_text": "### 4.5.1 Вычислительные кристаллы, память и соединения внутри корпуса",
-      "kind": "heading"
-    },
-    "chapter4.md:645": {
-      "line_sha256": "81b09dd8646ae0537663ecf833162b93188d366cd5d5c326dcf03f5c962ef08b",
-      "line_text": "### 4.5.2 Доступ к данным между CPU и ускорителем",
       "kind": "heading"
     },
     "chapter4.md:65": {
@@ -785,64 +790,74 @@
       "line_text": "### 4.1.2 Состав ускорителя и распределение функций",
       "kind": "heading"
     },
-    "chapter4.md:666": {
+    "chapter4.md:660": {
+      "line_sha256": "81b09dd8646ae0537663ecf833162b93188d366cd5d5c326dcf03f5c962ef08b",
+      "line_text": "### 4.5.2 Доступ к данным между CPU и ускорителем",
+      "kind": "heading"
+    },
+    "chapter4.md:681": {
       "line_sha256": "ecc45882399bc0b063ecc1dbc2091a8d71b3ae7c665ee110d6a530e1e9358b65",
       "line_text": "### 4.5.3 Обмен данными между ускорителями",
       "kind": "heading"
     },
-    "chapter4.md:706": {
+    "chapter4.md:721": {
       "line_sha256": "72fc0f88d2327b899f77421acd8b6d592b27f7eb3570462724bbbb6cb08be7cb",
       "line_text": "### 4.6.1 NVIDIA: какой выигрыш по отдельности дают матрицы, точность и тракт данных",
       "kind": "heading"
     },
-    "chapter4.md:760": {
+    "chapter4.md:775": {
       "line_sha256": "d5d4369c22cf29752ac180035cd6dd03d70bbd9672109c180faeb020e6e4aef0",
       "line_text": "### 4.6.2 Ascend: от развёртки свёрток CNN к взаимодействию матриц и векторов Transformer",
       "kind": "heading"
     },
-    "chapter4.md:798": {
+    "chapter4.md:813": {
       "line_sha256": "b3930d608dbe90822b210b6e4a68f3aacefaeb98d0c554109443519b4bed3e14",
       "line_text": "### 4.6.3 Apple: как преобразовать большую ёмкость унифицированной памяти в возможности запуска моделей",
       "kind": "heading"
     },
-    "chapter4.md:828": {
+    "chapter4.md:843": {
       "line_sha256": "5f630436d37221c012ed903cb69a3e01cff2390a5402a633c6ee80d089c50b3b",
       "line_text": "### 4.7.1 TPU",
       "kind": "heading"
     },
-    "chapter4.md:840": {
+    "chapter4.md:855": {
       "line_sha256": "f174bc58b63005f335a915cf2d09be1b3a1919a4ba89d267b13dad13730f30aa",
       "line_text": "### 4.7.2 Groq, Graphcore и Cerebras",
       "kind": "heading"
     },
-    "chapter4.md:854": {
+    "chapter4.md:869": {
       "line_sha256": "dea01eba10e275a1c76ff847ab23330c2873f6482d7aa4cc8a10728d69f36181",
       "line_text": "### 4.7.3 Фиксированные потоки данных и веса",
       "kind": "heading"
     },
     "chapter4.md:89": {
-      "line_sha256": "2d3110bdf9eede33eca2a1ff131e206a144b2056dc82e7396f970e1f9b8592d3",
-      "line_text": "### 4.1.3 Ограничения площади чипа, энергопотребления и корпуса",
+      "line_sha256": "7c90f02aebcb3561b30c4c0dc6f5f41236328c4139036323e5526e42a15a994c",
+      "line_text": "#### GPU и Ascend: кто организует перемещение данных и синхронизацию?",
       "kind": "heading"
     },
-    "chapter4.md:906": {
+    "chapter4.md:921": {
       "line_sha256": "41770f0ba67a2c1ef9cc23a2a5c38c84b5da5b1993e3ea2d6e1bcd6cc90bd7ec",
       "line_text": "### 4.8.1 Построение модели времени выполнения на основе бюджета ресурсов",
       "kind": "heading"
     },
-    "chapter4.md:959": {
+    "chapter4.md:974": {
       "line_sha256": "96b1a5a7c409adbc405d4c3fd1c8851d1b98c0a7ca845592a9effa509e8f5398",
       "line_text": "### 4.8.2 Сравнение ускорителей на одной и той же модели",
       "kind": "heading"
     },
-    "chapter4.md:988": {
-      "line_sha256": "eebd6641c901c8b38c054c555d7cf5d145410efba902781e4eb1207dd46da5f9",
-      "line_text": "### 4.8.3 Почему прогнозы расходятся с измерениями",
+    "chapter5.md:1005": {
+      "line_sha256": "f05e1fd318554a99866bb4276deefc61f4538d34dab040fdc26549fb334694c9",
+      "line_text": "## Упражнения и сопутствующие эксперименты",
       "kind": "heading"
     },
     "chapter5.md:112": {
       "line_sha256": "d9b5207c89888d3cbe332859909c7062b6b2cbc07723670bbfb1320d7de35ad6",
       "line_text": "### 5.1.5 Как один kernel выполняется на SM",
+      "kind": "heading"
+    },
+    "chapter5.md:1128": {
+      "line_sha256": "ce8eb7fc4f4558e3e8b9bec6197129ea00583dc4b7c61d484d7efa5548985ea3",
+      "line_text": "## Итоги главы",
       "kind": "heading"
     },
     "chapter5.md:182": {
@@ -906,23 +921,18 @@
       "kind": "heading"
     },
     "chapter5.md:568": {
-      "line_sha256": "a0f19f619a3e886a6a3fe87fe8210d8a0d5e4ae1c9af6394b1fc17ddde516f4c",
-      "line_text": "### 5.4.4 AKG: организация циклов и памяти с помощью полиэдральной компиляции",
+      "line_sha256": "3307a64c1ad506fead96d8754f4377a79f8c66a958b050d2de76782944ed5904",
+      "line_text": "### 5.4.4 AKG: планирование вычислений и перемещений данных с помощью isl schedule",
       "kind": "heading"
     },
-    "chapter5.md:594": {
-      "line_sha256": "692a304a8512c9a2ccdd600340b5b0057c45cd165dc1c86f72fe13defec2636d",
-      "line_text": "### 5.4.5 Оценка стоимости и выбор по результатам измерений",
+    "chapter5.md:618": {
+      "line_sha256": "1ca60b80b092e9191a15bcf3c13c9fdbc3bacb5fcb23477dffebfbe4bf0549da",
+      "line_text": "#### Что такое isl schedule",
       "kind": "heading"
     },
-    "chapter5.md:634": {
-      "line_sha256": "bab202a7b20d311cf2bd73936ab90f35e2a9188fd554b212d08af96a651f948a",
-      "line_text": "### 5.5.1 Перекрытие подготовки на хосте и вычислений на ускорителе",
-      "kind": "heading"
-    },
-    "chapter5.md:658": {
-      "line_sha256": "730ba1425158074fb2189a292fe5db06d8f2f3613e85ff23df3f82e068f62a59",
-      "line_text": "### 5.5.2 CUDA Graph: выигрыш при отправке и затраты на копирование входных данных",
+    "chapter5.md:654": {
+      "line_sha256": "f0d0188c866897343e826b3eb24d5b9ba41587d7824accddd0b88377fd7775bc",
+      "line_text": "#### От расписания к данным на кристалле",
       "kind": "heading"
     },
     "chapter5.md:69": {
@@ -930,39 +940,49 @@
       "line_text": "### 5.1.3 Stream, event и порядок завершения",
       "kind": "heading"
     },
-    "chapter5.md:710": {
+    "chapter5.md:690": {
+      "line_sha256": "c2bbdbeaa12d751b471bc3677d61c0829fcf3dd357a6805a18588d4d51fcba8f",
+      "line_text": "### 5.4.5 TileLang-Ascend: запись того же расписания в блочной программе",
+      "kind": "heading"
+    },
+    "chapter5.md:730": {
+      "line_sha256": "e5b5a05e3705bcd9d31820ac76a89e544d8462deb43863fad72fd817edad80c3",
+      "line_text": "#### Слияние и повторное использование данных: пример 5-8",
+      "kind": "heading"
+    },
+    "chapter5.md:752": {
+      "line_sha256": "16619167d22056b2d81859f1ff30fe243336b058f71aebeed45f080fcd2ca508",
+      "line_text": "### 5.4.6 Оценка стоимости и выбор по результатам измерений",
+      "kind": "heading"
+    },
+    "chapter5.md:792": {
+      "line_sha256": "bab202a7b20d311cf2bd73936ab90f35e2a9188fd554b212d08af96a651f948a",
+      "line_text": "### 5.5.1 Перекрытие подготовки на хосте и вычислений на ускорителе",
+      "kind": "heading"
+    },
+    "chapter5.md:816": {
+      "line_sha256": "730ba1425158074fb2189a292fe5db06d8f2f3613e85ff23df3f82e068f62a59",
+      "line_text": "### 5.5.2 CUDA Graph: выигрыш при отправке и затраты на копирование входных данных",
+      "kind": "heading"
+    },
+    "chapter5.md:868": {
       "line_sha256": "d5a86f6f3f25bad8a6b4191379b8d871b5fa7f3792ccf98669fb240b76287b3c",
       "line_text": "### 5.5.3 Динамические формы и затраты на компиляцию",
       "kind": "heading"
     },
-    "chapter5.md:742": {
+    "chapter5.md:900": {
       "line_sha256": "92c4237ec7d7199aa9051d039ce51fac4b441e312240fb9e724a915b0c9e855b",
       "line_text": "### 5.5.4 Persistent Kernel: планирование задач по блокам данных",
       "kind": "heading"
     },
-    "chapter5.md:772": {
+    "chapter5.md:930": {
       "line_sha256": "13e6c74a36ada4cca762677a5d89c8a2b02c3c3f8021e178fdb1a947661864c9",
       "line_text": "### 5.6.1 Доля узкого места определяет потенциал ускорения",
       "kind": "heading"
     },
-    "chapter5.md:784": {
+    "chapter5.md:942": {
       "line_sha256": "9de0fe9ee977d5cc064a9cc597f22e3acf814280cdc8451723edbf320a6f1737",
       "line_text": "### 5.6.2 Параллельные ветви и смена критического пути",
-      "kind": "heading"
-    },
-    "chapter5.md:812": {
-      "line_sha256": "b2002bed45f56483cd1d46a03f16d2544c2a8e19f13de815a6f950be27d1bb7f",
-      "line_text": "### 5.6.3 Комплексный пример: выбор оптимизаций для одного запроса Qwen3",
-      "kind": "heading"
-    },
-    "chapter5.md:837": {
-      "line_sha256": "6418caff27bade53cee5eaf6059fef370501fa587a66c3e8e154284a292da34e",
-      "line_text": "## Распространённые заблуждения",
-      "kind": "heading"
-    },
-    "chapter5.md:847": {
-      "line_sha256": "f05e1fd318554a99866bb4276deefc61f4538d34dab040fdc26549fb334694c9",
-      "line_text": "## Упражнения и сопутствующие эксперименты",
       "kind": "heading"
     },
     "chapter5.md:96": {
@@ -970,19 +990,19 @@
       "line_text": "### 5.1.4 От времени отправки до момента готовности результата",
       "kind": "heading"
     },
-    "chapter5.md:964": {
-      "line_sha256": "ce8eb7fc4f4558e3e8b9bec6197129ea00583dc4b7c61d484d7efa5548985ea3",
-      "line_text": "## Итоги главы",
+    "chapter5.md:970": {
+      "line_sha256": "b2002bed45f56483cd1d46a03f16d2544c2a8e19f13de815a6f950be27d1bb7f",
+      "line_text": "### 5.6.3 Комплексный пример: выбор оптимизаций для одного запроса Qwen3",
       "kind": "heading"
     },
-    "chapter6.md:1004": {
+    "chapter5.md:995": {
+      "line_sha256": "6418caff27bade53cee5eaf6059fef370501fa587a66c3e8e154284a292da34e",
+      "line_text": "## Распространённые заблуждения",
+      "kind": "heading"
+    },
+    "chapter6.md:1020": {
       "line_sha256": "5d8e0729e6ed4cb178b052fce03fa4a418fcffc5f8aa9c7dfe86f94171deea72",
       "line_text": "### 6.7.4 Увеличение суперузла и размещение весов, таблиц Engram и KV: комплексный пример V4.1 Flash",
-      "kind": "heading"
-    },
-    "chapter6.md:117": {
-      "line_sha256": "d358291530b672ffadfaf6ec83ad7a1c4b62270e0c58ca8b74aab0fe0f08a014",
-      "line_text": "### 6.2.1 Параллелизм по данным: копирование модели, разделение выборки",
       "kind": "heading"
     },
     "chapter6.md:13": {
@@ -990,14 +1010,14 @@
       "line_text": "### 6.1.1 Независимое развёртывание и совместная работа восьми карт",
       "kind": "heading"
     },
-    "chapter6.md:131": {
-      "line_sha256": "732f6cc4456b12d07d317233b65a1b66c8a0353add342d0c4e7029b40c401a03",
-      "line_text": "### 6.2.2 Тензорный параллелизм: разделение матриц внутри слоя",
+    "chapter6.md:133": {
+      "line_sha256": "d358291530b672ffadfaf6ec83ad7a1c4b62270e0c58ca8b74aab0fe0f08a014",
+      "line_text": "### 6.2.1 Параллелизм по данным: копирование модели, разделение выборки",
       "kind": "heading"
     },
-    "chapter6.md:243": {
-      "line_sha256": "92ffec39faea5409ff51a27d912ab02a4475101e0dacac6902a4da12739d4ddf",
-      "line_text": "### 6.2.3 Параллелизм по последовательности: разбиение операторов, работающих с отдельными токенами, вдоль последовательности",
+    "chapter6.md:147": {
+      "line_sha256": "732f6cc4456b12d07d317233b65a1b66c8a0353add342d0c4e7029b40c401a03",
+      "line_text": "### 6.2.2 Тензорный параллелизм: разделение матриц внутри слоя",
       "kind": "heading"
     },
     "chapter6.md:25": {
@@ -1005,12 +1025,17 @@
       "line_text": "### 6.1.2 Сквозной пример: ёмкость и время одного шага Qwen3-235B-A22B",
       "kind": "heading"
     },
-    "chapter6.md:255": {
+    "chapter6.md:259": {
+      "line_sha256": "92ffec39faea5409ff51a27d912ab02a4475101e0dacac6902a4da12739d4ddf",
+      "line_text": "### 6.2.3 Параллелизм по последовательности: разбиение операторов, работающих с отдельными токенами, вдоль последовательности",
+      "kind": "heading"
+    },
+    "chapter6.md:271": {
       "line_sha256": "f51cf21086fe0bffc4e7fc4fbf6e010066d1787400fdb9704ce9c17922d8a42c",
       "line_text": "### 6.2.4 Параллелизм контекста: разделение внимания одной последовательности",
       "kind": "heading"
     },
-    "chapter6.md:283": {
+    "chapter6.md:299": {
       "line_sha256": "af80e262ce76f0312576bcfc862e8cf790b11cd75f8725f4e958a632ffc0230d",
       "line_text": "### 6.2.5 Конвейерный параллелизм: разделение этапов по слоям",
       "kind": "heading"
@@ -1020,52 +1045,52 @@
       "line_text": "# Глава 6. Суперузлы",
       "kind": "heading"
     },
-    "chapter6.md:312": {
+    "chapter6.md:328": {
       "line_sha256": "bfe8bacee29a4096a39b8013dc21cea9feb0c7d18ed1c9a43c28e0da4eb41efa",
       "line_text": "### 6.2.6 Экспертный параллелизм: разбиение набора экспертов",
       "kind": "heading"
     },
-    "chapter6.md:352": {
+    "chapter6.md:368": {
       "line_sha256": "e39edfe56ba701540b4cfdbbd62933b7bb6258e000d1cf06e06b11379c7e675b",
       "line_text": "### 6.3.1 Схемы комбинирования и координаты устройств",
       "kind": "heading"
     },
-    "chapter6.md:391": {
+    "chapter6.md:407": {
       "line_sha256": "db19e41761f85909bee85bafb6081c3a8a4ed03769004afa3260406740aa54be",
       "line_text": "### 6.3.2 Повторное использование внутри батча и дисбаланс нагрузки",
       "kind": "heading"
     },
-    "chapter6.md:429": {
+    "chapter6.md:445": {
       "line_sha256": "83a61fa07cf449fca0f28d52472150d87ced4c8df2457f252c6b29408d6732e1",
       "line_text": "### 6.3.3 От сотен миллиардов до триллионов параметров: как меняются комбинации параллелизма",
       "kind": "heading"
     },
-    "chapter6.md:454": {
+    "chapter6.md:470": {
       "line_sha256": "215c74573f5483cb8044cfc3366f777bf47b0eb183c8c23c9c3e8d5bd6201342",
       "line_text": "### 6.4.1 Определение требований к коммуникации по способу разбиения модели",
       "kind": "heading"
     },
-    "chapter6.md:473": {
+    "chapter6.md:489": {
       "line_sha256": "eeae8c859e5165b615d25e2c3ef0c55c3e4d0629b8614707f21855b94b51dde5",
       "line_text": "### 6.4.2 Кольцо, дерево и раунды коммуникации",
       "kind": "heading"
     },
-    "chapter6.md:540": {
+    "chapter6.md:556": {
       "line_sha256": "b59714cef2bb76c19aa17be939b54eaba1224bd1d14e43ccde1027c1655ec6e9",
       "line_text": "### 6.4.3 Конкуренция библиотеки коммуникации и вычислений за ресурсы",
       "kind": "heading"
     },
-    "chapter6.md:569": {
+    "chapter6.md:585": {
       "line_sha256": "46990b2381e262e956cb8c685dcd9451b48d5bcb29fd76d98712396e388fadc8",
       "line_text": "### 6.4.4 Слияние коммуникаций, запуск ускорителем и специализированная разгрузка",
       "kind": "heading"
     },
-    "chapter6.md:599": {
+    "chapter6.md:615": {
       "line_sha256": "001faeea69c3afe6149c7bb2dd05467e930bfc1476c7066355458ba4371586ae",
       "line_text": "### 6.5.1 Прямые соединения, коммутация и многоуровневые топологии",
       "kind": "heading"
     },
-    "chapter6.md:677": {
+    "chapter6.md:693": {
       "line_sha256": "dddb0c15d037e5c3a32768ebe152666d55176f07d8db33c97149672be9f84a4d",
       "line_text": "### 6.5.2 Среда соединения, электропитание и физический масштаб",
       "kind": "heading"
@@ -1075,17 +1100,17 @@
       "line_text": "### 6.1.3 Различия в требованиях к ресурсам для Prefill, Decode и обучения",
       "kind": "heading"
     },
-    "chapter6.md:705": {
+    "chapter6.md:721": {
       "line_sha256": "43f9d6791acbfe75fa304e7f6710587f9801296e891adf294ac8d733b51174b5",
       "line_text": "### 6.5.3 NVIDIA: от восьми GPU в сервере до серверной стойки",
       "kind": "heading"
     },
-    "chapter6.md:715": {
+    "chapter6.md:731": {
       "line_sha256": "12cef3eba97262eda090d086ccd8af1ce8b7a4b8a09b32e14d06c800b80f3313",
       "line_text": "### 6.5.4 TPU: согласование топологии и нагрузки",
       "kind": "heading"
     },
-    "chapter6.md:735": {
+    "chapter6.md:751": {
       "line_sha256": "9af34366d3922fbd8403bbfa74f8ad7c704e3fd80653ec28605831cffe563518",
       "line_text": "### 6.5.5 Unified Bus и CloudMatrix",
       "kind": "heading"
@@ -1095,32 +1120,32 @@
       "line_text": "### 6.1.4 Обзор способов распараллеливания: какое измерение разбивать",
       "kind": "heading"
     },
-    "chapter6.md:804": {
+    "chapter6.md:820": {
       "line_sha256": "fe57fd4d358c007615844a81e4fd884f20805b8e8c3280d0e54516214432f26d",
       "line_text": "### 6.6.1 Нехватка локальной ёмкости при наличии свободной памяти в системе",
       "kind": "heading"
     },
-    "chapter6.md:822": {
+    "chapter6.md:838": {
       "line_sha256": "c9ce73ce9c7a143764846ec1a579871430b3af073f37f7e94d43c08429152745",
       "line_text": "### 6.6.2 Заимствование памяти и границы доступа",
       "kind": "heading"
     },
-    "chapter6.md:847": {
+    "chapter6.md:863": {
       "line_sha256": "f45b37096ae8e3bdadb10a9d5bc879882d0d0d4ce275af6a5acf3be0f93c2215",
       "line_text": "### 6.6.3 Общая ёмкость и KV-кэш",
       "kind": "heading"
     },
-    "chapter6.md:873": {
+    "chapter6.md:889": {
       "line_sha256": "d4ac1e8f0c1d56470899901e0e2dad7cdc537ae7d93c6fb5f8e460836c78b6f0",
       "line_text": "### 6.7.1 Более крупные группы совместной работы и больше экземпляров инференса",
       "kind": "heading"
     },
-    "chapter6.md:914": {
+    "chapter6.md:930": {
       "line_sha256": "a6f5dfb6cbffc1de826dbf9aff7f15badee30e27684a94d54031db1fb49063bd",
       "line_text": "### 6.7.2 Как мощность, стоимость и область распространения отказа меняют выбор",
       "kind": "heading"
     },
-    "chapter6.md:962": {
+    "chapter6.md:978": {
       "line_sha256": "12d67916f663099eae8ccaebf8256dd85b705c25d8d216bf6fd1ee00a62f37a0",
       "line_text": "### 6.7.3 Как выбрать стратегию разбиения для заданных модели и оборудования",
       "kind": "heading"

@@ -115,7 +115,7 @@
 
 | Что | Значение | Источник |
 |---|---|---|
-| Ускоритель | `rtx4090`: 24 GB, 165,2 TFLOP/s BF16 с накоплением FP32 (плотный) | снимок `bojieli/ai-infra-book@56ecb425` (2026-09-26); сверить со спецификацией |
+| Ускоритель | `rtx4090`: 24 GB, 165,2 TFLOP/s BF16 с накоплением FP32 (плотный) | снимок `bojieli/ai-infra-book@d0cc188b` (2026-09-26); сверить со спецификацией |
 | Доступно на карту | 22 GiB после среды выполнения (из 24 GB ≈ 22,35 GiB) | глава 10 |
 | Соединение | NVLink и P2P между картами нет, обмен идёт через память хоста и PCIe 4.0 x16; отдельная сетевая карта на каждую GPU | глава 10 |
 | Хранилище checkpoint | 7 GB/s | глава 10 |
@@ -266,7 +266,7 @@ GPU·часы только на итерации (без резерва 5 дне
 
 - Порядок плана и гейты: `references/playbooks/plan-training.md`.
 - Работа, срок и критический batch: `references/source-book/chapter10.md:21`; состояние и форматы: `references/source-book/chapter10.md:59`; нижняя граница и MFU: `references/source-book/chapter10.md:116`.
-- Шардирование против повторного вычисления: `references/source-book/chapter10.md:275`; период checkpoint: `references/source-book/chapter10.md:553`.
-- Срок завершения 32 против 48 карт: `references/source-book/chapter10.md:765`; бюджет шага и общая сетевая карта: `references/source-book/chapter10.md:798`.
-- Отстающие (+5,8 s при 48 картах и σ = 5 %): `references/source-book/chapter10.md:600`; 30 % эффективности — шаг 70,2 s: `references/source-book/chapter10.md:814`; предел слабого масштабирования 1,64: `references/source-book/chapter10.md:854`.
+- Шардирование против повторного вычисления: `references/source-book/chapter10.md:281`; период checkpoint: `references/source-book/chapter10.md:559`.
+- Срок завершения 32 против 48 карт: `references/source-book/chapter10.md:771`; бюджет шага и общая сетевая карта: `references/source-book/chapter10.md:804`.
+- Отстающие (+5,8 s при 48 картах и σ = 5 %): `references/source-book/chapter10.md:606`; 30 % эффективности — шаг 70,2 s: `references/source-book/chapter10.md:820`; предел слабого масштабирования 1,64: `references/source-book/chapter10.md:860`.
 - 6ND против поэлементного расчёта: `references/source-book/chapter3.md:442`.

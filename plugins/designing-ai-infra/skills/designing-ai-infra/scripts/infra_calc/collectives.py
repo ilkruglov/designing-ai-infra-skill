@@ -5,7 +5,7 @@
 
 Формулы кольца и дерева перенесены из calculations/src/infra_calc/topics/
 ring_collective.py и tree_collective.py оригинала (github.com/bojieli/ai-infra-book,
-пин 56ecb425), all-to-all — из all_to_all.py там же.
+пин d0cc188b), all-to-all — из all_to_all.py там же.
 """
 
 from __future__ import annotations

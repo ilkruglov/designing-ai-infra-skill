@@ -31,9 +31,9 @@ from typing import Any, cast
 from .checks import require_int_at_least
 
 DATA = Path(__file__).resolve().parents[2] / "data" / "hardware.json"
-# дата — дата коммита 56ecb425 в репозитории оригинала
+# Дата исходного снимка данных; на новом пине содержимое hardware.json не изменилось.
 SNAPSHOT = (
-    "bojieli/ai-infra-book@56ecb425 (2026-09-26), calculations/configs/hardware.json"
+    "bojieli/ai-infra-book@d0cc188b (2026-09-26), calculations/configs/hardware.json"
 )
 _CAPACITY_UNITS = {"GB": 10**9, "GiB": 2**30}
 _SCOPE_COUNTS = {

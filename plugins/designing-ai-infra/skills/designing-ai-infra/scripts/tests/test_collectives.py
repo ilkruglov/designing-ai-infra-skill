@@ -4,7 +4,7 @@ import unittest
 from infra_calc import collectives
 
 ANCHORS = (
-    "references/source-book/chapter6.md:473",
+    "references/source-book/chapter6.md:489",
     "calculations/results/all-to-all-qwen235-t64-balanced.json#sha256=33ad74d2ac4b1441f7b24750e9ed450116e613463e095836147c3478b6c40743",
     "calculations/results/all-to-all-qwen235-t64-hotspot.json#sha256=4fdd302a8ddb0083b582c54f945aeb9d0e5849b9626e370d7fcf7c6fbe7a1fd3",
     "calculations/results/tree-qwen3-8b-t1-p5.json#sha256=00b2c04343387230c21c26b5faa6bc8f90234c227269957f328d0dfbf682d667",

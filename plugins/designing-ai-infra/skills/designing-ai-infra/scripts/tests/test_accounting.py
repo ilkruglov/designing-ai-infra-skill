@@ -12,8 +12,8 @@ ANCHORS = (
     "references/source-book/chapter2.md:418",
     "references/source-book/chapter2.md:542",
     "references/source-book/chapter3.md:611",
-    "references/source-book/chapter6.md:131",
-    "references/source-book/chapter6.md:391",
+    "references/source-book/chapter6.md:147",
+    "references/source-book/chapter6.md:407",
     "references/source-book/chapter8.md:52",
     "calculations/results/kv-comparison-n8192-b1.json#sha256=1a45a55edf05115855d798572a84cec00dddee2418589e2fdc3aed968441a257",
     "calculations/results/chapter2-model-comparison.json#sha256=8d8192a345eb560c3642fc93b4f3ece38740059b09642f266b352d8fc8c1a83e",
@@ -246,7 +246,7 @@ class ExpertUnionTest(unittest.TestCase):
         self.assertEqual(read, 60_442_177_536 - 64 * 2048 * 2)
         self.assertEqual(round(read / 1e9, 2), 60.44)
         # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --tokens 1 --routing balanced
-        # (код автора на 56ecb425): expert_union_per_layer 32,
+        # (код автора на d0cc188b): expert_union_per_layer 32,
         # weight_read_once_per_operator_bytes 16 955 387 904 — минус 4 строки эмбеддингов
         self.assertEqual(
             accounting.batch_decode_weight_read_bytes(s, 32),

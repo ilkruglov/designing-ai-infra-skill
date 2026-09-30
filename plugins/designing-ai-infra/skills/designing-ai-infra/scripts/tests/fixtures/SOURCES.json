@@ -2,43 +2,43 @@
   {
     "file": "configs/qwen3-8b.json",
     "upstream_path": "calculations/configs/models/qwen3-8b/config.json",
-    "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
+    "upstream_commit": "d0cc188b68f49584fd21e05518a5d0f0db79aaf5",
     "sha256": "f7c4eadfbbf522470667b797a3c89be2524832d2d599797248dc304fff447c30"
   },
   {
     "file": "configs/qwen3-30b-a3b.json",
     "upstream_path": "calculations/configs/models/qwen3-30b-a3b/config.json",
-    "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
+    "upstream_commit": "d0cc188b68f49584fd21e05518a5d0f0db79aaf5",
     "sha256": "2850ddb3bf7aecad20b611e2d44f3077fc8193f4827c93beddd4c02ad63c2297"
   },
   {
     "file": "configs/deepseek-v3.json",
     "upstream_path": "calculations/configs/models/deepseek-v3/config.json",
-    "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
+    "upstream_commit": "d0cc188b68f49584fd21e05518a5d0f0db79aaf5",
     "sha256": "cbf0b95dc614de208a109bb5fd4e7eed11385e9c68411d2c17db5319443035d9"
   },
   {
     "file": "configs/deepseek-r1-distill-llama-70b.json",
     "upstream_path": "calculations/configs/models/deepseek-r1-distill-llama-70b/config.json",
-    "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
+    "upstream_commit": "d0cc188b68f49584fd21e05518a5d0f0db79aaf5",
     "sha256": "95ef9768e4741543dbfaf0c274f101855883ff338b235c99eca2b6a4f4abee12"
   },
   {
     "file": "configs/qwen3.5-397b-a17b.json",
     "upstream_path": "calculations/configs/models/qwen3.5-397b-a17b/config.json",
-    "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
+    "upstream_commit": "d0cc188b68f49584fd21e05518a5d0f0db79aaf5",
     "sha256": "3ae7fa89c2f7d1354096418ddaf1331e9e0898a8ca11e804fb6dbaa087efb7da"
   },
   {
     "file": "configs/qwen3-32b.json",
     "upstream_path": "calculations/configs/models/qwen3-32b/config.json",
-    "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
+    "upstream_commit": "d0cc188b68f49584fd21e05518a5d0f0db79aaf5",
     "sha256": "97e295b63283935788fac5e4f8860862a56d4089538cafc93f0431f2ebe483bb"
   },
   {
     "file": "configs/qwen3.6-35b-a3b.json",
     "upstream_path": "calculations/configs/models/qwen3.6-35b-a3b/config.json",
-    "upstream_commit": "56ecb425b07ea6d16e891cba87bf7db416927d09",
+    "upstream_commit": "d0cc188b68f49584fd21e05518a5d0f0db79aaf5",
     "sha256": "93a4693fa9d8392fbfccd4b3c9873f4bfdcb14fdede978b123d07d19675efe99"
   }
 ]

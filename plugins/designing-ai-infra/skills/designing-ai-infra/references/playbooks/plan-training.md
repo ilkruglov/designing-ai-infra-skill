@@ -185,8 +185,8 @@ python3 scripts/calc.py checkpoint --checkpoint-bytes 114670295040 --save-bandwi
 
 - Конспект главы 10: `references/chapters/ch10-training-systems.md`.
 - Работа, срок и критический batch: `references/source-book/chapter10.md:21`; состояние и форматы: `references/source-book/chapter10.md:59`; нижняя граница и MFU: `references/source-book/chapter10.md:116`.
-- ZeRO, распределение состояния, конвейер, буферы градиентов: `references/source-book/chapter10.md:151`, `references/source-book/chapter10.md:275`, `references/source-book/chapter10.md:322`, `references/source-book/chapter10.md:408`.
-- Ввод данных, checkpoint, отказы, отстающие: `references/source-book/chapter10.md:491`, `references/source-book/chapter10.md:507`, `references/source-book/chapter10.md:527`, `references/source-book/chapter10.md:553`, `references/source-book/chapter10.md:600`.
-- RL: `references/source-book/chapter10.md:629`, `references/source-book/chapter10.md:685`; доля сохранённых примеров и 6ND против поэлементного расчёта — `references/chapters/ch03-workloads.md`, `references/source-book/chapter3.md:442`, `references/source-book/chapter3.md:506`.
-- Срок, общая сетевая карта, масштаб модели: `references/source-book/chapter10.md:765`, `references/source-book/chapter10.md:798`, `references/source-book/chapter10.md:832`.
+- ZeRO, распределение состояния, конвейер, буферы градиентов: `references/source-book/chapter10.md:151`, `references/source-book/chapter10.md:281`, `references/source-book/chapter10.md:328`, `references/source-book/chapter10.md:414`.
+- Ввод данных, checkpoint, отказы, отстающие: `references/source-book/chapter10.md:497`, `references/source-book/chapter10.md:513`, `references/source-book/chapter10.md:533`, `references/source-book/chapter10.md:559`, `references/source-book/chapter10.md:606`.
+- RL: `references/source-book/chapter10.md:635`, `references/source-book/chapter10.md:691`; доля сохранённых примеров и 6ND против поэлементного расчёта — `references/chapters/ch03-workloads.md`, `references/source-book/chapter3.md:442`, `references/source-book/chapter3.md:506`.
+- Срок, общая сетевая карта, масштаб модели: `references/source-book/chapter10.md:771`, `references/source-book/chapter10.md:804`, `references/source-book/chapter10.md:838`.
 - Виды параллелизма и кольцо: `references/chapters/ch06-supernodes.md`; межсерверный обмен и 1024 карты: `references/chapters/ch07-datacenter-network.md`.

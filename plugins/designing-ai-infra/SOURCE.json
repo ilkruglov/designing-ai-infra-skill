@@ -5,12 +5,12 @@
   "book": "AI Infra in Depth: Quantitative Analysis and System Design",
   "upstream": {
     "repository": "https://github.com/bojieli/ai-infra-book",
-    "commit": "56ecb425b07ea6d16e891cba87bf7db416927d09"
+    "commit": "d0cc188b68f49584fd21e05518a5d0f0db79aaf5"
   },
   "translation": {
     "repository": "https://github.com/ilkruglov/ai-infra-book",
-    "branch": "russian-community-edition",
-    "commit": "c791c07c8370155474d84b635d41d142f54f4fc9",
+    "branch": "main",
+    "commit": "cb502e11cd89ba2e42999c8dc037b9a05c0e6fe4",
     "path": "book-ru/book"
   },
   "bundled_sources": {
@@ -19,15 +19,15 @@
     "sha256": {
       "preface.md": "dcc29b95190629170626769459e6a4d2482a69181f7e311f9a91e5320d15d759",
       "chapter1.md": "ec0d9242328e17920d0af9bdf9e2478ac095a3d60ac828708ae1219f1c189bcc",
-      "chapter2.md": "af6b1469fb03fe74a05b77e31139b0d616d6874b255c673cd3cfd0a48c0e0fc0",
-      "chapter3.md": "4fecfc8699044d9a5967827b8f249100daa8c3f766d3d780e59bb9c934df2b87",
-      "chapter4.md": "e4db4deb1ea510a1da442080f11dff4a5a8fcd6c7e362676d8ff6db654579794",
-      "chapter5.md": "16a4ee8e93ca33106dfb6e35255a031e823dbcd631b4f6af0a84de62891a5cd7",
-      "chapter6.md": "d8f252431433d0b79bbdeae080a678cf12ba2a98616ccbe241dd30caa8efcb63",
+      "chapter2.md": "5ef148c48e826efb21a72822ccb53633a9c69f490d76452cb8b26e28352eb407",
+      "chapter3.md": "6dc1e6ac666f0b311d340f27088e551345cc6cb70f2bbd9d8c1071cc87ed2955",
+      "chapter4.md": "21da1ad93b8796e195bfb97c2fab1cae9649d86aba81d8f9d955ffbedfca1d4c",
+      "chapter5.md": "333068df825027d7b8d8f6a73c9e8c67b24dfe04d8466f4e467d89cb4834330d",
+      "chapter6.md": "4a2096bdedbc38f37640759a4fe847644484146c1c97da3697db562954ffa5e5",
       "chapter7.md": "078b8369cb71854927e692fbcc461c1eb081306274fa2cf72f5063cf3080ee14",
       "chapter8.md": "86f65a3aef97c3ddf9b516a8e82bee784a7bd0345503ec98c32266f5e9055906",
-      "chapter9.md": "06a4bbb05130a92756bbc105938df6e09052685a41ed84c885e6aeb3c9586935",
-      "chapter10.md": "c50ced35168431a2aa9b5f388d8e2496e69a50f76e0f2046fda45668720a753a",
+      "chapter9.md": "74c422370f9a60ccab22d6c548a0ba5811e4b90d6f815556fe3d955fc327050d",
+      "chapter10.md": "8c6f94721e9d2db0b9d27934eedb8edc1aed15ee563410f97bfc38480d5b66dc",
       "chapter11.md": "6ef70920b274dfea8a5769618a23dc357d3dc6a29e480d01ec0897f2d1217dfc",
       "chapter12.md": "ad77c3f5bc8d3f489eacdeff3c112f628aac0a20e42770e8dff086427c6f0958"
     }

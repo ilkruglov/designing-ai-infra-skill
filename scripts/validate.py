@@ -108,8 +108,8 @@ CJK = re.compile(r"[\u3000-\u9fff]")
 FULL_COMMIT = re.compile(r"\b[0-9a-f]{40}\b")
 UPSTREAM_REFERENCE = re.compile(r"bojieli/ai-infra-book@(?P<sha>[0-9a-f]{7,40})\b")
 TRANSLATION_REFERENCE = re.compile(r"ilkruglov/ai-infra-book@(?P<sha>[0-9a-f]{7,40})\b")
-# Короткий sha без имени репозитория, по контексту: «на коммите `56ecb425`»,
-# «на `56ecb425`», «пин …», «commit …», «@…» в начале слова. Якорь нужен, чтобы
+# Короткий sha без имени репозитория, по контексту: «на коммите `d0cc188b`»,
+# «на `d0cc188b`», «пин …», «commit …», «@…» в начале слова. Якорь нужен, чтобы
 # sha256, blob id и числа не проверялись как пины; @ внутри слова (почта,
 # repo@ref) — не якорь. В sha должна быть буква a–f: десятичное число — не sha,
 # запись вида 16345e6 — тоже число

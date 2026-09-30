@@ -388,7 +388,7 @@ class ComparisonTest(unittest.TestCase):
         self.assertTrue(same_numbers("**x**: 1.66015e+06 s", "**x**: 1660150.4 s"))
 
     def test_identifiers_are_not_numbers(self) -> None:
-        self.assertEqual(numbers("qwen3-8b FP16 chapter8.md 56ecb425"), [])
+        self.assertEqual(numbers("qwen3-8b FP16 chapter8.md d0cc188b"), [])
 
     def test_order_and_prefix(self) -> None:
         actual = ["**a**: 1 B", "**b**: 2 B", "**a**: 3 B"]

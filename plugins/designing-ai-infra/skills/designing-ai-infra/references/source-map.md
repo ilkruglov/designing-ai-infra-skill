@@ -4,8 +4,8 @@
 
 | Источник | Репозиторий | Пин |
 |---|---|---|
-| Перевод | `https://github.com/ilkruglov/ai-infra-book`, ветка `russian-community-edition`, каталог `book-ru/book` | `c791c07c8370155474d84b635d41d142f54f4fc9` |
-| Оригинал и калькуляторы автора | `https://github.com/bojieli/ai-infra-book` | `56ecb425b07ea6d16e891cba87bf7db416927d09` |
+| Перевод | `https://github.com/ilkruglov/ai-infra-book`, ветка `main`, каталог `book-ru/book` | `cb502e11cd89ba2e42999c8dc037b9a05c0e6fe4` |
+| Оригинал и калькуляторы автора | `https://github.com/bojieli/ai-infra-book` | `d0cc188b68f49584fd21e05518a5d0f0db79aaf5` |
 | Снимок ускорителей `data/hardware.json` | `calculations/configs/hardware.json` оригинала на том же пине | sha256 `9c4639ec65ca3b808923a7f332114f800c7930635b6fdac08f49686cddbf0ba2` |
 
 Пины, sha256 снимка и каждого файла книги записаны в `SOURCE.json`; валидатор их сверяет. Лицензия всех источников — Apache-2.0.
@@ -18,6 +18,9 @@
 
 | Тема | Первичный раздел | Конспект |
 |---|---|---|
+| GPU/Ascend: пути данных, L0C, MTE/NDDMA, границы синхронизации | `references/source-book/chapter4.md:89` | `references/chapters/ch04-accelerators.md` |
+| isl schedule и блочная программа TileLang-Ascend | `references/source-book/chapter5.md:568`, `references/source-book/chapter5.md:618`, `references/source-book/chapter5.md:654`, `references/source-book/chapter5.md:690` | `references/chapters/ch05-operators-runtime.md` |
+| Nested BSP и композиция параллелизма; состояние FSDP против активаций SP | `references/source-book/chapter6.md:80`, `references/source-book/chapter10.md:151` | `references/chapters/ch06-supernodes.md`, `references/chapters/ch10-training-systems.md` |
 | Метод книги: оценка порядка величин и вывод решений из ограничений | `references/source-book/preface.md:15`, `references/source-book/preface.md:47` | `references/chapters/ch00-preface.md` |
 | Структура книги и маршруты чтения | `references/source-book/preface.md:63`, `references/source-book/preface.md:96` | `references/chapters/ch00-preface.md` |
 | Шесть уровней AI-системы | `references/source-book/chapter1.md:31` | `references/chapters/ch01-ai-infra-basics.md` |
@@ -42,30 +45,30 @@
 | Вычисления обучения: 6ND против поэлементного расчёта | `references/source-book/chapter3.md:384`, `references/source-book/chapter3.md:442` | `references/chapters/ch03-workloads.md` |
 | Нагрузка RL: rollout, проверка, синхронизация весов | `references/source-book/chapter3.md:476`, `references/source-book/chapter3.md:486`, `references/source-book/chapter3.md:506` | `references/chapters/ch03-workloads.md` |
 | Scaling Law, бюджеты обучения, стоимость жизненного цикла | `references/source-book/chapter3.md:553`, `references/source-book/chapter3.md:611`, `references/source-book/chapter3.md:667` | `references/chapters/ch03-workloads.md` |
-| Состав ускорителя, площадь, энергия, корпус | `references/source-book/chapter4.md:65`, `references/source-book/chapter4.md:89` | `references/chapters/ch04-accelerators.md` |
-| Матричные и векторные блоки, низкая точность | `references/source-book/chapter4.md:214`, `references/source-book/chapter4.md:250`, `references/source-book/chapter4.md:314` | `references/chapters/ch04-accelerators.md` |
-| Иерархия памяти: HBM, унифицированная память, кэши | `references/source-book/chapter4.md:356`, `references/source-book/chapter4.md:396`, `references/source-book/chapter4.md:420` | `references/chapters/ch04-accelerators.md` |
-| Перемещение данных и межсоединения внутри и вне корпуса | `references/source-book/chapter4.md:500`, `references/source-book/chapter4.md:645`, `references/source-book/chapter4.md:666` | `references/chapters/ch04-accelerators.md` |
-| Эволюция NVIDIA, Ascend, Apple | `references/source-book/chapter4.md:706`, `references/source-book/chapter4.md:760`, `references/source-book/chapter4.md:798` | `references/chapters/ch04-accelerators.md` |
-| Специализированные архитектуры: TPU, Groq, Graphcore, Cerebras, фиксированные веса | `references/source-book/chapter4.md:828`, `references/source-book/chapter4.md:840`, `references/source-book/chapter4.md:854` | `references/chapters/ch04-accelerators.md` |
-| Roofline и выбор ускорителя на одной модели | `references/source-book/chapter4.md:906`, `references/source-book/chapter4.md:959` | `references/chapters/ch04-accelerators.md` |
-| Прогноз против измерения; ёмкость, скорость, энергия, стоимость | `references/source-book/chapter4.md:988`, `references/source-book/chapter4.md:1041` | `references/chapters/ch04-accelerators.md` |
+| Состав ускорителя, площадь, энергия, корпус | `references/source-book/chapter4.md:65`, `references/source-book/chapter4.md:104` | `references/chapters/ch04-accelerators.md` |
+| Матричные и векторные блоки, низкая точность | `references/source-book/chapter4.md:229`, `references/source-book/chapter4.md:265`, `references/source-book/chapter4.md:329` | `references/chapters/ch04-accelerators.md` |
+| Иерархия памяти: HBM, унифицированная память, кэши | `references/source-book/chapter4.md:371`, `references/source-book/chapter4.md:411`, `references/source-book/chapter4.md:435` | `references/chapters/ch04-accelerators.md` |
+| Перемещение данных и межсоединения внутри и вне корпуса | `references/source-book/chapter4.md:515`, `references/source-book/chapter4.md:660`, `references/source-book/chapter4.md:681` | `references/chapters/ch04-accelerators.md` |
+| Эволюция NVIDIA, Ascend, Apple | `references/source-book/chapter4.md:721`, `references/source-book/chapter4.md:775`, `references/source-book/chapter4.md:813` | `references/chapters/ch04-accelerators.md` |
+| Специализированные архитектуры: TPU, Groq, Graphcore, Cerebras, фиксированные веса | `references/source-book/chapter4.md:843`, `references/source-book/chapter4.md:855`, `references/source-book/chapter4.md:869` | `references/chapters/ch04-accelerators.md` |
+| Roofline и выбор ускорителя на одной модели | `references/source-book/chapter4.md:921`, `references/source-book/chapter4.md:974` | `references/chapters/ch04-accelerators.md` |
+| Прогноз против измерения; ёмкость, скорость, энергия, стоимость | `references/source-book/chapter4.md:1003`, `references/source-book/chapter4.md:1056` | `references/chapters/ch04-accelerators.md` |
 | Kernel launch, копирование, stream и event | `references/source-book/chapter5.md:25`, `references/source-book/chapter5.md:37`, `references/source-book/chapter5.md:69` | `references/chapters/ch05-operators-runtime.md` |
 | Время отправки и готовности; выполнение kernel на SM | `references/source-book/chapter5.md:96`, `references/source-book/chapter5.md:112` | `references/chapters/ch05-operators-runtime.md` |
 | Тайлинг, повторное чтение, bank shared memory | `references/source-book/chapter5.md:182`, `references/source-book/chapter5.md:225`, `references/source-book/chapter5.md:283` | `references/chapters/ch05-operators-runtime.md` |
 | Слияние операторов, двойная буферизация, FlashAttention | `references/source-book/chapter5.md:343`, `references/source-book/chapter5.md:369`, `references/source-book/chapter5.md:401` | `references/chapters/ch05-operators-runtime.md` |
-| Компилятор: преобразования циклов, AKG, выбор по измерению | `references/source-book/chapter5.md:491`, `references/source-book/chapter5.md:568`, `references/source-book/chapter5.md:594` | `references/chapters/ch05-operators-runtime.md` |
-| CUDA Graph, динамические формы, persistent kernel | `references/source-book/chapter5.md:658`, `references/source-book/chapter5.md:710`, `references/source-book/chapter5.md:742` | `references/chapters/ch05-operators-runtime.md` |
-| От локального выигрыша к запросу: Амдал и критический путь | `references/source-book/chapter5.md:772`, `references/source-book/chapter5.md:784`, `references/source-book/chapter5.md:812` | `references/chapters/ch05-operators-runtime.md` |
+| Компилятор: преобразования циклов, AKG, выбор по измерению | `references/source-book/chapter5.md:491`, `references/source-book/chapter5.md:568`, `references/source-book/chapter5.md:752` | `references/chapters/ch05-operators-runtime.md` |
+| CUDA Graph, динамические формы, persistent kernel | `references/source-book/chapter5.md:816`, `references/source-book/chapter5.md:868`, `references/source-book/chapter5.md:900` | `references/chapters/ch05-operators-runtime.md` |
+| От локального выигрыша к запросу: Амдал и критический путь | `references/source-book/chapter5.md:930`, `references/source-book/chapter5.md:942`, `references/source-book/chapter5.md:970` | `references/chapters/ch05-operators-runtime.md` |
 | Экземпляр и суперузел; сквозной пример Qwen3-235B-A22B | `references/source-book/chapter6.md:13`, `references/source-book/chapter6.md:25`, `references/source-book/chapter6.md:70` | `references/chapters/ch06-supernodes.md` |
-| Шесть видов параллелизма; DP и TP | `references/source-book/chapter6.md:80`, `references/source-book/chapter6.md:117`, `references/source-book/chapter6.md:131` | `references/chapters/ch06-supernodes.md` |
-| SP и CP | `references/source-book/chapter6.md:243`, `references/source-book/chapter6.md:255` | `references/chapters/ch06-supernodes.md` |
-| PP и EP | `references/source-book/chapter6.md:283`, `references/source-book/chapter6.md:312` | `references/chapters/ch06-supernodes.md` |
-| Комбинирование видов параллелизма и масштаб модели | `references/source-book/chapter6.md:352`, `references/source-book/chapter6.md:391`, `references/source-book/chapter6.md:429` | `references/chapters/ch06-supernodes.md` |
-| Коллективные коммуникации: ring, tree, конкуренция с вычислениями | `references/source-book/chapter6.md:454`, `references/source-book/chapter6.md:473`, `references/source-book/chapter6.md:540` | `references/chapters/ch06-supernodes.md` |
-| Физическая организация суперузлов: топологии, NVLink, TPU, Unified Bus | `references/source-book/chapter6.md:599`, `references/source-book/chapter6.md:705`, `references/source-book/chapter6.md:735` | `references/chapters/ch06-supernodes.md` |
-| Пул памяти и общая ёмкость под KV | `references/source-book/chapter6.md:804`, `references/source-book/chapter6.md:822`, `references/source-book/chapter6.md:847` | `references/chapters/ch06-supernodes.md` |
-| Размер суперузла и выбор стратегии разбиения | `references/source-book/chapter6.md:873`, `references/source-book/chapter6.md:962`, `references/source-book/chapter6.md:1004` | `references/chapters/ch06-supernodes.md` |
+| Шесть видов параллелизма; DP и TP | `references/source-book/chapter6.md:80`, `references/source-book/chapter6.md:133`, `references/source-book/chapter6.md:147` | `references/chapters/ch06-supernodes.md` |
+| SP и CP | `references/source-book/chapter6.md:259`, `references/source-book/chapter6.md:271` | `references/chapters/ch06-supernodes.md` |
+| PP и EP | `references/source-book/chapter6.md:299`, `references/source-book/chapter6.md:328` | `references/chapters/ch06-supernodes.md` |
+| Комбинирование видов параллелизма и масштаб модели | `references/source-book/chapter6.md:368`, `references/source-book/chapter6.md:407`, `references/source-book/chapter6.md:445` | `references/chapters/ch06-supernodes.md` |
+| Коллективные коммуникации: ring, tree, конкуренция с вычислениями | `references/source-book/chapter6.md:470`, `references/source-book/chapter6.md:489`, `references/source-book/chapter6.md:556` | `references/chapters/ch06-supernodes.md` |
+| Физическая организация суперузлов: топологии, NVLink, TPU, Unified Bus | `references/source-book/chapter6.md:615`, `references/source-book/chapter6.md:721`, `references/source-book/chapter6.md:751` | `references/chapters/ch06-supernodes.md` |
+| Пул памяти и общая ёмкость под KV | `references/source-book/chapter6.md:820`, `references/source-book/chapter6.md:838`, `references/source-book/chapter6.md:863` | `references/chapters/ch06-supernodes.md` |
+| Размер суперузла и выбор стратегии разбиения | `references/source-book/chapter6.md:889`, `references/source-book/chapter6.md:978`, `references/source-book/chapter6.md:1020` | `references/chapters/ch06-supernodes.md` |
 | Модель трафика, rail, сеть Clos, переподписка | `references/source-book/chapter7.md:17`, `references/source-book/chapter7.md:41` | `references/chapters/ch07-datacenter-network.md` |
 | DP между серверами и иерархические кольца | `references/source-book/chapter7.md:120` | `references/chapters/ch07-datacenter-network.md` |
 | TP, PP и EP между серверами | `references/source-book/chapter7.md:208`, `references/source-book/chapter7.md:239` | `references/chapters/ch07-datacenter-network.md` |
@@ -93,13 +96,13 @@
 | Сравнение схем развёртывания | `references/source-book/chapter9.md:734`, `references/source-book/chapter9.md:752`, `references/source-book/chapter9.md:793` | `references/chapters/ch09-distributed-inference.md` |
 | Задача обучения, критический batch, состояние обучения | `references/source-book/chapter10.md:21`, `references/source-book/chapter10.md:59` | `references/chapters/ch10-training-systems.md` |
 | Нижняя граница обучения по вычислениям и MFU | `references/source-book/chapter10.md:116` | `references/chapters/ch10-training-systems.md` |
-| ZeRO/FSDP, повторное вычисление, выгрузка | `references/source-book/chapter10.md:151`, `references/source-book/chapter10.md:205`, `references/source-book/chapter10.md:237` | `references/chapters/ch10-training-systems.md` |
-| Micro-batch и конвейер: fill–drain, 1F1B, пузыри | `references/source-book/chapter10.md:301`, `references/source-book/chapter10.md:322` | `references/chapters/ch10-training-systems.md` |
-| Перекрытие коммуникаций; MoE и длинный контекст в обучении | `references/source-book/chapter10.md:408`, `references/source-book/chapter10.md:438` | `references/chapters/ch10-training-systems.md` |
-| Checkpoint: состав, асинхронное сохранение, период | `references/source-book/chapter10.md:507`, `references/source-book/chapter10.md:527`, `references/source-book/chapter10.md:553` | `references/chapters/ch10-training-systems.md` |
-| Ввод данных и отстающие узлы | `references/source-book/chapter10.md:491`, `references/source-book/chapter10.md:600` | `references/chapters/ch10-training-systems.md` |
-| Системы RL: ресурсы этапов, синхронизация весов, асинхронность | `references/source-book/chapter10.md:629`, `references/source-book/chapter10.md:645`, `references/source-book/chapter10.md:685` | `references/chapters/ch10-training-systems.md` |
-| Срок обучения и выбор оборудования | `references/source-book/chapter10.md:765`, `references/source-book/chapter10.md:798`, `references/source-book/chapter10.md:814` | `references/chapters/ch10-training-systems.md` |
+| ZeRO/FSDP, повторное вычисление, выгрузка | `references/source-book/chapter10.md:151`, `references/source-book/chapter10.md:211`, `references/source-book/chapter10.md:243` | `references/chapters/ch10-training-systems.md` |
+| Micro-batch и конвейер: fill–drain, 1F1B, пузыри | `references/source-book/chapter10.md:307`, `references/source-book/chapter10.md:328` | `references/chapters/ch10-training-systems.md` |
+| Перекрытие коммуникаций; MoE и длинный контекст в обучении | `references/source-book/chapter10.md:414`, `references/source-book/chapter10.md:444` | `references/chapters/ch10-training-systems.md` |
+| Checkpoint: состав, асинхронное сохранение, период | `references/source-book/chapter10.md:513`, `references/source-book/chapter10.md:533`, `references/source-book/chapter10.md:559` | `references/chapters/ch10-training-systems.md` |
+| Ввод данных и отстающие узлы | `references/source-book/chapter10.md:497`, `references/source-book/chapter10.md:606` | `references/chapters/ch10-training-systems.md` |
+| Системы RL: ресурсы этапов, синхронизация весов, асинхронность | `references/source-book/chapter10.md:635`, `references/source-book/chapter10.md:651`, `references/source-book/chapter10.md:691` | `references/chapters/ch10-training-systems.md` |
+| Срок обучения и выбор оборудования | `references/source-book/chapter10.md:771`, `references/source-book/chapter10.md:804`, `references/source-book/chapter10.md:820` | `references/chapters/ch10-training-systems.md` |
 | Потребность агентной задачи в CPU и времени среды | `references/source-book/chapter11.md:33`, `references/source-book/chapter11.md:62`, `references/source-book/chapter11.md:101` | `references/chapters/ch11-resource-scheduling.md` |
 | Изоляция и жизненный цикл сред выполнения | `references/source-book/chapter11.md:121`, `references/source-book/chapter11.md:203`, `references/source-book/chapter11.md:235` | `references/chapters/ch11-resource-scheduling.md` |
 | Общий пул: групповое выделение, приоритеты, RL | `references/source-book/chapter11.md:294`, `references/source-book/chapter11.md:322`, `references/source-book/chapter11.md:370` | `references/chapters/ch11-resource-scheduling.md` |
@@ -111,7 +114,7 @@
 | Глобальная сеть: соединение, окно, потери пакетов | `references/source-book/chapter12.md:319`, `references/source-book/chapter12.md:329`, `references/source-book/chapter12.md:359` | `references/chapters/ch12-edge-cloud.md` |
 | Беспроводная связь, сроки, два пути | `references/source-book/chapter12.md:462`, `references/source-book/chapter12.md:486`, `references/source-book/chapter12.md:500` | `references/chapters/ch12-edge-cloud.md` |
 | Выбор между устройством, периферией и облаком | `references/source-book/chapter12.md:538`, `references/source-book/chapter12.md:556`, `references/source-book/chapter12.md:630` | `references/chapters/ch12-edge-cloud.md` |
-| Заблуждения и ловушки глав | `references/source-book/chapter1.md:438`, `references/source-book/chapter5.md:837`, `references/source-book/chapter10.md:854` | `references/fallacies.md` |
+| Заблуждения и ловушки глав | `references/source-book/chapter1.md:438`, `references/source-book/chapter5.md:995`, `references/source-book/chapter10.md:860` | `references/fallacies.md` |
 | Краткие справочники и справочные таблицы чисел | `references/source-book/chapter1.md:450`, `references/source-book/chapter2.md:935` | `references/numbers.md` |
 
 Остальные разделы заблуждений: `references/source-book/chapter2.md:903`, `references/source-book/chapter3.md:701`, раздел 7.6.5 — `references/source-book/chapter7.md:1009`. Порядок анализа на одной странице — `references/cheatsheet.md`, термины — `references/glossary.md`.
@@ -120,13 +123,13 @@
 
 Сноски и ссылки в тексте книги ведут на материалы репозитория оригинала относительными путями: `../calculations/`, `../experiments/`, `../references/`, `../research/`, а также `../case-studies/` и `../archive/`. В переводе и в этом скилле этих файлов нет: такой путь — не локальный файл и не якорь на книгу. Каталог `../references/` оригинала — это не `references/` скилла.
 
-Главы оригинала лежат в подкаталоге `book` его репозитория, поэтому `../` означает корень репозитория оригинала. Путь разрешается приписыванием префикса:
+Главы оригинала лежат в подкаталоге `manuscripts` его репозитория, поэтому `../` означает корень репозитория оригинала. Путь разрешается приписыванием префикса:
 
 ```text
-https://github.com/bojieli/ai-infra-book/tree/56ecb425b07ea6d16e891cba87bf7db416927d09/
+https://github.com/bojieli/ai-infra-book/tree/d0cc188b68f49584fd21e05518a5d0f0db79aaf5/
 ```
 
-Например, `../calculations/results/decode-budget-base.md` из сноски главы 1 — это `https://github.com/bojieli/ai-infra-book/tree/56ecb425b07ea6d16e891cba87bf7db416927d09/calculations/results/decode-budget-base.md` (для файла GitHub откроет ту же ревизию через `/blob/`). Берите именно этот коммит: на других коммитах результаты и эксперименты могут отличаться или отсутствовать.
+Например, `../calculations/results/decode-budget-base.md` из сноски главы 1 — это `https://github.com/bojieli/ai-infra-book/tree/d0cc188b68f49584fd21e05518a5d0f0db79aaf5/calculations/results/decode-budget-base.md` (для файла GitHub откроет ту же ревизию через `/blob/`). Берите именно этот коммит: на других коммитах результаты и эксперименты могут отличаться или отсутствовать.
 
 | Путь в сноске | Что там |
 |---|---|
@@ -137,13 +140,13 @@ https://github.com/bojieli/ai-infra-book/tree/56ecb425b07ea6d16e891cba87bf7db416
 | `../case-studies/` | разборы отдельных случаев, например прерываний запусков RL |
 | `../archive/` | архив планов глав |
 
-Ссылки вида `chNN/figure-*.svg` — рисунки; в перевод и в скилл они не включены, подпись рисунка остаётся в тексте.
+Ссылки вида `chNN/figure-*.svg` — рисунки; в переводе они есть, но в скилл не включены, подпись рисунка остаётся в тексте.
 
 Для точного воспроизведения сценария книги нужен checkout оригинала на пине и команда автора из `calculations/`: калькулятор скилла `scripts/calc.py` переносит общие формулы, а не все сценарные команды автора.
 
 ## Drift gate
 
-Книга и снимок железа зафиксированы на дату книги: текст — сентябрь 2026, `data/hardware.json` — снимок оригинала на коммите `56ecb425` от 2026-09-26 (151 запись, у каждого числа `source_id` и `locator`). Не используйте их как подтверждение текущего состояния рынка. Перед утверждением о любом из пунктов ниже:
+Книга и снимок железа зафиксированы на дату книги: текст — сентябрь 2026, `data/hardware.json` — снимок оригинала на коммите `d0cc188b` от 2026-09-26 (151 запись, у каждого числа `source_id` и `locator`). Не используйте их как подтверждение текущего состояния рынка. Перед утверждением о любом из пунктов ниже:
 
 | Что | Что проверить | Где |
 |---|---|---|

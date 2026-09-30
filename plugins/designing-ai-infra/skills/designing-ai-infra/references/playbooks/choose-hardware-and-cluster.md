@@ -208,9 +208,9 @@ python3 scripts/calc.py serving --device b200-sxm --weights 16381470720 --weight
 ## Источники
 
 - Конспекты: `references/chapters/ch04-accelerators.md`, `references/chapters/ch06-supernodes.md`, `references/chapters/ch07-datacenter-network.md`.
-- Требования матричного умножения, энергия и мощность, низкая точность: `references/source-book/chapter4.md:15`, `references/source-book/chapter4.md:89`, `references/source-book/chapter4.md:314`.
-- Ёмкость, транзакции в полёте, обмен между ускорителями, Apple: `references/source-book/chapter4.md:356`, `references/source-book/chapter4.md:420`, `references/source-book/chapter4.md:666`, `references/source-book/chapter4.md:798`.
-- Модель времени, сравнение ускорителей, стоимость и энергия: `references/source-book/chapter4.md:906`, `references/source-book/chapter4.md:959`, `references/source-book/chapter4.md:1041`.
-- Экземпляр и суперузел, кольцо и дерево, топология, питание: `references/source-book/chapter6.md:13`, `references/source-book/chapter6.md:473`, `references/source-book/chapter6.md:599`, `references/source-book/chapter6.md:677`.
-- Группа против экземпляров, стоимость, процедура выбора, размер суперузла: `references/source-book/chapter6.md:873`, `references/source-book/chapter6.md:914`, `references/source-book/chapter6.md:962`, `references/source-book/chapter6.md:1004`.
+- Требования матричного умножения, энергия и мощность, низкая точность: `references/source-book/chapter4.md:15`, `references/source-book/chapter4.md:104`, `references/source-book/chapter4.md:329`.
+- Ёмкость, транзакции в полёте, обмен между ускорителями, Apple: `references/source-book/chapter4.md:371`, `references/source-book/chapter4.md:435`, `references/source-book/chapter4.md:681`, `references/source-book/chapter4.md:813`.
+- Модель времени, сравнение ускорителей, стоимость и энергия: `references/source-book/chapter4.md:921`, `references/source-book/chapter4.md:974`, `references/source-book/chapter4.md:1056`.
+- Экземпляр и суперузел, кольцо и дерево, топология, питание: `references/source-book/chapter6.md:13`, `references/source-book/chapter6.md:489`, `references/source-book/chapter6.md:615`, `references/source-book/chapter6.md:693`.
+- Группа против экземпляров, стоимость, процедура выбора, размер суперузла: `references/source-book/chapter6.md:889`, `references/source-book/chapter6.md:930`, `references/source-book/chapter6.md:978`, `references/source-book/chapter6.md:1020`.
 - Сеть: `references/source-book/chapter7.md:41`, `references/source-book/chapter7.md:120`, `references/source-book/chapter7.md:269`, `references/source-book/chapter7.md:299`, `references/source-book/chapter7.md:908`, `references/source-book/chapter7.md:938`.
