@@ -17,6 +17,7 @@ from source_anchors import (
     HEADING,
     LOCAL_SOURCE_ANCHOR,
     LOCK_RELATIVE_PATH,
+    SOURCE_BOOK_DIRECTORY,
     anchor_key,
     iter_skill_documents,
     normalize,
@@ -888,14 +889,8 @@ def validate_source_lock(root: Path, lock: dict, errors: list[str]) -> None:
             errors.append("invalid lock: anchors must be an object")
         return
 
-    allowed_inline = lock.get("allowed_inline")
-    allowed_keys = (
-        {item.get("anchor") for item in allowed_inline if isinstance(item, dict)}
-        if isinstance(allowed_inline, list)
-        else set()
-    )
-
     line_cache: dict[Path, list[str]] = {}
+    allowed_keys = _valid_allowlist(root, lock, anchors, line_cache, errors)
     for document in iter_skill_documents(root):
         relative_path = document.relative_to(root)
         text = document.read_text(encoding="utf-8")
@@ -915,7 +910,7 @@ def validate_source_lock(root: Path, lock: dict, errors: list[str]) -> None:
                 errors.append(
                     f"anchor is not a heading: {key} (referenced in {relative_path}); "
                     "point at a section heading or add it to allowed_inline "
-                    "with a reason"
+                    "with a reason and the line_sha256 of that line"
                 )
             if source_path not in line_cache:
                 line_cache[source_path] = source_path.read_text(
@@ -930,6 +925,58 @@ def validate_source_lock(root: Path, lock: dict, errors: list[str]) -> None:
                     f"anchor drift: {key} no longer matches the locked line; "
                     "re-run scripts/build_source_lock.py and review the diff"
                 )
+
+
+def _valid_allowlist(
+    root: Path,
+    lock: dict,
+    anchors: dict,
+    line_cache: dict[Path, list[str]],
+    errors: list[str],
+) -> set[str]:
+    """Якоря allowed_inline, чья запись привязана к той же строке книги.
+
+    Запись разрешает абзац, а не номер: её line_sha256 обязан совпадать и с
+    хешем якоря в lock, и с хешем строки книги под этим номером. Иначе после
+    сдвига книги разрешение молча перешло бы на другой абзац. Запись без
+    хеша, с чужим или устаревшим хешем — ошибка, и якорь не разрешён.
+    """
+    allowed_inline = lock.get("allowed_inline")
+    if not isinstance(allowed_inline, list):
+        return set()
+    book_root = root / SOURCE_BOOK_DIRECTORY
+    allowed: set[str] = set()
+    for item in allowed_inline:
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("anchor"))
+        name, _, number = key.rpartition(":")
+        entry = anchors.get(key)
+        path = book_root / name
+        actual = None
+        if number.isdigit() and path.is_file():
+            if path not in line_cache:
+                line_cache[path] = path.read_text(encoding="utf-8").splitlines()
+            lines = line_cache[path]
+            if 1 <= int(number) <= len(lines):
+                actual = hashlib.sha256(
+                    lines[int(number) - 1].encode("utf-8")
+                ).hexdigest()
+        digest = item.get("line_sha256")
+        if (
+            entry is None
+            or actual is None
+            or digest != entry.get("line_sha256")
+            or digest != actual
+        ):
+            errors.append(
+                f"allowed_inline entry does not match the book line: {key}; "
+                "an allowlisted paragraph is bound to line_sha256 of that line, "
+                "re-check the anchor and record the hash of the line you allow"
+            )
+            continue
+        allowed.add(key)
+    return allowed
 
 
 def validate_chapter_quotes(root: Path, errors: list[str]) -> None:

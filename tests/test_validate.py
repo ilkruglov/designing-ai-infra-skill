@@ -593,13 +593,84 @@ class SourceLockTests(unittest.TestCase):
             lock = json.loads(self.lock_path(copied_root).read_text(encoding="utf-8"))
             # к разрешениям репозитория добавляется своё, а не заменяет их
             lock["allowed_inline"].append(
-                {"anchor": "chapter1.md:15", "reason": "формула вводится в абзаце"}
+                {
+                    "anchor": "chapter1.md:15",
+                    "line_sha256": lock["anchors"]["chapter1.md:15"]["line_sha256"],
+                    "reason": "формула вводится в абзаце",
+                }
             )
             self.write_lock(copied_root, lock)
 
             result = run_validator(copied_root)
 
-        self.assertNotIn("anchor is not a heading", result.stdout)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def allowlist_errors(self, digest: str | None) -> list[str]:
+        """Ошибки валидатора, когда разрешение chapter1.md:15 несёт хеш digest
+        (None — без хеша)."""
+        with repository_copy() as copied_root:
+            skill_path = copied_root / SKILL_DIRECTORY / "SKILL.md"
+            skill_path.write_text(
+                skill_path.read_text(encoding="utf-8")
+                + "\n\nПроверка: `references/source-book/chapter1.md:15`.\n",
+                encoding="utf-8",
+            )
+            rebuild_lock(copied_root)
+            lock = json.loads(self.lock_path(copied_root).read_text(encoding="utf-8"))
+            item = {"anchor": "chapter1.md:15", "reason": "формула вводится в абзаце"}
+            if digest is not None:
+                item["line_sha256"] = digest
+            lock["allowed_inline"].append(item)
+            self.write_lock(copied_root, lock)
+
+            return error_lines(run_validator(copied_root))
+
+    def test_rejects_allowlist_entry_with_forged_hash(self) -> None:
+        errors = self.allowlist_errors("0" * 64)
+
+        self.assertTrue(
+            any("allowed_inline entry does not match" in e for e in errors), errors
+        )
+        self.assertTrue(
+            any("anchor is not a heading: chapter1.md:15" in e for e in errors), errors
+        )
+
+    def test_rejects_allowlist_entry_without_hash(self) -> None:
+        errors = self.allowlist_errors(None)
+
+        self.assertTrue(
+            any("allowed_inline entry does not match" in e for e in errors), errors
+        )
+        self.assertTrue(
+            any("anchor is not a heading: chapter1.md:15" in e for e in errors), errors
+        )
+
+    def test_book_shift_drops_allowlist_entry(self) -> None:
+        # Под разрешённым номером оказывается другая строка книги: пересборка
+        # lock отбрасывает разрешение, и ссылка снова считается абзацем
+        with repository_copy() as copied_root:
+            lock = json.loads(self.lock_path(copied_root).read_text(encoding="utf-8"))
+            allowed = [item["anchor"] for item in lock["allowed_inline"]]
+            self.assertIn("chapter6.md:116", allowed)
+            book = (
+                copied_root
+                / SKILL_DIRECTORY
+                / "references"
+                / "source-book"
+                / "chapter6.md"
+            )
+            lines = book.read_text(encoding="utf-8").split("\n")
+            lines[114], lines[115] = lines[115], lines[114]
+            book.write_text("\n".join(lines), encoding="utf-8")
+            rebuild_lock(copied_root)
+            rebuilt = json.loads(
+                self.lock_path(copied_root).read_text(encoding="utf-8")
+            )
+
+            result = run_validator(copied_root)
+
+        self.assertEqual([], rebuilt["allowed_inline"])
+        self.assertIn("anchor is not a heading: chapter6.md:116", result.stdout)
 
     def test_rejects_anchor_range_beyond_file(self) -> None:
         # references/patterns.md ещё не существует в этом репозитории; носителем
