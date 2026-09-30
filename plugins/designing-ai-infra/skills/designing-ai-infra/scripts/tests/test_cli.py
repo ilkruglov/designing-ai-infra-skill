@@ -906,8 +906,8 @@ class ModelParallelCommandTest(unittest.TestCase):
                 )
                 self.assertEqual(v["kv_resident_bytes_per_device"]["value"], 4 * 2**30)
                 self.assertEqual(v["kv_bytes_per_token_per_device"]["value"], 32_768)
-        notes = " ".join(v["kv_bytes_per_token_per_device"]["notes"])
-        self.assertIn("дублиру", notes)
+                notes = " ".join(v["kv_bytes_per_token_per_device"]["notes"])
+                self.assertIn("дублиру", notes)
         # chapter6.md:156: «BF16-веса плотной модели Qwen3-32B занимают около 65,52 GB»
         v = values("model", "--config", self.QWEN3_32B, "--tp", "2")
         self.assertEqual(
