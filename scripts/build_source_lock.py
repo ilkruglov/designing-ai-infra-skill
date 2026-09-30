@@ -4,6 +4,8 @@
 Валидатор не обновляет lock самостоятельно: расхождение — ошибка. Обновление
 выполняется только этим скриптом и попадает в diff отдельным изменением,
 поэтому сдвиг текста книги нельзя «залечить» незаметно для ревьюера.
+Список allowed_inline (якоря-абзацы, разрешённые с причиной) переносится из
+текущего lock для якорей, на которые ещё ссылаются документы.
 """
 
 from __future__ import annotations
@@ -57,8 +59,33 @@ def build_lock(root: Path) -> dict:
             "translation_commit": TRANSLATION_COMMIT,
         },
         "anchors": dict(sorted(anchors.items())),
-        "allowed_inline": [],
+        "allowed_inline": _kept_allowlist(root, anchors),
     }
+
+
+def _kept_allowlist(root: Path, anchors: dict[str, dict[str, str]]) -> list[dict]:
+    """Разрешения allowed_inline из текущего lock для якорей, на которые
+    по-прежнему ссылаются документы.
+
+    Разрешение на якорь-абзац с причиной вносит человек; пересборка после
+    сдвига книги не должна его стирать. Разрешение для якоря, который исчез
+    из документов, отбрасывается, чтобы не разрешать заранее чужую ссылку.
+    """
+    lock_path = root / LOCK_RELATIVE_PATH
+    if not lock_path.is_file():
+        return []
+    try:
+        current = json.loads(lock_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    allowlist = current.get("allowed_inline") if isinstance(current, dict) else None
+    if not isinstance(allowlist, list):
+        return []
+    return [
+        item
+        for item in allowlist
+        if isinstance(item, dict) and item.get("anchor") in anchors
+    ]
 
 
 def main() -> int:

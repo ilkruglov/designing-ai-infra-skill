@@ -591,9 +591,10 @@ class SourceLockTests(unittest.TestCase):
                 capture_output=True,
             )
             lock = json.loads(self.lock_path(copied_root).read_text(encoding="utf-8"))
-            lock["allowed_inline"] = [
+            # к разрешениям репозитория добавляется своё, а не заменяет их
+            lock["allowed_inline"].append(
                 {"anchor": "chapter1.md:15", "reason": "формула вводится в абзаце"}
-            ]
+            )
             self.write_lock(copied_root, lock)
 
             result = run_validator(copied_root)
