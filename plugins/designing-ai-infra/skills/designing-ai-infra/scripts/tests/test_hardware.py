@@ -4,9 +4,9 @@ from pathlib import Path
 from infra_calc import hardware
 
 ANCHORS = (
-    "references/source-book/chapter1.md:152",
-    "references/source-book/chapter1.md:263",
-    "references/source-book/chapter1.md:450",
+    "references/source-book/chapter1.md:160",
+    "references/source-book/chapter1.md:271",
+    "references/source-book/chapter1.md:458",
     "references/source-book/chapter8.md:3",
 )
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -14,17 +14,17 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 class HardwareTest(unittest.TestCase):
     def test_h100_values_used_in_book(self) -> None:
-        # chapter1.md:268: «\frac{70\ \mathrm{GB}}{3350\ \mathrm{GB/s}}» и
+        # chapter1.md:276: «\frac{70\ \mathrm{GB}}{3350\ \mathrm{GB/s}}» и
         # «\frac{140\ \mathrm{GFLOPs}}{989400\ \mathrm{GFLOP/s}}»
         h100 = hardware.device("h100-sxm")
         self.assertEqual(hardware.bandwidth(h100), 3.35e12)
         self.assertEqual(hardware.peak_flops(h100, "BF16"), 989.4e12)
-        # chapter1.md:182: «Ёмкость видеопамяти (GB) | 24 | 80 | 80»
+        # chapter1.md:190: «Ёмкость видеопамяти (GB) | 24 | 80 | 80»
         self.assertEqual(h100.memory_bytes, 80 * 10**9)
 
     def test_reference_table_of_section_1_2_2(self) -> None:
-        # chapter1.md:178: пик плотных вычислений «с входными данными BF16 и накоплением FP32»
-        # chapter1.md:182-184: 24/80/80 GB, 1.008/2.039/3.35 TB/s, 165.2/312/989.4 TFLOP/s
+        # chapter1.md:186: пик плотных вычислений «с входными данными BF16 и накоплением FP32»
+        # chapter1.md:190-192: 24/80/80 GB, 1.008/2.039/3.35 TB/s, 165.2/312/989.4 TFLOP/s
         for device_id, capacity, bandwidth, peak in (
             ("rtx4090", 24e9, 1.008e12, 165.2e12),
             ("a100-80gb-sxm", 80e9, 2.039e12, 312e12),
@@ -37,14 +37,14 @@ class HardwareTest(unittest.TestCase):
                 self.assertEqual(hardware.peak_flops(dev, "BF16"), peak)
 
     def test_rtx_pro_6000_workstation(self) -> None:
-        # chapter1.md:464: «При пиковой производительности матричных вычислений 503.8 TFLOP/s»,
+        # chapter1.md:472: «При пиковой производительности матричных вычислений 503.8 TFLOP/s»,
         # «при пропускной способности видеопамяти 1.792 TB/s»
         dev = hardware.device("rtx-pro6000-blackwell-ws")
         self.assertEqual(hardware.peak_flops(dev, "BF16"), 503.8e12)
         self.assertEqual(hardware.bandwidth(dev), 1.792e12)
 
     def test_accumulator_defaults_to_fp32(self) -> None:
-        # chapter1.md:178: книга считает с накоплением FP32; у RTX 4090 в снимке
+        # chapter1.md:186: книга считает с накоплением FP32; у RTX 4090 в снимке
         # FP16 с накоплением FP32 — 165.2, с накоплением FP16 — 330.3 (data/hardware.json)
         rtx = hardware.device("rtx4090")
         self.assertEqual(hardware.peak_flops(rtx, "FP16"), 165.2e12)
@@ -67,7 +67,7 @@ class HardwareTest(unittest.TestCase):
 
     def test_unspecified_sparsity_is_never_a_denominator(self) -> None:
         # в снимке у rtx-pro6000-blackwell-server BF16 только запись 1000 с sparsity
-        # «unspecified»; плотный пик книги — 503.8 (chapter1.md:464)
+        # «unspecified»; плотный пик книги — 503.8 (chapter1.md:472)
         server = hardware.device("rtx-pro6000-blackwell-server")
         with self.assertRaises(ValueError):
             hardware.peak_flops(server, "BF16", accumulator=None)
@@ -88,7 +88,7 @@ class HardwareTest(unittest.TestCase):
             hardware.peak_flops(h100, "FP4")
         message = str(caught.exception)
         self.assertIn("BF16/FP32/tensor/dense", message)
-        self.assertIn("d0cc188b", message)
+        self.assertIn("3bdcb4fc", message)
         self.assertNotIn("INT8", message)
 
     def test_missing_bandwidth_asks_for_argument(self) -> None:
@@ -101,7 +101,7 @@ class HardwareTest(unittest.TestCase):
         with self.assertRaises(ValueError) as caught:
             hardware.bandwidth(missing[0])
         self.assertIn("--bandwidth", str(caught.exception))
-        self.assertIn("d0cc188b", str(caught.exception))
+        self.assertIn("3bdcb4fc", str(caught.exception))
 
     def test_unknown_device_suggests_ids(self) -> None:
         with self.assertRaises(KeyError) as caught:
@@ -109,11 +109,11 @@ class HardwareTest(unittest.TestCase):
         self.assertIn("h100-sxm", str(caught.exception))
 
     def test_snapshot_is_named(self) -> None:
-        self.assertIn("d0cc188b", hardware.SNAPSHOT)
+        self.assertIn("3bdcb4fc", hardware.SNAPSHOT)
 
     def test_snapshot_is_dated(self) -> None:
-        # дата коммита d0cc188b: git -C .tmp/upcalc log -1 --format=%cs d0cc188b
-        self.assertIn("2026-09-30", hardware.SNAPSHOT)
+        # дата коммита 3bdcb4fc: git -C .tmp/upcalc log -1 --format=%cs 3bdcb4fc
+        self.assertIn("2026-10-01", hardware.SNAPSHOT)
 
 
 class ScopeTest(unittest.TestCase):
@@ -153,7 +153,7 @@ class LoaderTest(unittest.TestCase):
 
     def test_peaks_of_cached_snapshot_are_read_only(self) -> None:
         # снимок кэшируется: запись в dev.peaks[i] изменила бы пик для всех следующих
-        # вызовов; chapter1.md:268 — пик H100 BF16 989.4 TFLOP/s остаётся прежним
+        # вызовов; chapter1.md:276 — пик H100 BF16 989.4 TFLOP/s остаётся прежним
         dev = hardware.device("h100-sxm")
         peak = dev.peaks[0]
         with self.assertRaises(TypeError):

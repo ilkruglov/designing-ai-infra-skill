@@ -5,24 +5,24 @@
   "book": "AI Infra in Depth: Quantitative Analysis and System Design",
   "upstream": {
     "repository": "https://github.com/bojieli/ai-infra-book",
-    "commit": "d0cc188b68f49584fd21e05518a5d0f0db79aaf5"
+    "commit": "3bdcb4fcab73010eeaccf31cc10a8242a895d82e"
   },
   "translation": {
     "repository": "https://github.com/ilkruglov/ai-infra-book",
     "branch": "main",
-    "commit": "ec343c9d23a69dca5a4922b242c26b77b1025e6d",
+    "commit": "c9f4ec00ac658416c29857b1632a9ddbfe2ace3c",
     "path": "book-ru/book"
   },
   "bundled_sources": {
     "directory": "skills/designing-ai-infra/references/source-book",
     "files": ["preface.md", "chapter1.md", "chapter2.md", "chapter3.md", "chapter4.md", "chapter5.md", "chapter6.md", "chapter7.md", "chapter8.md", "chapter9.md", "chapter10.md", "chapter11.md", "chapter12.md"],
     "sha256": {
-      "preface.md": "dcc29b95190629170626769459e6a4d2482a69181f7e311f9a91e5320d15d759",
-      "chapter1.md": "ec0d9242328e17920d0af9bdf9e2478ac095a3d60ac828708ae1219f1c189bcc",
+      "preface.md": "2f7d62041b5dcff8032af164ab98ba5716b86ff8c681dc7d7bbab26e1ba3e45a",
+      "chapter1.md": "5fd2b187301b1f61ae409f281820b7befa865e94a8986a2c5e92f5325b176ae4",
       "chapter2.md": "5ef148c48e826efb21a72822ccb53633a9c69f490d76452cb8b26e28352eb407",
       "chapter3.md": "6dc1e6ac666f0b311d340f27088e551345cc6cb70f2bbd9d8c1071cc87ed2955",
-      "chapter4.md": "21da1ad93b8796e195bfb97c2fab1cae9649d86aba81d8f9d955ffbedfca1d4c",
-      "chapter5.md": "bab6aaeaf650f3c59b2e3de2e61aec2dd06c9bf2d384c6e602ddc0a2fe73d8e0",
+      "chapter4.md": "8d1bb9c62f7bbf4883a5f7eaa9201fd567db97493921e79f456d6e896e352d27",
+      "chapter5.md": "04b2655585fa8ef4e22e186be8d8fd705a2ab2574f8545a84818d2f66db74457",
       "chapter6.md": "b3665e4f5e97e38ac3d2ba5418dcc45ea472d91bf72415744fb674f9e3dc3341",
       "chapter7.md": "078b8369cb71854927e692fbcc461c1eb081306274fa2cf72f5063cf3080ee14",
       "chapter8.md": "86f65a3aef97c3ddf9b516a8e82bee784a7bd0345503ec98c32266f5e9055906",

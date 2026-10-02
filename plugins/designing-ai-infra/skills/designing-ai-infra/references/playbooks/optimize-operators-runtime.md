@@ -77,7 +77,7 @@ python3 scripts/calc.py queueing --arrival-rate 2.5379e10 --time-in-system 600e-
 
 **Гейт.** Перечислены кандидаты, для каждого проверены выполнимость (shared memory, регистры, потоки, выравнивание), трафик на своём уровне и пик памяти. Реализация с наименьшим трафиком не считается быстрейшей без проверки: крупный тайл уменьшает трафик, но и число резидентных блоков; слияние уменьшает трафик промежуточных тензоров почти без изменения пика памяти и может увеличить трафик, если каждый блок заново читает более широкий вход; слот буфера сверх минимума не ускоряет; мелкий блок K/V FlashAttention сокращает чтение, но умножает обновления состояния.
 
-**Чем закрыть.** Трафик кандидатов — `roofline` с байтами каждого варианта, как в шаге 4; выбор — по измерению. Числа главы: тайл 128×128 читает вдвое меньше 64×64, но при 40 % прежней пропускной способности на 26 % медленнее; слияние квантования с GEMM — 444 → 620 MiB (+40 %; пример 5-8 сохранён только в русском издании, `references/source-book/chapter5.md:730`); двойная буферизация — 6,28 → 5,44 μs, третий слот ничего не добавляет; блок K/V из одной строки — на 144 MiB меньше трафика и ≈ в 41 раз больше обновлений состояния.
+**Чем закрыть.** Трафик кандидатов — `roofline` с байтами каждого варианта, как в шаге 4; выбор — по измерению. Числа главы: тайл 128×128 читает вдвое меньше 64×64, но при 40 % прежней пропускной способности на 26 % медленнее; слияние квантования с GEMM — 444 → 620 MiB (+40 %; пример 5-8 сохранён только в русском издании, `references/source-book/chapter5.md:734`); двойная буферизация — 6,28 → 5,44 μs, третий слот ничего не добавляет; блок K/V из одной строки — на 144 MiB меньше трафика и ≈ в 41 раз больше обновлений состояния.
 
 ### 6. Законность и детерминизм
 
@@ -123,8 +123,8 @@ python3 scripts/calc.py queueing --arrival-rate 2.5379e10 --time-in-system 600e-
 ## Источники
 
 - Конспект главы 5: `references/chapters/ch05-operators-runtime.md`; ресурсы ускорителя, закон Литтла для памяти, стоимость границы между SM — `references/chapters/ch04-accelerators.md`.
-- Отправка, копирование, три вида времени, kernel на SM: `references/source-book/chapter5.md:25`, `references/source-book/chapter5.md:37`, `references/source-book/chapter5.md:96`, `references/source-book/chapter5.md:112`.
-- Тайл, разбиение и детерминизм, слияние, буферы, FlashAttention: `references/source-book/chapter5.md:225`, `references/source-book/chapter5.md:297`, `references/source-book/chapter5.md:343`, `references/source-book/chapter5.md:369`, `references/source-book/chapter5.md:401`.
-- Законность, AKG, выбор по стоимости и измерению: `references/source-book/chapter5.md:542`, `references/source-book/chapter5.md:568`, `references/source-book/chapter5.md:752`.
-- Хост, CUDA Graph, динамические формы, persistent kernel: `references/source-book/chapter5.md:792`, `references/source-book/chapter5.md:816`, `references/source-book/chapter5.md:868`, `references/source-book/chapter5.md:900`.
-- Амдал, критический путь, комплексный пример, заблуждения: `references/source-book/chapter5.md:930`, `references/source-book/chapter5.md:942`, `references/source-book/chapter5.md:970`, `references/source-book/chapter5.md:995`.
+- Отправка, копирование, три вида времени, kernel на SM: `references/source-book/chapter5.md:27`, `references/source-book/chapter5.md:39`, `references/source-book/chapter5.md:98`, `references/source-book/chapter5.md:114`.
+- Тайл, разбиение и детерминизм, слияние, буферы, FlashAttention: `references/source-book/chapter5.md:227`, `references/source-book/chapter5.md:299`, `references/source-book/chapter5.md:345`, `references/source-book/chapter5.md:371`, `references/source-book/chapter5.md:403`.
+- Законность, AKG, выбор по стоимости и измерению: `references/source-book/chapter5.md:546`, `references/source-book/chapter5.md:572`, `references/source-book/chapter5.md:756`.
+- Хост, CUDA Graph, динамические формы, persistent kernel: `references/source-book/chapter5.md:796`, `references/source-book/chapter5.md:820`, `references/source-book/chapter5.md:872`, `references/source-book/chapter5.md:904`.
+- Амдал, критический путь, комплексный пример, заблуждения: `references/source-book/chapter5.md:934`, `references/source-book/chapter5.md:946`, `references/source-book/chapter5.md:974`, `references/source-book/chapter5.md:999`.

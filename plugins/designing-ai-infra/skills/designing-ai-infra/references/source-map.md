@@ -4,8 +4,8 @@
 
 | Источник | Репозиторий | Пин |
 |---|---|---|
-| Перевод | `https://github.com/ilkruglov/ai-infra-book`, ветка `main`, каталог `book-ru/book` | `ec343c9d23a69dca5a4922b242c26b77b1025e6d` |
-| Оригинал и калькуляторы автора | `https://github.com/bojieli/ai-infra-book` | `d0cc188b68f49584fd21e05518a5d0f0db79aaf5` |
+| Перевод | `https://github.com/ilkruglov/ai-infra-book`, ветка `main`, каталог `book-ru/book` | `c9f4ec00ac658416c29857b1632a9ddbfe2ace3c` |
+| Оригинал и калькуляторы автора | `https://github.com/bojieli/ai-infra-book` | `3bdcb4fcab73010eeaccf31cc10a8242a895d82e` |
 | Снимок ускорителей `data/hardware.json` | `calculations/configs/hardware.json` оригинала на том же пине | sha256 `9c4639ec65ca3b808923a7f332114f800c7930635b6fdac08f49686cddbf0ba2` |
 
 Пины, sha256 снимка и каждого файла книги записаны в `SOURCE.json`; валидатор их сверяет. Лицензия всех источников — Apache-2.0.
@@ -18,19 +18,19 @@
 
 | Тема | Первичный раздел | Конспект |
 |---|---|---|
-| GPU/Ascend: пути данных, L0C, MTE/NDDMA, границы синхронизации | `references/source-book/chapter4.md:89` | `references/chapters/ch04-accelerators.md` |
-| isl schedule и блочная программа TileLang-Ascend | `references/source-book/chapter5.md:568`, `references/source-book/chapter5.md:618`, `references/source-book/chapter5.md:654`, `references/source-book/chapter5.md:690` | `references/chapters/ch05-operators-runtime.md` |
+| GPU/Ascend: пути данных, L0C, MTE/NDDMA, границы синхронизации | `references/source-book/chapter4.md:83` | `references/chapters/ch04-accelerators.md` |
+| isl schedule и блочная программа TileLang-Ascend | `references/source-book/chapter5.md:572`, `references/source-book/chapter5.md:622`, `references/source-book/chapter5.md:658`, `references/source-book/chapter5.md:694` | `references/chapters/ch05-operators-runtime.md` |
 | Nested BSP и композиция параллелизма; состояние FSDP против активаций SP | `references/source-book/chapter6.md:80`, `references/source-book/chapter10.md:151` | `references/chapters/ch06-supernodes.md`, `references/chapters/ch10-training-systems.md` |
 | Метод книги: оценка порядка величин и вывод решений из ограничений | `references/source-book/preface.md:15`, `references/source-book/preface.md:47` | `references/chapters/ch00-preface.md` |
-| Структура книги и маршруты чтения | `references/source-book/preface.md:63`, `references/source-book/preface.md:96` | `references/chapters/ch00-preface.md` |
+| Структура книги и маршруты чтения | `references/source-book/preface.md:67`, `references/source-book/preface.md:100` | `references/chapters/ch00-preface.md` |
 | Шесть уровней AI-системы | `references/source-book/chapter1.md:31` | `references/chapters/ch01-ai-infra-basics.md` |
 | Путь одного запроса, суперузел, scale-up и scale-out | `references/source-book/chapter1.md:57` | `references/chapters/ch01-ai-infra-basics.md` |
-| Порядки величин и закон Амдала | `references/source-book/chapter1.md:101` | `references/chapters/ch01-ai-infra-basics.md` |
-| Ёмкость, FLOP/FLOPs/FLOP/s, MFU и MBU | `references/source-book/chapter1.md:152` | `references/chapters/ch01-ai-infra-basics.md` |
-| Единицы: GB и GiB, биты и байты, проверка ёмкости | `references/source-book/chapter1.md:189` | `references/chapters/ch01-ai-infra-basics.md` |
-| Нижняя граница шага `max(F/Π, R/β)` и точка перехода B* | `references/source-book/chapter1.md:229`, `references/source-book/chapter1.md:263` | `references/chapters/ch01-ai-infra-basics.md` |
-| Сверка с измерением и разбор разрыва | `references/source-book/chapter1.md:325`, `references/source-book/chapter1.md:357` | `references/chapters/ch01-ai-infra-basics.md` |
-| Требования определяют архитектуру: TPU, SmartNIC, Unified Bus | `references/source-book/chapter1.md:361`, `references/source-book/chapter1.md:401`, `references/source-book/chapter1.md:417` | `references/chapters/ch01-ai-infra-basics.md` |
+| Порядки величин и закон Амдала | `references/source-book/chapter1.md:109` | `references/chapters/ch01-ai-infra-basics.md` |
+| Ёмкость, FLOP/FLOPs/FLOP/s, MFU и MBU | `references/source-book/chapter1.md:160` | `references/chapters/ch01-ai-infra-basics.md` |
+| Единицы: GB и GiB, биты и байты, проверка ёмкости | `references/source-book/chapter1.md:197` | `references/chapters/ch01-ai-infra-basics.md` |
+| Нижняя граница шага `max(F/Π, R/β)` и точка перехода B* | `references/source-book/chapter1.md:237`, `references/source-book/chapter1.md:271` | `references/chapters/ch01-ai-infra-basics.md` |
+| Сверка с измерением и разбор разрыва | `references/source-book/chapter1.md:333`, `references/source-book/chapter1.md:365` | `references/chapters/ch01-ai-infra-basics.md` |
+| Требования определяют архитектуру: TPU, SmartNIC, Unified Bus | `references/source-book/chapter1.md:369`, `references/source-book/chapter1.md:409`, `references/source-book/chapter1.md:425` | `references/chapters/ch01-ai-infra-basics.md` |
 | Конфигурация модели и объём вычислений прямого прохода | `references/source-book/chapter2.md:45`, `references/source-book/chapter2.md:146` | `references/chapters/ch02-model-architecture.md` |
 | Prefill, decode, KV на токен, хранение против доступа | `references/source-book/chapter2.md:220`, `references/source-book/chapter2.md:236`, `references/source-book/chapter2.md:266` | `references/chapters/ch02-model-architecture.md` |
 | MHA, GQA, MQA и MLA | `references/source-book/chapter2.md:312`, `references/source-book/chapter2.md:334` | `references/chapters/ch02-model-architecture.md` |
@@ -45,21 +45,21 @@
 | Вычисления обучения: 6ND против поэлементного расчёта | `references/source-book/chapter3.md:384`, `references/source-book/chapter3.md:442` | `references/chapters/ch03-workloads.md` |
 | Нагрузка RL: rollout, проверка, синхронизация весов | `references/source-book/chapter3.md:476`, `references/source-book/chapter3.md:486`, `references/source-book/chapter3.md:506` | `references/chapters/ch03-workloads.md` |
 | Scaling Law, бюджеты обучения, стоимость жизненного цикла | `references/source-book/chapter3.md:553`, `references/source-book/chapter3.md:611`, `references/source-book/chapter3.md:667` | `references/chapters/ch03-workloads.md` |
-| Состав ускорителя, площадь, энергия, корпус | `references/source-book/chapter4.md:65`, `references/source-book/chapter4.md:104` | `references/chapters/ch04-accelerators.md` |
-| Матричные и векторные блоки, низкая точность | `references/source-book/chapter4.md:229`, `references/source-book/chapter4.md:265`, `references/source-book/chapter4.md:329` | `references/chapters/ch04-accelerators.md` |
-| Иерархия памяти: HBM, унифицированная память, кэши | `references/source-book/chapter4.md:371`, `references/source-book/chapter4.md:411`, `references/source-book/chapter4.md:435` | `references/chapters/ch04-accelerators.md` |
-| Перемещение данных и межсоединения внутри и вне корпуса | `references/source-book/chapter4.md:515`, `references/source-book/chapter4.md:660`, `references/source-book/chapter4.md:681` | `references/chapters/ch04-accelerators.md` |
-| Эволюция NVIDIA, Ascend, Apple | `references/source-book/chapter4.md:721`, `references/source-book/chapter4.md:775`, `references/source-book/chapter4.md:813` | `references/chapters/ch04-accelerators.md` |
-| Специализированные архитектуры: TPU, Groq, Graphcore, Cerebras, фиксированные веса | `references/source-book/chapter4.md:843`, `references/source-book/chapter4.md:855`, `references/source-book/chapter4.md:869` | `references/chapters/ch04-accelerators.md` |
-| Roofline и выбор ускорителя на одной модели | `references/source-book/chapter4.md:921`, `references/source-book/chapter4.md:974` | `references/chapters/ch04-accelerators.md` |
-| Прогноз против измерения; ёмкость, скорость, энергия, стоимость | `references/source-book/chapter4.md:1003`, `references/source-book/chapter4.md:1056` | `references/chapters/ch04-accelerators.md` |
-| Kernel launch, копирование, stream и event | `references/source-book/chapter5.md:25`, `references/source-book/chapter5.md:37`, `references/source-book/chapter5.md:69` | `references/chapters/ch05-operators-runtime.md` |
-| Время отправки и готовности; выполнение kernel на SM | `references/source-book/chapter5.md:96`, `references/source-book/chapter5.md:112` | `references/chapters/ch05-operators-runtime.md` |
-| Тайлинг, повторное чтение, bank shared memory | `references/source-book/chapter5.md:182`, `references/source-book/chapter5.md:225`, `references/source-book/chapter5.md:283` | `references/chapters/ch05-operators-runtime.md` |
-| Слияние операторов, двойная буферизация, FlashAttention | `references/source-book/chapter5.md:343`, `references/source-book/chapter5.md:369`, `references/source-book/chapter5.md:401` | `references/chapters/ch05-operators-runtime.md` |
-| Компилятор: преобразования циклов, AKG, выбор по измерению | `references/source-book/chapter5.md:491`, `references/source-book/chapter5.md:568`, `references/source-book/chapter5.md:752` | `references/chapters/ch05-operators-runtime.md` |
-| CUDA Graph, динамические формы, persistent kernel | `references/source-book/chapter5.md:816`, `references/source-book/chapter5.md:868`, `references/source-book/chapter5.md:900` | `references/chapters/ch05-operators-runtime.md` |
-| От локального выигрыша к запросу: Амдал и критический путь | `references/source-book/chapter5.md:930`, `references/source-book/chapter5.md:942`, `references/source-book/chapter5.md:970` | `references/chapters/ch05-operators-runtime.md` |
+| Состав ускорителя, площадь, энергия, корпус | `references/source-book/chapter4.md:71`, `references/source-book/chapter4.md:106` | `references/chapters/ch04-accelerators.md` |
+| Матричные и векторные блоки, низкая точность | `references/source-book/chapter4.md:233`, `references/source-book/chapter4.md:269`, `references/source-book/chapter4.md:337` | `references/chapters/ch04-accelerators.md` |
+| Иерархия памяти: HBM, унифицированная память, кэши | `references/source-book/chapter4.md:379`, `references/source-book/chapter4.md:419`, `references/source-book/chapter4.md:443` | `references/chapters/ch04-accelerators.md` |
+| Перемещение данных и межсоединения внутри и вне корпуса | `references/source-book/chapter4.md:523`, `references/source-book/chapter4.md:680`, `references/source-book/chapter4.md:701` | `references/chapters/ch04-accelerators.md` |
+| Эволюция NVIDIA, Ascend, Apple | `references/source-book/chapter4.md:741`, `references/source-book/chapter4.md:795`, `references/source-book/chapter4.md:848` | `references/chapters/ch04-accelerators.md` |
+| Специализированные архитектуры: TPU, Groq, Graphcore, Cerebras, фиксированные веса | `references/source-book/chapter4.md:882`, `references/source-book/chapter4.md:894`, `references/source-book/chapter4.md:908` | `references/chapters/ch04-accelerators.md` |
+| Roofline и выбор ускорителя на одной модели | `references/source-book/chapter4.md:972`, `references/source-book/chapter4.md:1025` | `references/chapters/ch04-accelerators.md` |
+| Прогноз против измерения; ёмкость, скорость, энергия, стоимость | `references/source-book/chapter4.md:1054`, `references/source-book/chapter4.md:1107` | `references/chapters/ch04-accelerators.md` |
+| Kernel launch, копирование, stream и event | `references/source-book/chapter5.md:27`, `references/source-book/chapter5.md:39`, `references/source-book/chapter5.md:71` | `references/chapters/ch05-operators-runtime.md` |
+| Время отправки и готовности; выполнение kernel на SM | `references/source-book/chapter5.md:98`, `references/source-book/chapter5.md:114` | `references/chapters/ch05-operators-runtime.md` |
+| Тайлинг, повторное чтение, bank shared memory | `references/source-book/chapter5.md:184`, `references/source-book/chapter5.md:227`, `references/source-book/chapter5.md:285` | `references/chapters/ch05-operators-runtime.md` |
+| Слияние операторов, двойная буферизация, FlashAttention | `references/source-book/chapter5.md:345`, `references/source-book/chapter5.md:371`, `references/source-book/chapter5.md:403` | `references/chapters/ch05-operators-runtime.md` |
+| Компилятор: преобразования циклов, AKG, выбор по измерению | `references/source-book/chapter5.md:495`, `references/source-book/chapter5.md:572`, `references/source-book/chapter5.md:756` | `references/chapters/ch05-operators-runtime.md` |
+| CUDA Graph, динамические формы, persistent kernel | `references/source-book/chapter5.md:820`, `references/source-book/chapter5.md:872`, `references/source-book/chapter5.md:904` | `references/chapters/ch05-operators-runtime.md` |
+| От локального выигрыша к запросу: Амдал и критический путь | `references/source-book/chapter5.md:934`, `references/source-book/chapter5.md:946`, `references/source-book/chapter5.md:974` | `references/chapters/ch05-operators-runtime.md` |
 | Экземпляр и суперузел; сквозной пример Qwen3-235B-A22B | `references/source-book/chapter6.md:13`, `references/source-book/chapter6.md:25`, `references/source-book/chapter6.md:70` | `references/chapters/ch06-supernodes.md` |
 | Шесть видов параллелизма; DP и TP | `references/source-book/chapter6.md:80`, `references/source-book/chapter6.md:134`, `references/source-book/chapter6.md:148` | `references/chapters/ch06-supernodes.md` |
 | SP и CP | `references/source-book/chapter6.md:260`, `references/source-book/chapter6.md:272` | `references/chapters/ch06-supernodes.md` |
@@ -114,8 +114,8 @@
 | Глобальная сеть: соединение, окно, потери пакетов | `references/source-book/chapter12.md:319`, `references/source-book/chapter12.md:329`, `references/source-book/chapter12.md:359` | `references/chapters/ch12-edge-cloud.md` |
 | Беспроводная связь, сроки, два пути | `references/source-book/chapter12.md:462`, `references/source-book/chapter12.md:486`, `references/source-book/chapter12.md:500` | `references/chapters/ch12-edge-cloud.md` |
 | Выбор между устройством, периферией и облаком | `references/source-book/chapter12.md:538`, `references/source-book/chapter12.md:556`, `references/source-book/chapter12.md:630` | `references/chapters/ch12-edge-cloud.md` |
-| Заблуждения и ловушки глав | `references/source-book/chapter1.md:438`, `references/source-book/chapter5.md:995`, `references/source-book/chapter10.md:860` | `references/fallacies.md` |
-| Краткие справочники и справочные таблицы чисел | `references/source-book/chapter1.md:450`, `references/source-book/chapter2.md:935` | `references/numbers.md` |
+| Заблуждения и ловушки глав | `references/source-book/chapter1.md:446`, `references/source-book/chapter5.md:999`, `references/source-book/chapter10.md:860` | `references/fallacies.md` |
+| Краткие справочники и справочные таблицы чисел | `references/source-book/chapter1.md:458`, `references/source-book/chapter2.md:935` | `references/numbers.md` |
 
 Остальные разделы заблуждений: `references/source-book/chapter2.md:903`, `references/source-book/chapter3.md:701`, раздел 7.6.5 — `references/source-book/chapter7.md:1009`. Порядок анализа на одной странице — `references/cheatsheet.md`, термины — `references/glossary.md`.
 
@@ -126,10 +126,10 @@
 Главы оригинала лежат в подкаталоге `manuscripts` его репозитория, поэтому `../` означает корень репозитория оригинала. Путь разрешается приписыванием префикса:
 
 ```text
-https://github.com/bojieli/ai-infra-book/tree/d0cc188b68f49584fd21e05518a5d0f0db79aaf5/
+https://github.com/bojieli/ai-infra-book/tree/3bdcb4fcab73010eeaccf31cc10a8242a895d82e/
 ```
 
-Например, `../calculations/results/decode-budget-base.md` из сноски главы 1 — это `https://github.com/bojieli/ai-infra-book/tree/d0cc188b68f49584fd21e05518a5d0f0db79aaf5/calculations/results/decode-budget-base.md` (для файла GitHub откроет ту же ревизию через `/blob/`). Берите именно этот коммит: на других коммитах результаты и эксперименты могут отличаться или отсутствовать.
+Например, `../calculations/results/decode-budget-base.md` из сноски главы 1 — это `https://github.com/bojieli/ai-infra-book/tree/3bdcb4fcab73010eeaccf31cc10a8242a895d82e/calculations/results/decode-budget-base.md` (для файла GitHub откроет ту же ревизию через `/blob/`). Берите именно этот коммит: на других коммитах результаты и эксперименты могут отличаться или отсутствовать.
 
 | Путь в сноске | Что там |
 |---|---|
@@ -146,7 +146,7 @@ https://github.com/bojieli/ai-infra-book/tree/d0cc188b68f49584fd21e05518a5d0f0db
 
 ## Drift gate
 
-Книга и снимок железа зафиксированы на дату книги: текст — сентябрь 2026, `data/hardware.json` — снимок оригинала на коммите `d0cc188b` от 2026-09-30, содержимое файла последний раз менялось 2026-09-11 (151 запись, у каждого числа `source_id` и `locator`). Не используйте их как подтверждение текущего состояния рынка. Перед утверждением о любом из пунктов ниже:
+Книга и снимок железа зафиксированы на дату книги: текст — релиз оригинала 2026-10-01, `data/hardware.json` — снимок оригинала на коммите `3bdcb4fc` от 2026-10-01, содержимое файла последний раз менялось 2026-09-11 (151 запись, у каждого числа `source_id` и `locator`). Не используйте их как подтверждение текущего состояния рынка. Перед утверждением о любом из пунктов ниже:
 
 | Что | Что проверить | Где |
 |---|---|---|

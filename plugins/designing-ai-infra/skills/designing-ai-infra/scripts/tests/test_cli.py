@@ -14,10 +14,10 @@ from infra_calc import cli, model
 from infra_calc.result import Result
 
 ANCHORS = (
-    "references/source-book/chapter1.md:152",
-    "references/source-book/chapter1.md:189",
-    "references/source-book/chapter1.md:263",
-    "references/source-book/chapter1.md:450",
+    "references/source-book/chapter1.md:160",
+    "references/source-book/chapter1.md:197",
+    "references/source-book/chapter1.md:271",
+    "references/source-book/chapter1.md:458",
     "references/source-book/chapter3.md:75",
     "references/source-book/chapter3.md:384",
     "references/source-book/chapter3.md:442",
@@ -83,17 +83,17 @@ class ModelCommandTest(unittest.TestCase):
         v = values("model", "--config", QWEN3_8B, "--context", "2048")
         # chapter3.md:414: «рассмотрим 8 190 735 360 параметров Qwen3-8B»
         self.assertEqual(v["parameters"]["value"], 8_190_735_360)
-        # chapter1.md:456: «| Полные веса BF16 | 16.38 GB |»
+        # chapter1.md:464: «| Полные веса BF16 | 16.38 GB |»
         self.assertEqual(round(v["weight_bytes"]["value"] / 1e9, 2), 16.38)
-        # chapter1.md:457: «Полный KV модели на каждый токен контекста | 144 KiB»
+        # chapter1.md:465: «Полный KV модели на каждый токен контекста | 144 KiB»
         self.assertEqual(v["kv_bytes_per_token"]["value"], 144 * 2**10)
-        # chapter1.md:458: «| KV контекста из 2048 токенов | 288 MiB |»
+        # chapter1.md:466: «| KV контекста из 2048 токенов | 288 MiB |»
         self.assertEqual(v["kv_resident_bytes"]["value"], 288 * 2**20)
-        # chapter1.md:459: «Матричные операции prefill для 2048 токенов | 29.69 TFLOPs»
+        # chapter1.md:467: «Матричные операции prefill для 2048 токенов | 29.69 TFLOPs»
         self.assertEqual(round(v["prefill_flops"]["value"] / 1e12, 2), 29.69)
-        # chapter1.md:460: «Матричные операции одного шага decode | 16.34 GFLOPs»
+        # chapter1.md:468: «Матричные операции одного шага decode | 16.34 GFLOPs»
         self.assertEqual(round(v["decode_step_flops"]["value"] / 1e9, 2), 16.34)
-        # chapter1.md:461: «Основной объём чтения весов за один шаг decode | 15.14 GB»
+        # chapter1.md:469: «Основной объём чтения весов за один шаг decode | 15.14 GB»
         self.assertEqual(round(v["decode_weight_read_bytes"]["value"] / 1e9, 2), 15.14)
         for item in v.values():
             self.assertTrue(item["anchor"].startswith("references/source-book/"))
@@ -150,12 +150,12 @@ class RooflineCommandTest(unittest.TestCase):
             "roofline", "--device", "h100-sxm", "--flops", "140e9", "--bytes", "70e9"
         )
         v = {item["name"]: item for item in data["results"]}
-        # chapter1.md:268: «\frac{70\ \mathrm{GB}}{3350\ \mathrm{GB/s}}\approx20{,}90\ \mathrm{ms}»
+        # chapter1.md:276: «\frac{70\ \mathrm{GB}}{3350\ \mathrm{GB/s}}\approx20{,}90\ \mathrm{ms}»
         self.assertEqual(round(v["step_lower_bound_seconds"]["value"] * 1e3, 2), 20.90)
-        # chapter1.md:268: «\frac{140\ \mathrm{GFLOPs}}{989400\ \mathrm{GFLOP/s}}\approx0{,}1415\ \mathrm{ms}»
+        # chapter1.md:276: «\frac{140\ \mathrm{GFLOPs}}{989400\ \mathrm{GFLOP/s}}\approx0{,}1415\ \mathrm{ms}»
         self.assertEqual(round(v["compute_seconds"]["value"] * 1e3, 4), 0.1415)
         self.assertEqual(v["step_lower_bound_seconds"]["bound"], "lower")
-        self.assertIn("d0cc188b", data["hardware_snapshot"])
+        self.assertIn("3bdcb4fc", data["hardware_snapshot"])
 
     def test_format_before_command(self) -> None:
         code, out = call(
@@ -173,7 +173,7 @@ class RooflineCommandTest(unittest.TestCase):
         )
         self.assertEqual(code, 0, out)
         data = json.loads(out)
-        # chapter1.md:268: 20,90 ms без снимка — пик и полоса заданы явно
+        # chapter1.md:276: 20,90 ms без снимка — пик и полоса заданы явно
         self.assertEqual(round(data["results"][0]["value"] * 1e3, 2), 20.90)
         self.assertIsNone(data["hardware_snapshot"])
 
@@ -183,14 +183,14 @@ class RooflineCommandTest(unittest.TestCase):
         )
         self.assertEqual(code, 0)
         self.assertIn("(нижняя граница)", out)
-        self.assertIn("d0cc188b (2026-09-30)", out)
-        self.assertIn("references/source-book/chapter1.md:263", out)
+        self.assertIn("3bdcb4fc (2026-10-01)", out)
+        self.assertIn("references/source-book/chapter1.md:271", out)
         # входы — в том же виде, что и значения, а не 140000000000.0
         self.assertIn("flops=1.4e+11", out)
         self.assertIn("accumulator=FP32", out)
 
     def test_accumulator_selects_peak(self) -> None:
-        # chapter1.md:184: «Пиковая производительность матриц BF16 (TFLOP/s) | 165.2»
+        # chapter1.md:192: «Пиковая производительность матриц BF16 (TFLOP/s) | 165.2»
         # у RTX 4090 при накоплении FP32; с накоплением FP16 в снимке 330.3
         # (data/hardware.json, как в test_hardware.test_accumulator_defaults_to_fp32)
         args = ("roofline", "--device", "rtx4090", "--precision", "FP16")
@@ -263,7 +263,7 @@ class ServingCommandTest(unittest.TestCase):
     )
 
     def test_rtx_pro_6000_bounds(self) -> None:
-        # chapter1.md:464: при 503.8 TFLOP/s «матричные операции prefill занимают около
+        # chapter1.md:472: при 503.8 TFLOP/s «матричные операции prefill занимают около
         # 58.9 ms»; при 1.792 TB/s чтение весов и KV за шаг decode «занимает около 8.62 ms»
         v = values(*self.RTX)
         self.assertEqual(round(v["ttft_lower_bound_seconds"]["value"] * 1e3, 1), 58.9)
@@ -556,7 +556,7 @@ class OtherCommandsTest(unittest.TestCase):
 
 class DeviceCommandTest(unittest.TestCase):
     def test_single_device(self) -> None:
-        # chapter1.md:182-184: H100 SXM — 80 GB, 3.35 TB/s, 989.4 TFLOP/s BF16
+        # chapter1.md:190-192: H100 SXM — 80 GB, 3.35 TB/s, 989.4 TFLOP/s BF16
         v = values("device", "--device", "h100-sxm")
         self.assertEqual(v["memory_bytes"]["value"], 80e9)
         self.assertEqual(v["bandwidth"]["value"], 3.35e12)
@@ -741,7 +741,7 @@ class BatchThresholdCommandTest(unittest.TestCase):
         )
 
     def test_compute_bound_book(self) -> None:
-        # chapter1.md:307: B_* ≈ 147,7 при b_W = 1, Π = 989,4 TFLOP/s, β = 3,35 TB/s;
+        # chapter1.md:315: B_* ≈ 147,7 при b_W = 1, Π = 989,4 TFLOP/s, β = 3,35 TB/s;
         # «После примерно 148 запросов время вычислений превышает время чтения весов»
         v = values(
             "batch-threshold", "--weight-read", "70e9", "--kv-per-token", "0",
@@ -763,7 +763,7 @@ class BatchThresholdCommandTest(unittest.TestCase):
         self.assertEqual(v["kv_read_batch_threshold"]["value"], 15_000)
 
     def test_compute_bound_unreachable_for_qwen3_8b(self) -> None:
-        # chapter1.md:459-461: 16.34 GFLOPs за шаг при 2048, KV 144 KiB на токен;
+        # chapter1.md:467-469: 16.34 GFLOPs за шаг при 2048, KV 144 KiB на токен;
         # на запрос F/Π ≈ 16.5 μs < R_KV/β ≈ 90.1 μs — порога нет
         v = values(
             "batch-threshold", "--config", QWEN3_8B, "--context", "2048",
@@ -774,7 +774,7 @@ class BatchThresholdCommandTest(unittest.TestCase):
         self.assertIn("не становится", " ".join(item["notes"]))
 
     def test_generalisation_is_named(self) -> None:
-        # chapter1.md:305 (раздел 1.3.2, заголовок chapter1.md:263): B_* = b_W·Π/(2β) без
+        # chapter1.md:313 (раздел 1.3.2, заголовок chapter1.md:271): B_* = b_W·Π/(2β) без
         # KV; с R_KV — обобщение, а не формула книги; якорь в примечании — на заголовок
         v = values(
             "batch-threshold", "--weight-read", "15e9", "--kv-per-token", "1e6",
@@ -783,8 +783,8 @@ class BatchThresholdCommandTest(unittest.TestCase):
         )  # fmt: skip
         notes = " ".join(v["compute_bound_batch_threshold"]["notes"])
         self.assertIn("обобщ", notes)
-        self.assertIn("chapter1.md:263", notes)
-        self.assertNotIn("chapter1.md:305", notes)
+        self.assertIn("chapter1.md:271", notes)
+        self.assertNotIn("chapter1.md:313", notes)
 
     def test_moe_config_is_a_lower_bound(self) -> None:
         v = values(
@@ -975,7 +975,7 @@ class ExpertUnionCommandTest(unittest.TestCase):
 
     def test_explicit_union_matches_author(self) -> None:
         # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --tokens 1 --routing balanced
-        # (код автора на d0cc188b): expert_union_per_layer 32, weight_read_once_per_operator_bytes
+        # (код автора на 3bdcb4fc): expert_union_per_layer 32, weight_read_once_per_operator_bytes
         # 16 955 387 904, из них 4 × 2048 × 2 байта — строки эмбеддингов
         v = values(
             "model", "--config", self.QWEN3_30B, "--batch", "4",
@@ -1125,7 +1125,7 @@ class ServingSplitTest(unittest.TestCase):
         self.assertEqual(expected, 73)
 
     def test_without_memory_only_time_bounds(self) -> None:
-        # chapter1.md:464: TPOT 8.62 ms и TTFT 58.9 ms на RTX PRO 6000 — без бюджета памяти
+        # chapter1.md:472: TPOT 8.62 ms и TTFT 58.9 ms на RTX PRO 6000 — без бюджета памяти
         v = values(
             "serving", "--peak-tflops", "503.8", "--bandwidth", "1.792e12",
             "--weights", "16.38e9", "--weight-read", "15.14e9", "--decode-flops", "16.34e9",
@@ -1256,7 +1256,7 @@ class ServingSplitTest(unittest.TestCase):
         self.assertEqual(re.findall(r"chapter6\.md:\d+", notes), [heading])
 
     def test_quantized_weights_per_device_keep_lower_bound(self) -> None:
-        # chapter1.md:205: 8-битные веса 73.73 GB против 70.55 GB по формуле
+        # chapter1.md:213: 8-битные веса 73.73 GB против 70.55 GB по формуле
         config = str(CONFIGS / "deepseek-r1-distill-llama-70b.json")
         v = values("model", "--config", config, "--weight-dtype", "int8", "--tp", "2")
         item = v["weight_bytes_per_device"]
@@ -1866,7 +1866,7 @@ class ReviewFixesTest(unittest.TestCase):
         self.assertIn("карточк", notes)
 
     def test_quantized_weights_are_a_lower_bound(self) -> None:
-        # chapter1.md:205: «в 8-битной схеме занимают около 73.73 GB»; chapter1.md:209:
+        # chapter1.md:213: «в 8-битной схеме занимают около 73.73 GB»; chapter1.md:217:
         # BF16 «141.11 GB», половина — «около 70.55 GB»: параметры × 1 байт не учитывают
         # scale и части модели в BF16
         config = str(CONFIGS / "deepseek-r1-distill-llama-70b.json")
@@ -1924,9 +1924,9 @@ class UnitsCommandTest(unittest.TestCase):
             "--dtype", "int8",
         )  # fmt: skip
         self.assertEqual(v["size_bytes"]["value"], 141.11e9)
-        # chapter1.md:199: «141.11 GB — это примерно 131.42 GiB»
+        # chapter1.md:207: «141.11 GB — это примерно 131.42 GiB»
         self.assertEqual(round(v["size_GiB"]["value"], 2), 131.42)
-        # chapter1.md:221: «ConnectX-7 с пропускной способностью 400 Gbit/s ... равна 50 GB/s»
+        # chapter1.md:229: «ConnectX-7 с пропускной способностью 400 Gbit/s ... равна 50 GB/s»
         self.assertEqual(v["link_bytes_per_second"]["value"], 50e9)
         self.assertEqual(v["dtype_bytes"]["value"], 1)
 

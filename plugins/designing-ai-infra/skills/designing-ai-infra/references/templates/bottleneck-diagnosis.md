@@ -107,7 +107,7 @@ Unknown: <не измерено>
 
 #### Вывод
 
-Разрыв ≈ 17,6 ms на шаг decode при batch 1 почти не зависит от объёма работы — это накладные расходы хоста, а не неполнота модели. Первое исправление — отключить пошаговое журналирование клиента: ожидаемо TPOT снизится до ≈ 12,1 ms, а запрос 2048 → 256 без очереди — с ≈ 6,85 до ≈ 3,18 s. Вклад журналирования не отделён: в дополнительном измерении вместе с ним выключили кэш префиксов и пересоздали входы (`references/source-book/chapter1.md:357`). Следующий кандидат — CUDA Graph, но только после отдельного эксперимента: оставшийся зазор до границы ≈ 3,5 ms на шаг.
+Разрыв ≈ 17,6 ms на шаг decode при batch 1 почти не зависит от объёма работы — это накладные расходы хоста, а не неполнота модели. Первое исправление — отключить пошаговое журналирование клиента: ожидаемо TPOT снизится до ≈ 12,1 ms, а запрос 2048 → 256 без очереди — с ≈ 6,85 до ≈ 3,18 s. Вклад журналирования не отделён: в дополнительном измерении вместе с ним выключили кэш префиксов и пересоздали входы (`references/source-book/chapter1.md:365`). Следующий кандидат — CUDA Graph, но только после отдельного эксперимента: оставшийся зазор до границы ≈ 3,5 ms на шаг.
 
 #### Симптом
 
@@ -146,7 +146,7 @@ python3 scripts/calc.py device --device rtx-pro6000-blackwell-ws | grep -E '^(С
 ```
 
 ```text
-Снимок железа: bojieli/ai-infra-book@d0cc188b (2026-09-30), calculations/configs/hardware.json
+Снимок железа: bojieli/ai-infra-book@3bdcb4fc (2026-10-01), calculations/configs/hardware.json
 **bandwidth**: 1.792e+12 B/s
 **peak_flops**: 5.038e+14 FLOP/s
 ```
@@ -249,7 +249,7 @@ python3 scripts/calc.py model --config scripts/tests/fixtures/configs/qwen3-8b.j
 ## Источники
 
 - Порядок диагностики и таблица компонентов: `references/playbooks/diagnose-serving.md`; оператор и хост — `references/playbooks/optimize-operators-runtime.md`.
-- Проверка оценки измерением и две причины разрыва: `references/source-book/chapter1.md:325`, `references/source-book/chapter1.md:357`.
+- Проверка оценки измерением и две причины разрыва: `references/source-book/chapter1.md:333`, `references/source-book/chapter1.md:365`.
 - Эксперимент 8-1, калибровка MBU и MFU: `references/source-book/chapter8.md:642`; запрос 6,95 s и вставка prefill: `references/source-book/chapter8.md:24`.
-- Почему прогноз расходится с измерением (8K, 25,83 ms): `references/source-book/chapter4.md:1003`.
-- CUDA Graph и копирование входа, закон Амдала на запросе: `references/source-book/chapter5.md:816`, `references/source-book/chapter5.md:970`.
+- Почему прогноз расходится с измерением (8K, 25,83 ms): `references/source-book/chapter4.md:1054`.
+- CUDA Graph и копирование входа, закон Амдала на запросе: `references/source-book/chapter5.md:820`, `references/source-book/chapter5.md:974`.

@@ -6,8 +6,8 @@ from pathlib import Path
 from infra_calc import accounting, model
 
 ANCHORS = (
-    "references/source-book/chapter1.md:189",
-    "references/source-book/chapter1.md:450",
+    "references/source-book/chapter1.md:197",
+    "references/source-book/chapter1.md:458",
     "references/source-book/chapter2.md:236",
     "references/source-book/chapter2.md:418",
     "references/source-book/chapter2.md:542",
@@ -33,7 +33,7 @@ class DenseTest(unittest.TestCase):
         s = spec("qwen3-8b")
         # chapter2-model-comparison.json: Qwen3-8B total_parameters
         self.assertEqual(accounting.parameter_count(s), 8_190_735_360)
-        # chapter1.md:450: веса BF16 16.38 GB
+        # chapter1.md:458: веса BF16 16.38 GB
         self.assertEqual(accounting.weight_bytes(s), 16_381_470_720)
         # chapter8.md:52: 2 × 36 × 8 × 128 × 2 = 147 456 байт
         self.assertEqual(accounting.kv_bytes_per_token(s), 147_456)
@@ -101,7 +101,7 @@ class DenseTest(unittest.TestCase):
 
     def test_llama_70b(self) -> None:
         s = spec("deepseek-r1-distill-llama-70b")
-        # chapter1.md:189: веса BF16 141.11 GB
+        # chapter1.md:197: веса BF16 141.11 GB
         self.assertEqual(round(accounting.weight_bytes(s) / 1e9, 2), 141.11)
         # kv-comparison-n8192-b1.json: deepseek-r1-distill-llama-70b,
         # global_growth_bytes_per_token_per_request
@@ -246,7 +246,7 @@ class ExpertUnionTest(unittest.TestCase):
         self.assertEqual(read, 60_442_177_536 - 64 * 2048 * 2)
         self.assertEqual(round(read / 1e9, 2), 60.44)
         # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --tokens 1 --routing balanced
-        # (код автора на d0cc188b): expert_union_per_layer 32,
+        # (код автора на 3bdcb4fc): expert_union_per_layer 32,
         # weight_read_once_per_operator_bytes 16 955 387 904 — минус 4 строки эмбеддингов
         self.assertEqual(
             accounting.batch_decode_weight_read_bytes(s, 32),

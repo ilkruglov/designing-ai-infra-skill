@@ -27,7 +27,7 @@ class ParseSpecTest(unittest.TestCase):
 
     def test_dense_llama(self) -> None:
         # config.json DeepSeek-R1-Distill-Llama-70B: 80 слоёв, 8 голов KV, без QK-norm
-        # (chapter1.md:193: плотная модель на архитектуре Llama)
+        # (chapter1.md:201: плотная модель на архитектуре Llama)
         s = spec("deepseek-r1-distill-llama-70b")
         self.assertEqual(
             (s.family, s.layers, s.kv_heads, s.qk_norm), ("dense", 80, 8, False)

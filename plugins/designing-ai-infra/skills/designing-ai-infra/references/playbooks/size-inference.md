@@ -47,7 +47,7 @@ python3 scripts/calc.py units --size '12 GiB' --to GB
 
 ### 2. Ресурсы модели
 
-**Гейт.** По текущему `config.json` получены: `weight_bytes` (для квантизации — фактический размер чекпойнта), `decode_weight_read_bytes`, `kv_bytes_per_token` в фактическом формате KV, `prefill_flops` на вход каждого класса и `decode_step_flops` при контексте класса. Для MoE `decode_weight_read_bytes` — эксперты одного токена; при batch читается объединение экспертов (пример 2-4 в `references/chapters/ch02-model-architecture.md`). Нижняя граница шага при любом batch берёт `decode_weight_read_bytes` (U = k). `model --batch B` печатает `decode_weight_read_bytes_at_batch` — оценку при равномерной маршрутизации; шаг `serving` с ней в `--weight-read` — оценка, а не нижняя граница: при неравномерной маршрутизации различных экспертов меньше. Если `model` печатает «не вычисляется» (MLA, окно, гибридное внимание), FLOPs берутся из команд автора на `d0cc188b` (`v3-forward`, `v41-forward`, `qwen35-forward`) или из измерения — формула плотной модели не подставляется. Незнакомый `model_type` команда отвергает с кодом 2 и перечнем полей (шаг 2 `references/playbooks/compare-model-architectures.md`).
+**Гейт.** По текущему `config.json` получены: `weight_bytes` (для квантизации — фактический размер чекпойнта), `decode_weight_read_bytes`, `kv_bytes_per_token` в фактическом формате KV, `prefill_flops` на вход каждого класса и `decode_step_flops` при контексте класса. Для MoE `decode_weight_read_bytes` — эксперты одного токена; при batch читается объединение экспертов (пример 2-4 в `references/chapters/ch02-model-architecture.md`). Нижняя граница шага при любом batch берёт `decode_weight_read_bytes` (U = k). `model --batch B` печатает `decode_weight_read_bytes_at_batch` — оценку при равномерной маршрутизации; шаг `serving` с ней в `--weight-read` — оценка, а не нижняя граница: при неравномерной маршрутизации различных экспертов меньше. Если `model` печатает «не вычисляется» (MLA, окно, гибридное внимание), FLOPs берутся из команд автора на `3bdcb4fc` (`v3-forward`, `v41-forward`, `qwen35-forward`) или из измерения — формула плотной модели не подставляется. Незнакомый `model_type` команда отвергает с кодом 2 и перечнем полей (шаг 2 `references/playbooks/compare-model-architectures.md`).
 
 **Чем закрыть.**
 
@@ -298,7 +298,7 @@ python3 scripts/calc.py serving --device rtx-pro6000-blackwell-ws --weights 1638
 
 ## Источники
 
-- Порядок анализа, нижняя граница, B*, MFU и MBU: `references/chapters/ch01-ai-infra-basics.md`; `references/source-book/chapter1.md:263`.
+- Порядок анализа, нижняя граница, B*, MFU и MBU: `references/chapters/ch01-ai-infra-basics.md`; `references/source-book/chapter1.md:271`.
 - Ресурсы модели, KV на токен, MoE, ёмкость `B_max`: `references/chapters/ch02-model-architecture.md`; `references/source-book/chapter2.md:805`.
 - Нагрузка во времени, очередь при достаточной средней мощности, метрики: `references/chapters/ch03-workloads.md`; `references/source-book/chapter3.md:29`, `references/source-book/chapter3.md:75`.
 - Бюджет памяти, batch, калибровка MBU и выбор конфигурации: `references/chapters/ch08-inference-optimization.md`; `references/source-book/chapter8.md:52`, `references/source-book/chapter8.md:642`.

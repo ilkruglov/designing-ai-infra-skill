@@ -149,9 +149,9 @@ python3 scripts/calc.py roofline --peak-tflops 503.8 --bandwidth 1.792e12 --flop
 
 ## Источники
 
-- Порядок разбора разрыва и две причины: `references/chapters/ch01-ai-infra-basics.md`; `references/source-book/chapter1.md:325`, `references/source-book/chapter1.md:357`.
+- Порядок разбора разрыва и две причины: `references/chapters/ch01-ai-infra-basics.md`; `references/source-book/chapter1.md:333`, `references/source-book/chapter1.md:365`.
 - Калибровка MBU/MFU, эффективная пропускная способность, непрерывная пакетная обработка, выгрузка: `references/chapters/ch08-inference-optimization.md`; `references/source-book/chapter8.md:165`, `references/source-book/chapter8.md:432`, `references/source-book/chapter8.md:616`, `references/source-book/chapter8.md:642`.
-- Почему прогноз расходится с измерением: `references/chapters/ch04-accelerators.md`; `references/source-book/chapter4.md:1003`.
-- Три вида времени, хост как узкое место, CUDA Graph, Амдал на запросе: `references/chapters/ch05-operators-runtime.md`; `references/source-book/chapter5.md:96`, `references/source-book/chapter5.md:792`, `references/source-book/chapter5.md:816`, `references/source-book/chapter5.md:970`.
+- Почему прогноз расходится с измерением: `references/chapters/ch04-accelerators.md`; `references/source-book/chapter4.md:1054`.
+- Три вида времени, хост как узкое место, CUDA Graph, Амдал на запросе: `references/chapters/ch05-operators-runtime.md`; `references/source-book/chapter5.md:98`, `references/source-book/chapter5.md:796`, `references/source-book/chapter5.md:820`, `references/source-book/chapter5.md:974`.
 - Очередь при достаточной средней мощности и заполненный пул KV: `references/chapters/ch03-workloads.md`; `references/source-book/chapter3.md:75`.
 - Коллективы, перекрытие и готовность данных: `references/chapters/ch06-supernodes.md`, `references/chapters/ch07-datacenter-network.md`; `references/source-book/chapter6.md:557`, `references/source-book/chapter7.md:834`.

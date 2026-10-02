@@ -208,9 +208,9 @@ python3 scripts/calc.py serving --device b200-sxm --weights 16381470720 --weight
 ## Источники
 
 - Конспекты: `references/chapters/ch04-accelerators.md`, `references/chapters/ch06-supernodes.md`, `references/chapters/ch07-datacenter-network.md`.
-- Требования матричного умножения, энергия и мощность, низкая точность: `references/source-book/chapter4.md:15`, `references/source-book/chapter4.md:104`, `references/source-book/chapter4.md:329`.
-- Ёмкость, транзакции в полёте, обмен между ускорителями, Apple: `references/source-book/chapter4.md:371`, `references/source-book/chapter4.md:435`, `references/source-book/chapter4.md:681`, `references/source-book/chapter4.md:813`.
-- Модель времени, сравнение ускорителей, стоимость и энергия: `references/source-book/chapter4.md:921`, `references/source-book/chapter4.md:974`, `references/source-book/chapter4.md:1056`.
+- Требования матричного умножения, энергия и мощность, низкая точность: `references/source-book/chapter4.md:21`, `references/source-book/chapter4.md:106`, `references/source-book/chapter4.md:337`.
+- Ёмкость, транзакции в полёте, обмен между ускорителями, Apple: `references/source-book/chapter4.md:379`, `references/source-book/chapter4.md:443`, `references/source-book/chapter4.md:701`, `references/source-book/chapter4.md:848`.
+- Модель времени, сравнение ускорителей, стоимость и энергия: `references/source-book/chapter4.md:972`, `references/source-book/chapter4.md:1025`, `references/source-book/chapter4.md:1107`.
 - Экземпляр и суперузел, кольцо и дерево, топология, питание: `references/source-book/chapter6.md:13`, `references/source-book/chapter6.md:490`, `references/source-book/chapter6.md:616`, `references/source-book/chapter6.md:694`.
 - Группа против экземпляров, стоимость, процедура выбора, размер суперузла: `references/source-book/chapter6.md:890`, `references/source-book/chapter6.md:931`, `references/source-book/chapter6.md:979`, `references/source-book/chapter6.md:1021`.
 - Сеть: `references/source-book/chapter7.md:41`, `references/source-book/chapter7.md:120`, `references/source-book/chapter7.md:269`, `references/source-book/chapter7.md:299`, `references/source-book/chapter7.md:908`, `references/source-book/chapter7.md:938`.

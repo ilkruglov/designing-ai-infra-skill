@@ -4,35 +4,35 @@
 
 ## Единицы и счёт
 
-**B, bit** — байт и бит: 1 byte = 8 bit. Скорость канала в bit/s делится на 8, чтобы получить B/s: 400 Gbit/s = 50 GB/s. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:189`.
+**B, bit** — байт и бит: 1 byte = 8 bit. Скорость канала в bit/s делится на 8, чтобы получить B/s: 400 Gbit/s = 50 GB/s. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:197`.
 
-**GB и GiB** — десятичная и двоичная единицы ёмкости: KB, MB, GB, TB = 10³, 10⁶, 10⁹, 10¹² байт; KiB, MiB, GiB = 2¹⁰, 2²⁰, 2³⁰ байт. 141,11 GB = 131,42 GiB. Номинальная ёмкость ускорителя указана в GB производителя; вычитать веса из ёмкости можно только после приведения к одной единице. `calc.py units`. `references/source-book/chapter1.md:101`, `references/source-book/chapter1.md:189`.
+**GB и GiB** — десятичная и двоичная единицы ёмкости: KB, MB, GB, TB = 10³, 10⁶, 10⁹, 10¹² байт; KiB, MiB, GiB = 2¹⁰, 2²⁰, 2³⁰ байт. 141,11 GB = 131,42 GiB. Номинальная ёмкость ускорителя указана в GB производителя; вычитать веса из ёмкости можно только после приведения к одной единице. `calc.py units`. `references/source-book/chapter1.md:109`, `references/source-book/chapter1.md:197`.
 
-**FLOP, FLOPs, FLOP/s** — одна операция с плавающей точкой; общее число операций; операций в секунду. GFLOPs и TFLOPs — миллиард и триллион операций (объём работы), GFLOP/s и TFLOP/s — скорость. В матричном умножении умножение и сложение считаются как 2 FLOP. В тексте скилла объём работы пишется GFLOPs/TFLOPs, скорость — TFLOP/s; калькулятор печатает объём с единицей FLOP (`decode_step_flops`), скорость — FLOP/s (`peak_flops`). `references/source-book/chapter1.md:152`.
+**FLOP, FLOPs, FLOP/s** — одна операция с плавающей точкой; общее число операций; операций в секунду. GFLOPs и TFLOPs — миллиард и триллион операций (объём работы), GFLOP/s и TFLOP/s — скорость. В матричном умножении умножение и сложение считаются как 2 FLOP. В тексте скилла объём работы пишется GFLOPs/TFLOPs, скорость — TFLOP/s; калькулятор печатает объём с единицей FLOP (`decode_step_flops`), скорость — FLOP/s (`peak_flops`). `references/source-book/chapter1.md:160`.
 
-**Пик нужной точности** — пиковая матричная производительность задана для точности входа (BF16, FP8, FP4), точности накопления (FP32 или FP16) и вида вычислений (плотные или со структурной разреженностью). Пик FP8 нельзя подставлять в задачу BF16, разреженный — в плотную. В калькуляторе — `--precision`, `--accumulator`, `--sparsity`. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:152`.
+**Пик нужной точности** — пиковая матричная производительность задана для точности входа (BF16, FP8, FP4), точности накопления (FP32 или FP16) и вида вычислений (плотные или со структурной разреженностью). Пик FP8 нельзя подставлять в задачу BF16, разреженный — в плотную. В калькуляторе — `--precision`, `--accumulator`, `--sparsity`. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:160`.
 
-**BF16, FP16, FP8, FP4, int8** — форматы чисел: 2, 2, 1 и 0,5 байта на значение (int8 — 1 байт). BF16 имеет диапазон FP32 и короткую мантиссу, FP16 требует масштабирования функции потерь при обучении, FP8 — блочного масштабирования. Квантованные веса занимают больше, чем произведение числа параметров на байты формата: добавляются scale и части в высокой точности. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:59`, `references/source-book/chapter4.md:329`, `references/source-book/chapter8.md:386`.
+**BF16, FP16, FP8, FP4, int8** — форматы чисел: 2, 2, 1 и 0,5 байта на значение (int8 — 1 байт). BF16 имеет диапазон FP32 и короткую мантиссу, FP16 требует масштабирования функции потерь при обучении, FP8 — блочного масштабирования. Квантованные веса занимают больше, чем произведение числа параметров на байты формата: добавляются scale и части в высокой точности. `references/chapters/ch10-training-systems.md`, `references/source-book/chapter10.md:59`, `references/source-book/chapter4.md:337`, `references/source-book/chapter8.md:386`.
 
 ## Модель времени и метрики
 
-**M, F, R; M_cap, Π, β** — сколько байт хранить, сколько FLOP выполнить и сколько байт прочитать-записать; ёмкость, вычислительная пропускная способность и пропускная способность интерфейса ускорителя. M и R считаются отдельно: данные сохраняют один раз, а читают многократно. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:152`.
+**M, F, R; M_cap, Π, β** — сколько байт хранить, сколько FLOP выполнить и сколько байт прочитать-записать; ёмкость, вычислительная пропускная способность и пропускная способность интерфейса ускорителя. M и R считаются отдельно: данные сохраняют один раз, а читают многократно. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:160`.
 
-**Нижняя граница времени** — `T ≥ max(F/Π, R/β)` при пиковых Π и β и полном перекрытии вычислений и чтения; физический предел, быстрее которого программная организация работать не может. Калькулятор помечает такие значения «(нижняя граница)». `references/source-book/chapter1.md:263`.
+**Нижняя граница времени** — `T ≥ max(F/Π, R/β)` при пиковых Π и β и полном перекрытии вычислений и чтения; физический предел, быстрее которого программная организация работать не может. Калькулятор помечает такие значения «(нижняя граница)». `references/source-book/chapter1.md:271`.
 
-**MFU, MBU** — model FLOPs utilization («коэффициент использования FLOPs модели») `F/(Π·T)` и memory bandwidth utilization («коэффициент использования пропускной способности памяти») `R/(β·T)` по измеренному T; оба не больше 1. MFU обучения берётся с суммарным пиком всех GPU в знаменателе. `references/chapters/ch01-ai-infra-basics.md`, `references/chapters/ch10-training-systems.md`, `references/source-book/chapter1.md:152`, `references/source-book/chapter10.md:116`.
+**MFU, MBU** — model FLOPs utilization («коэффициент использования FLOPs модели») `F/(Π·T)` и memory bandwidth utilization («коэффициент использования пропускной способности памяти») `R/(β·T)` по измеренному T; оба не больше 1. MFU обучения берётся с суммарным пиком всех GPU в знаменателе. `references/chapters/ch01-ai-infra-basics.md`, `references/chapters/ch10-training-systems.md`, `references/source-book/chapter1.md:160`, `references/source-book/chapter10.md:116`.
 
-**Арифметическая интенсивность** — FLOP на прочитанный байт, `I = F/R`. Если I меньше `Π/β`, дольше чтение; если больше — вычисления. `calc.py roofline` печатает `arithmetic_intensity`. `references/source-book/chapter1.md:263`.
+**Арифметическая интенсивность** — FLOP на прочитанный байт, `I = F/R`. Если I меньше `Π/β`, дольше чтение; если больше — вычисления. `calc.py roofline` печатает `arithmetic_intensity`. `references/source-book/chapter1.md:271`.
 
-**Roofline** — модель «линия крыши»: достижимая производительность `≤ min(P, R·I)` (обозначения главы 4: P — пик, R — пропускная способность памяти, I — FLOP на байт; в главе 1 те же величины — Π и β); наклонная часть — предел памяти, горизонтальная — предел матричного блока. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:921`.
+**Roofline** — модель «линия крыши»: достижимая производительность `≤ min(P, R·I)` (обозначения главы 4: P — пик, R — пропускная способность памяти, I — FLOP на байт; в главе 1 те же величины — Π и β); наклонная часть — предел памяти, горизонтальная — предел матричного блока. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:972`.
 
-**Ridge point (точка пересечения)** — интенсивность `I* = P/R` (в обозначениях главы 1 — `Π/β`), где пересекаются две линии Roofline; выше неё узкое место — вычисления. Калькулятор печатает `ridge_point` в FLOP/B; в книге и конспектах это «точка пересечения». `references/source-book/chapter4.md:921`.
+**Ridge point (точка пересечения)** — интенсивность `I* = P/R` (в обозначениях главы 1 — `Π/β`), где пересекаются две линии Roofline; выше неё узкое место — вычисления. Калькулятор печатает `ridge_point` в FLOP/B; в книге и конспектах это «точка пересечения». `references/source-book/chapter4.md:972`.
 
-**B\* (точка перехода по batch)** — размер batch, при котором время вычислений догоняет время чтения весов: `B* = b_W·Π/(2β)`, для H100 и 1 байта на параметр ≈ 147,7. Не учитывает KV: с длинным контекстом чтение KV догоняет веса раньше (`b_KV`). Оба порога с KV — `calc.py batch-threshold`. `references/chapters/ch01-ai-infra-basics.md`, `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter1.md:263`, `references/source-book/chapter8.md:104`.
+**B\* (точка перехода по batch)** — размер batch, при котором время вычислений догоняет время чтения весов: `B* = b_W·Π/(2β)`, для H100 и 1 байта на параметр ≈ 147,7. Не учитывает KV: с длинным контекстом чтение KV догоняет веса раньше (`b_KV`). Оба порога с KV — `calc.py batch-threshold`. `references/chapters/ch01-ai-infra-basics.md`, `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter1.md:271`, `references/source-book/chapter8.md:104`.
 
 **TTFT** — время до первого выходного токена: `TTFT = t_1 − t_a` от поступления запроса; включает очередь и prefill. `references/chapters/ch03-workloads.md`, `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter3.md:29`, `references/source-book/chapter8.md:82`.
 
-**TPOT** — время на выходной токен (time per output token): наблюдаемый клиентом средний интервал между выходами; в измерениях главы 1 — интервал от первого до последнего выхода, делённый на число интервалов, медиана. `references/source-book/chapter1.md:325`.
+**TPOT** — время на выходной токен (time per output token): наблюдаемый клиентом средний интервал между выходами; в измерениях главы 1 — интервал от первого до последнего выхода, делённый на число интервалов, медиана. `references/source-book/chapter1.md:333`.
 
 **ITL** — интервал между соседними выходными токенами `ITL_j = t_{j+1} − t_j`; полное время запроса `T_request = TTFT + Σ ITL_j`. Максимальный ITL — то, что ломают длинный prefill соседа и крупный бюджет токенов. `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter8.md:82`.
 
@@ -44,9 +44,9 @@
 
 **Площадь состояния** — ёмкость, умноженная на время её занятости, `A_M = ∫ M(t) dt`: 1 GiB на 10 s — 10 GiB·s. Ожидание инструмента тоже занимает ёмкость. `references/chapters/ch03-workloads.md`, `references/source-book/chapter3.md:29`.
 
-**Закон Амдала** — ускорение доли f времени в s раз даёт `1/((1 − f) + f/s)`, не больше `1/(1 − f)`. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:101`, `references/source-book/chapter5.md:930`.
+**Закон Амдала** — ускорение доли f времени в s раз даёт `1/((1 − f) + f/s)`, не больше `1/(1 − f)`. `references/chapters/ch01-ai-infra-basics.md`, `references/source-book/chapter1.md:109`, `references/source-book/chapter5.md:934`.
 
-**Закон Литтла** — среднее число в системе равно интенсивности поступления, умноженной на время пребывания: `L = λ·W`. Применяется к запросам, транзакциям памяти в полёте и слотам сетевых запросов. `calc.py queueing`. `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter8.md:598`, `references/source-book/chapter4.md:435`.
+**Закон Литтла** — среднее число в системе равно интенсивности поступления, умноженной на время пребывания: `L = λ·W`. Применяется к запросам, транзакциям памяти в полёте и слотам сетевых запросов. `calc.py queueing`. `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter8.md:598`, `references/source-book/chapter4.md:443`.
 
 ## Модель и её состояние
 
@@ -130,7 +130,7 @@
 
 **Scale-up и scale-out** — интерконнект внутри суперузла (например, NVLink) для совместных вычислений с малыми издержками; сетевые карты и коммутируемая сеть между суперузлами. `references/source-book/chapter1.md:57`.
 
-**Unified Bus (UB)** — межсоединение Huawei, дающее устройствам прямой доступ к памяти других устройств без промежуточных уровней передачи сообщений. `references/source-book/chapter1.md:401`, `references/source-book/chapter6.md:752`.
+**Unified Bus (UB)** — межсоединение Huawei, дающее устройствам прямой доступ к памяти других устройств без промежуточных уровней передачи сообщений. `references/source-book/chapter1.md:409`, `references/source-book/chapter6.md:752`.
 
 **Пул памяти** — заимствование памяти других устройств суперузла при нехватке локальной ёмкости. `references/source-book/chapter6.md:839`.
 
@@ -148,21 +148,21 @@
 
 ## Ускоритель и операторы
 
-**HBM** — видеопамять ускорителя с высокой пропускной способностью; её β задаёт нижнюю границу чтения весов и KV. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:371`.
+**HBM** — видеопамять ускорителя с высокой пропускной способностью; её β задаёт нижнюю границу чтения весов и KV. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:379`.
 
-**Kernel, launch, stream, event** — программа, выполняемая ускорителем; её асинхронная отправка хостом; очередь заданий; отметка завершения. Время отправки и время готовности результата различаются. `references/chapters/ch05-operators-runtime.md`, `references/source-book/chapter5.md:25`, `references/source-book/chapter5.md:69`.
+**Kernel, launch, stream, event** — программа, выполняемая ускорителем; её асинхронная отправка хостом; очередь заданий; отметка завершения. Время отправки и время готовности результата различаются. `references/chapters/ch05-operators-runtime.md`, `references/source-book/chapter5.md:27`, `references/source-book/chapter5.md:71`.
 
-**SM** — вычислительный блок GPU NVIDIA, на котором выполняются блоки kernel. `references/source-book/chapter4.md:65`, `references/source-book/chapter5.md:112`.
+**SM** — вычислительный блок GPU NVIDIA, на котором выполняются блоки kernel. `references/source-book/chapter4.md:71`, `references/source-book/chapter5.md:114`.
 
-**Тайл и слияние операторов** — разбиение матрицы на блоки, помещающиеся во внутрикристальную память; объединение соседних операторов, чтобы промежуточный тензор не уходил во внешнюю память. `references/chapters/ch05-operators-runtime.md`, `references/source-book/chapter5.md:182`, `references/source-book/chapter5.md:343`.
+**Тайл и слияние операторов** — разбиение матрицы на блоки, помещающиеся во внутрикристальную память; объединение соседних операторов, чтобы промежуточный тензор не уходил во внешнюю память. `references/chapters/ch05-operators-runtime.md`, `references/source-book/chapter5.md:184`, `references/source-book/chapter5.md:345`.
 
-**FlashAttention** — поблочное вычисление внимания с онлайн-Softmax: полные матрицы оценок S и P не хранятся, вместо них держатся максимум, сумма экспонент и взвешенная сумма V. `references/chapters/ch05-operators-runtime.md`, `references/source-book/chapter5.md:401`.
+**FlashAttention** — поблочное вычисление внимания с онлайн-Softmax: полные матрицы оценок S и P не хранятся, вместо них держатся максимум, сумма экспонент и взвешенная сумма V. `references/chapters/ch05-operators-runtime.md`, `references/source-book/chapter5.md:403`.
 
-**Двойная буферизация** — загрузка следующего блока, пока обрабатывается текущий. `references/source-book/chapter4.md:515`, `references/source-book/chapter5.md:369`.
+**Двойная буферизация** — загрузка следующего блока, пока обрабатывается текущий. `references/source-book/chapter4.md:523`, `references/source-book/chapter5.md:371`.
 
-**CUDA Graph** — заранее захваченная последовательность kernel, отправляемая одной операцией; экономит время хоста, но требует фиксированных форм и копирования входа. `references/source-book/chapter5.md:816`.
+**CUDA Graph** — заранее захваченная последовательность kernel, отправляемая одной операцией; экономит время хоста, но требует фиксированных форм и копирования входа. `references/source-book/chapter5.md:820`.
 
-**Persistent kernel** — kernel, который постоянно работает на ускорителе, берёт задачи из очереди и проверяет готовность по флагам: следующий оператор стартует по готовому блоку, а не по завершению всего kernel. `references/source-book/chapter5.md:900`.
+**Persistent kernel** — kernel, который постоянно работает на ускорителе, берёт задачи из очереди и проверяет готовность по флагам: следующий оператор стартует по готовому блоку, а не по завершению всего kernel. `references/source-book/chapter5.md:904`.
 
 ## Обучение
 

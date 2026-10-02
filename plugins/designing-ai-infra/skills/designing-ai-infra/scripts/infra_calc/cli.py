@@ -46,10 +46,10 @@ from .model import ModelSpec, UnsupportedArchitecture, load_config, parse_spec
 from .result import Result, format_number
 
 BOOK = "references/source-book"
-A_CH1_KEYS = f"{BOOK}/chapter1.md:152"
-A_CH1_UNITS = f"{BOOK}/chapter1.md:189"
-A_CH1_TIME = f"{BOOK}/chapter1.md:263"
-A_CH1_REF = f"{BOOK}/chapter1.md:450"
+A_CH1_KEYS = f"{BOOK}/chapter1.md:160"
+A_CH1_UNITS = f"{BOOK}/chapter1.md:197"
+A_CH1_TIME = f"{BOOK}/chapter1.md:271"
+A_CH1_REF = f"{BOOK}/chapter1.md:458"
 A_CH2_MEM = f"{BOOK}/chapter2.md:236"
 A_CH2_HYBRID = f"{BOOK}/chapter2.md:418"
 A_CH2_EXPERTS = f"{BOOK}/chapter2.md:542"
@@ -2358,7 +2358,7 @@ def _batch_threshold(args: argparse.Namespace) -> list[Result]:
         value = max(1, math.ceil(point))
         why = f"B_* = {point:.4g}; минимальный целый батч — ceil(B_*)"
     generalisation = (
-        "обобщение B_* = b_W·Π/(2β) книги (references/source-book/chapter1.md:263, "
+        "обобщение B_* = b_W·Π/(2β) книги (references/source-book/chapter1.md:271, "
         "без KV) на чтение KV каждого запроса; при R_KV = 0 совпадает с ним"
     )
     out.append(

@@ -3,7 +3,7 @@ import unittest
 from infra_calc import units
 
 ANCHORS = (
-    "references/source-book/chapter1.md:189",
+    "references/source-book/chapter1.md:197",
     "references/source-book/chapter2.md:236",
     "references/source-book/chapter8.md:52",
     "references/source-book/chapter12.md:11",
@@ -26,7 +26,7 @@ class UnitsTest(unittest.TestCase):
     def test_parse_bytes_requires_explicit_unit(self) -> None:
         # chapter8.md:52: 144 KiB KV на токен = 147 456 байт
         self.assertEqual(units.parse_bytes("144KiB"), 147_456)
-        # chapter1.md:450: веса 16.38 GB (GB = 10⁹, chapter1.md:189)
+        # chapter1.md:458: веса 16.38 GB (GB = 10⁹, chapter1.md:197)
         self.assertEqual(units.parse_bytes("16.38 GB"), 16.38e9)
         # без явной единицы GB/GiB не отличить (поведение, чисел книги нет)
         for ambiguous in ("16G", "16", "16 gb", "16 Gb"):
@@ -34,7 +34,7 @@ class UnitsTest(unittest.TestCase):
                 units.parse_bytes(ambiguous)
 
     def test_dtype_bytes(self) -> None:
-        # chapter1.md:176: «BF16 — формат с плавающей точкой, в котором каждое число
+        # chapter1.md:184: «BF16 — формат с плавающей точкой, в котором каждое число
         # занимает 16 бит (2 байта)»
         self.assertEqual(units.dtype_bytes("bf16"), 2)
         # chapter2.md:498: FP4 — «каждое значение занимает 4 бита»

@@ -5,7 +5,7 @@ from pathlib import Path
 from infra_calc import flops, model
 
 ANCHORS = (
-    "references/source-book/chapter1.md:450",
+    "references/source-book/chapter1.md:458",
     "references/source-book/chapter3.md:442",
     "calculations/results/qwen3-30b-a3b-decode-b1-s8192.json#sha256=fbf0b07f78bd8d7ab3765f6fc9ad5f6992cc95192449c2f8f1ee0fd01b5bc75b",
 )
@@ -15,12 +15,12 @@ QWEN = model.parse_spec(model.load_config(CONFIGS / "qwen3-8b.json"))
 
 class ForwardTest(unittest.TestCase):
     def test_prefill_2048(self) -> None:
-        # chapter1.md:450: prefill 2048 токенов — 29.69 TFLOPs
+        # chapter1.md:458: prefill 2048 токенов — 29.69 TFLOPs
         value = flops.forward_matrix_flops(QWEN, new_tokens=2048)
         self.assertEqual(round(value / 1e12, 2), 29.69)
 
     def test_decode_step_at_context_2048(self) -> None:
-        # chapter1.md:450: шаг decode — 16.34 GFLOPs; контекст 2048 с новым токеном
+        # chapter1.md:458: шаг decode — 16.34 GFLOPs; контекст 2048 с новым токеном
         value = flops.forward_matrix_flops(QWEN, new_tokens=1, history=2047)
         self.assertEqual(round(value / 1e9, 2), 16.34)
 

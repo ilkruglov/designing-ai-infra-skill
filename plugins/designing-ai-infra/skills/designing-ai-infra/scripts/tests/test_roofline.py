@@ -4,14 +4,14 @@ import unittest
 from infra_calc import roofline
 
 ANCHORS = (
-    "references/source-book/chapter1.md:263",
+    "references/source-book/chapter1.md:271",
     "references/source-book/chapter2.md:236",
 )
 
 
 class RooflineTest(unittest.TestCase):
     def test_book_single_request_bounds(self) -> None:
-        # chapter1.md:268: «\frac{70\ \mathrm{GB}}{3350\ \mathrm{GB/s}}\approx20{,}90\ \mathrm{ms}»,
+        # chapter1.md:276: «\frac{70\ \mathrm{GB}}{3350\ \mathrm{GB/s}}\approx20{,}90\ \mathrm{ms}»,
         # «\frac{140\ \mathrm{GFLOPs}}{989400\ \mathrm{GFLOP/s}}\approx0{,}1415\ \mathrm{ms}»
         self.assertEqual(round(roofline.memory_seconds(70e9, 3.35e12) * 1e3, 2), 20.90)
         self.assertEqual(
@@ -25,7 +25,7 @@ class RooflineTest(unittest.TestCase):
         )
 
     def test_batch_of_eight_shares_weight_read(self) -> None:
-        # chapter1.md:293: «нижняя граница времени матричных вычислений составляет около
+        # chapter1.md:301: «нижняя граница времени матричных вычислений составляет около
         # 1,13 мс, а нижняя граница чтения по-прежнему равна 20,90 мс»
         self.assertEqual(
             round(roofline.compute_seconds(8 * 140e9, 989.4e12) * 1e3, 2), 1.13
@@ -45,12 +45,12 @@ class RooflineTest(unittest.TestCase):
         self.assertEqual(roofline.batch_threshold(15_136_811_008, 147_456, 2048), 51)
 
     def test_ridge_point_gives_batch_transition(self) -> None:
-        # chapter1.md:307: B_* = b_W·Π/(2β); при $b_W=1$ «получаем $B_*\approx147{,}7$»,
+        # chapter1.md:315: B_* = b_W·Π/(2β); при $b_W=1$ «получаем $B_*\approx147{,}7$»,
         # то есть Π/β = 2·B_* при двух FLOPs на параметр
         self.assertEqual(round(roofline.ridge_point(989.4e12, 3.35e12) / 2, 1), 147.7)
 
     def test_compute_bound_batch_book(self) -> None:
-        # chapter1.md:307: B_* = b_W·Π/(2β); «при $b_W=1$ ... получаем $B_*\\approx147{,}7$»,
+        # chapter1.md:315: B_* = b_W·Π/(2β); «при $b_W=1$ ... получаем $B_*\\approx147{,}7$»,
         # «После примерно 148 запросов время вычислений превышает время чтения весов».
         # Модель книги: F = 2N = 140 GFLOPs на запрос, R_W = b_W·N = 70 GB, без KV
         point = roofline.compute_bound_batch(140e9, 70e9, 0, 989.4e12, 3.35e12)
@@ -65,7 +65,7 @@ class RooflineTest(unittest.TestCase):
         self.assertEqual(math.ceil(point), 320)
 
     def test_compute_bound_batch_unreachable(self) -> None:
-        # Qwen3-8B на H100 при контексте 2048 (chapter1.md:459-461: 16.34 GFLOPs,
+        # Qwen3-8B на H100 при контексте 2048 (chapter1.md:467-469: 16.34 GFLOPs,
         # 144 KiB × 2048): на запрос F/Π ≈ 16.5 μs меньше R_KV/β ≈ 90.1 μs — шаг
         # decode не становится вычислительно ограниченным ни при каком батче
         self.assertIsNone(
@@ -86,7 +86,7 @@ class RooflineTest(unittest.TestCase):
                 roofline.compute_bound_batch(*args)
 
     def test_arithmetic_intensity(self) -> None:
-        # Арифметическое тождество на числах chapter1.md:265 (F = 140 GFLOPs, R_W = 70 GB):
+        # Арифметическое тождество на числах chapter1.md:273 (F = 140 GFLOPs, R_W = 70 GB):
         # книга не приводит отношение, 140/70 = 2 FLOP/byte
         self.assertEqual(roofline.arithmetic_intensity(140e9, 70e9), 2.0)
 

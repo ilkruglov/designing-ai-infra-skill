@@ -114,7 +114,7 @@
 | Модель | Qwen3-8B, `scripts/tests/fixtures/configs/qwen3-8b.json` | эталон тестов на дату книги; в реальной задаче — текущий `config.json` |
 | Точность весов / KV | BF16 / BF16 | допущение пользователя |
 | KV на карту, фиксированное состояние | TP1: весь KV 147 456 B на токен на одной карте; фиксированного состояния нет (плотная модель, `model` не печатает `fixed_state_bytes`) | `model` по фикстуре |
-| Ускоритель | `h100-sxm`: 80 000 000 000 B (номинал), 3,35·10¹² B/s, 989,4 TFLOP/s BF16 с накоплением FP32, плотный пик | снимок `bojieli/ai-infra-book@d0cc188b` (2026-09-30); перед закупкой сверить со спецификацией производителя |
+| Ускоритель | `h100-sxm`: 80 000 000 000 B (номинал), 3,35·10¹² B/s, 989,4 TFLOP/s BF16 с накоплением FP32, плотный пик | снимок `bojieli/ai-infra-book@3bdcb4fc` (2026-10-01); перед закупкой сверить со спецификацией производителя |
 | Движок | непрерывная пакетная обработка, блочный prefill, кэш префиксов выключен; имя и версия фиксируются при измерении | допущение пользователя |
 | Классы запросов | `rag`: 6144 → 512 токенов; `chat`: 1024 → 256 токенов; общего префикса нет | допущение пользователя (журнал шлюза) |
 | Интенсивность | пиковая минута: `rag` 1,5 запроса/s, `chat` 3 запроса/s | допущение пользователя (журнал шлюза) |
@@ -141,7 +141,7 @@ python3 scripts/calc.py device --device h100-sxm | grep -E '^(Снимок|\*\*|
 ```
 
 ```text
-Снимок железа: bojieli/ai-infra-book@d0cc188b (2026-09-30), calculations/configs/hardware.json
+Снимок железа: bojieli/ai-infra-book@3bdcb4fc (2026-10-01), calculations/configs/hardware.json
 **device_count**: 1
 **memory_bytes**: 80 000 000 000 B
 - номинальная ёмкость по этикетке, а не доступный среде выполнения объём
@@ -437,7 +437,7 @@ python3 scripts/calc.py roofline --device h100-sxm --flops 115458703360 --bytes 
 ## Источники
 
 - Порядок сайзинга и гейты: `references/playbooks/size-inference.md`; сравнение моделей на одном железе — `references/playbooks/compare-model-architectures.md`.
-- Нижняя граница шага и доминирующий член: `references/source-book/chapter1.md:263`.
+- Нижняя граница шага и доминирующий член: `references/source-book/chapter1.md:271`.
 - Ёмкость `B_max` с фиксированным состоянием: `references/source-book/chapter2.md:805`.
 - Бюджет памяти весов, KV и буферов: `references/source-book/chapter8.md:52`; вставка длинного prefill и максимальный ITL: `references/source-book/chapter8.md:165`; калибровка MBU и MFU (эксперимент 8-1): `references/source-book/chapter8.md:642`.
 - Потребность по классам и очередь при достаточной средней мощности: `references/source-book/chapter3.md:75`.

@@ -2,7 +2,7 @@
 
 Пузырь конвейера (p − 1)(t_f + t_b) и утилизация m/(m + p − 1) — по книге
 (глава 10.3.2) и calculations/src/infra_calc/topics/training_pipeline_schedule.py
-оригинала (github.com/bojieli/ai-infra-book, пин d0cc188b). Чередующийся 1F1B
+оригинала (github.com/bojieli/ai-infra-book, пин 3bdcb4fc). Чередующийся 1F1B
 с v виртуальными стадиями делит пузырь на v: доля (1/v)(p − 1)/m.
 
 Интервал checkpoint: модель первого порядка c/τ + λτ/2 + λr с оптимумом

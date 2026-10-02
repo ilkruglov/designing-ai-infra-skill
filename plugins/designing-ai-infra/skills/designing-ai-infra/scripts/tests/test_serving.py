@@ -6,9 +6,9 @@ from infra_calc import serving
 ANCHORS = (
     "references/source-book/chapter8.md:52",
     "references/source-book/chapter8.md:268",
-    "references/source-book/chapter1.md:189",
-    "references/source-book/chapter1.md:263",
-    "references/source-book/chapter1.md:450",
+    "references/source-book/chapter1.md:197",
+    "references/source-book/chapter1.md:271",
+    "references/source-book/chapter1.md:458",
 )
 GIB = 2**30
 MIB = 2**20
@@ -54,7 +54,7 @@ class ServingTest(unittest.TestCase):
                 )
 
     def test_weights_do_not_fit(self) -> None:
-        # chapter1.md:201: «Весам объёмом 141.11 GB недостаточно номинальных 80 GB
+        # chapter1.md:209: «Весам объёмом 141.11 GB недостаточно номинальных 80 GB
         # видеопамяти одной H100 SXM» — ноль запросов, а не отрицательное число
         self.assertEqual(serving.max_concurrent_requests(80e9, 141.11e9, 1e9), 0)
 
@@ -75,17 +75,17 @@ class ServingTest(unittest.TestCase):
                 )
 
     def test_tpot_bound_batch_eight(self) -> None:
-        # chapter1.md:268: чтение весов «\approx20{,}90\ \mathrm{ms}»;
-        # chapter1.md:293: восемь запросов делят одно чтение, граница «по-прежнему равна 20,90 мс»
+        # chapter1.md:276: чтение весов «\approx20{,}90\ \mathrm{ms}»;
+        # chapter1.md:301: восемь запросов делят одно чтение, граница «по-прежнему равна 20,90 мс»
         step = serving.tpot_lower_bound_seconds(8, 140e9, 70e9, 0, 989.4e12, 3.35e12)
         self.assertEqual(round(step * 1e3, 2), 20.90)
-        # chapter1.md:295: «примерно с 47,9 токена/с в модели одного запроса до 383 токенов/с»
+        # chapter1.md:303: «примерно с 47,9 токена/с в модели одного запроса до 383 токенов/с»
         self.assertEqual(round(serving.tokens_per_second(8, step)), 383)
         single = serving.tpot_lower_bound_seconds(1, 140e9, 70e9, 0, 989.4e12, 3.35e12)
         self.assertEqual(round(serving.tokens_per_second(1, single), 1), 47.9)
 
     def test_rtx_pro_6000_bounds(self) -> None:
-        # chapter1.md:464: при 503.8 TFLOP/s «матричные операции prefill занимают около 58.9 ms»;
+        # chapter1.md:472: при 503.8 TFLOP/s «матричные операции prefill занимают около 58.9 ms»;
         # при 1.792 TB/s чтение весов 15.14 GB и KV 0.302 GB за шаг decode «занимает около 8.62 ms»
         ttft = serving.ttft_lower_bound_seconds(29.69e12, 16.38e9, 503.8e12, 1.792e12)
         self.assertEqual(round(ttft * 1e3, 1), 58.9)

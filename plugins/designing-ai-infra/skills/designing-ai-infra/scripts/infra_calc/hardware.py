@@ -34,7 +34,7 @@ DATA = Path(__file__).resolve().parents[2] / "data" / "hardware.json"
 # Пин оригинала и дата его коммита. Содержимое hardware.json на пине то же, что
 # в 023cf31f (2026-09-11), где файл менялся последний раз.
 SNAPSHOT = (
-    "bojieli/ai-infra-book@d0cc188b (2026-09-30), calculations/configs/hardware.json"
+    "bojieli/ai-infra-book@3bdcb4fc (2026-10-01), calculations/configs/hardware.json"
 )
 _CAPACITY_UNITS = {"GB": 10**9, "GiB": 2**30}
 _SCOPE_COUNTS = {
