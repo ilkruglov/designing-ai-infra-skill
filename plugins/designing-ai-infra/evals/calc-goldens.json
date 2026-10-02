@@ -1,6 +1,6 @@
 {
   "suite": "benchmark-v1",
-  "author_code": "bojieli/ai-infra-book@d0cc188b68f49584fd21e05518a5d0f0db79aaf5, calculations/ (разреженный клон в .tmp/upcalc)",
+  "author_code": "bojieli/ai-infra-book@3bdcb4fcab73010eeaccf31cc10a8242a895d82e, calculations/ (разреженный клон в .tmp/upcalc)",
   "note": "Эталоны посчитаны независимо от калькулятора скилла: кодом автора или вручную; skill_cross_check — последующая сверка с scripts/calc.py скилла.",
   "goldens": [
     {
