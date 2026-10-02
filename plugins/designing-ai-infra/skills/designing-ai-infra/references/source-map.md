@@ -18,7 +18,7 @@
 
 | Тема | Первичный раздел | Конспект |
 |---|---|---|
-| GPU/Ascend: пути данных, L0C, MTE/NDDMA, границы синхронизации | `references/source-book/chapter4.md:83` | `references/chapters/ch04-accelerators.md` |
+| GPU/DaVinci: пути данных, L0A/L0B/L0C и UB, MTE/NDDMA, внимание на Cube и Vector, границы синхронизации | `references/source-book/chapter4.md:83` | `references/chapters/ch04-accelerators.md` |
 | isl schedule и блочная программа TileLang-Ascend | `references/source-book/chapter5.md:572`, `references/source-book/chapter5.md:622`, `references/source-book/chapter5.md:658`, `references/source-book/chapter5.md:694` | `references/chapters/ch05-operators-runtime.md` |
 | Nested BSP и композиция параллелизма; состояние FSDP против активаций SP | `references/source-book/chapter6.md:80`, `references/source-book/chapter10.md:151` | `references/chapters/ch06-supernodes.md`, `references/chapters/ch10-training-systems.md` |
 | Метод книги: оценка порядка величин и вывод решений из ограничений | `references/source-book/preface.md:15`, `references/source-book/preface.md:47` | `references/chapters/ch00-preface.md` |
@@ -46,12 +46,12 @@
 | Нагрузка RL: rollout, проверка, синхронизация весов | `references/source-book/chapter3.md:476`, `references/source-book/chapter3.md:486`, `references/source-book/chapter3.md:506` | `references/chapters/ch03-workloads.md` |
 | Scaling Law, бюджеты обучения, стоимость жизненного цикла | `references/source-book/chapter3.md:553`, `references/source-book/chapter3.md:611`, `references/source-book/chapter3.md:667` | `references/chapters/ch03-workloads.md` |
 | Состав ускорителя, площадь, энергия, корпус | `references/source-book/chapter4.md:71`, `references/source-book/chapter4.md:106` | `references/chapters/ch04-accelerators.md` |
-| Матричные и векторные блоки, низкая точность | `references/source-book/chapter4.md:233`, `references/source-book/chapter4.md:269`, `references/source-book/chapter4.md:337` | `references/chapters/ch04-accelerators.md` |
+| Матричные и векторные блоки, конвейер QK → Softmax → PV, низкая точность | `references/source-book/chapter4.md:233`, `references/source-book/chapter4.md:269`, `references/source-book/chapter4.md:295`, `references/source-book/chapter4.md:337` | `references/chapters/ch04-accelerators.md` |
 | Иерархия памяти: HBM, унифицированная память, кэши | `references/source-book/chapter4.md:379`, `references/source-book/chapter4.md:419`, `references/source-book/chapter4.md:443` | `references/chapters/ch04-accelerators.md` |
-| Перемещение данных и межсоединения внутри и вне корпуса | `references/source-book/chapter4.md:523`, `references/source-book/chapter4.md:680`, `references/source-book/chapter4.md:701` | `references/chapters/ch04-accelerators.md` |
-| Эволюция NVIDIA, Ascend, Apple | `references/source-book/chapter4.md:741`, `references/source-book/chapter4.md:795`, `references/source-book/chapter4.md:848` | `references/chapters/ch04-accelerators.md` |
-| Специализированные архитектуры: TPU, Groq, Graphcore, Cerebras, фиксированные веса | `references/source-book/chapter4.md:882`, `references/source-book/chapter4.md:894`, `references/source-book/chapter4.md:908` | `references/chapters/ch04-accelerators.md` |
-| Roofline и выбор ускорителя на одной модели | `references/source-book/chapter4.md:972`, `references/source-book/chapter4.md:1025` | `references/chapters/ch04-accelerators.md` |
+| Перемещение данных, передача матрица → вектор, межсоединения внутри и вне корпуса | `references/source-book/chapter4.md:523`, `references/source-book/chapter4.md:586`, `references/source-book/chapter4.md:680`, `references/source-book/chapter4.md:701` | `references/chapters/ch04-accelerators.md` |
+| Эволюция NVIDIA, Ascend (img2col, AIC/AIV, путь CV), Apple | `references/source-book/chapter4.md:741`, `references/source-book/chapter4.md:795`, `references/source-book/chapter4.md:848` | `references/chapters/ch04-accelerators.md` |
+| Специализированные архитектуры: TPU, Groq, Graphcore, Cerebras, программные затраты специализации, фиксированные веса | `references/source-book/chapter4.md:882`, `references/source-book/chapter4.md:894`, `references/source-book/chapter4.md:908` | `references/chapters/ch04-accelerators.md` |
+| Roofline, выбор ускорителя на одной модели, программная адаптация | `references/source-book/chapter4.md:964`, `references/source-book/chapter4.md:972`, `references/source-book/chapter4.md:1025` | `references/chapters/ch04-accelerators.md` |
 | Прогноз против измерения; ёмкость, скорость, энергия, стоимость | `references/source-book/chapter4.md:1054`, `references/source-book/chapter4.md:1107` | `references/chapters/ch04-accelerators.md` |
 | Kernel launch, копирование, stream и event | `references/source-book/chapter5.md:27`, `references/source-book/chapter5.md:39`, `references/source-book/chapter5.md:71` | `references/chapters/ch05-operators-runtime.md` |
 | Время отправки и готовности; выполнение kernel на SM | `references/source-book/chapter5.md:98`, `references/source-book/chapter5.md:114` | `references/chapters/ch05-operators-runtime.md` |

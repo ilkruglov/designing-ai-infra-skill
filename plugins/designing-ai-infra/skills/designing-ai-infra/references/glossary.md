@@ -130,7 +130,7 @@
 
 **Scale-up и scale-out** — интерконнект внутри суперузла (например, NVLink) для совместных вычислений с малыми издержками; сетевые карты и коммутируемая сеть между суперузлами. `references/source-book/chapter1.md:57`.
 
-**Unified Bus (UB)** — межсоединение Huawei, дающее устройствам прямой доступ к памяти других устройств без промежуточных уровней передачи сообщений. `references/source-book/chapter1.md:409`, `references/source-book/chapter6.md:752`.
+**Unified Bus (UB)** — межсоединение Huawei, дающее устройствам прямой доступ к памяти других устройств без промежуточных уровней передачи сообщений. `references/source-book/chapter1.md:409`, `references/source-book/chapter6.md:752`. В главе 4 то же сокращение UB означает другое — единый буфер (Unified Buffer) блока Vector в Ascend DaVinci (`references/source-book/chapter4.md:83`).
 
 **Пул памяти** — заимствование памяти других устройств суперузла при нехватке локальной ёмкости. `references/source-book/chapter6.md:839`.
 
