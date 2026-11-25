@@ -191,7 +191,7 @@ claude plugin validate . --strict
   коммит `006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6`.
 - Русский перевод: [ilkruglov/ai-infra-book](https://github.com/ilkruglov/ai-infra-book),
   ветка `main`, каталог `book-ru/book`, коммит
-  `8900251f731bc179e0a5bf8b71e4704e8e07de36`,
+  `fa68ef8d06f262971db9e4373787107da57a34fa`,
   «Русский перевод: community edition».
 
 Русское издание явно помечает свои редакционные уточнения и отступления от

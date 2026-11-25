@@ -54,7 +54,7 @@ class BuildLockTests(unittest.TestCase):
             lock["book"]["upstream_commit"],
         )
         self.assertEqual(
-            "8900251f731bc179e0a5bf8b71e4704e8e07de36",
+            "fa68ef8d06f262971db9e4373787107da57a34fa",
             lock["book"]["translation_commit"],
         )
 

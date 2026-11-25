@@ -198,6 +198,6 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
 
 **Артефакты:** [sizing-sheet](references/templates/sizing-sheet.md) · [bottleneck-diagnosis](references/templates/bottleneck-diagnosis.md) · [deployment-decision](references/templates/deployment-decision.md) · [training-plan](references/templates/training-plan.md) · [resource-pool-plan](references/templates/resource-pool-plan.md)
 
-**Полный текст книги:** `references/source-book/` — `preface.md` и `chapter1.md`…`chapter12.md`, побайтно из `book-ru/book` перевода на пине `8900251f731bc179e0a5bf8b71e4704e8e07de36`; рисунков нет, подписи и таблицы остались. К главе обращайся за дословной формулировкой и условиями примера.
+**Полный текст книги:** `references/source-book/` — `preface.md` и `chapter1.md`…`chapter12.md`, побайтно из `book-ru/book` перевода на пине `fa68ef8d06f262971db9e4373787107da57a34fa`; рисунков нет, подписи и таблицы остались. К главе обращайся за дословной формулировкой и условиями примера.
 
 **Калькулятор и данные:** `scripts/calc.py` — CLI над пакетом `scripts/infra_calc/` (команды `model`, `roofline`, `batch-threshold`, `serving`, `training`, `training-state`, `pipeline`, `checkpoint`, `speculative`, `ring`, `allreduce`, `cost`, `edge`, `device`, `units`, `queueing`; справка — `python3 scripts/calc.py --help`) · `data/hardware.json` — снимок ускорителей оригинала: 151 запись, у каждого числа источник и локатор.

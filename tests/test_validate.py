@@ -1530,7 +1530,7 @@ class PinTests(unittest.TestCase):
     константы scripts/build_source_lock.py, остальные записи с ними сверяются."""
 
     UPSTREAM = "006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6"
-    TRANSLATION = "8900251f731bc179e0a5bf8b71e4704e8e07de36"
+    TRANSLATION = "fa68ef8d06f262971db9e4373787107da57a34fa"
     OTHER = "0123456789abcdef0123456789abcdef01234567"
 
     def mutate(self, relative: Path, old: str, new: str) -> list[str]:
@@ -1617,7 +1617,7 @@ class PinTests(unittest.TestCase):
             [],
             self.append_line(
                 template,
-                "ilkruglov/ai-infra-book@8900251f и bojieli/ai-infra-book@006d75a73f73",
+                "ilkruglov/ai-infra-book@fa68ef8d и bojieli/ai-infra-book@006d75a73f73",
             ),
         )
 
@@ -1653,7 +1653,7 @@ class PinTests(unittest.TestCase):
         line = (
             "Чтение на 16345e6 байт, пин 1.0195e12 B/s, blob 0123abcd0123abcd, "
             "sha256 `0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`; "
-            "оригинал на коммите `006d75a73f7`, перевод на `8900251f`, commit 8900251f."
+            "оригинал на коммите `006d75a73f7`, перевод на `fa68ef8d`, commit fa68ef8d."
         )
         self.assertEqual([], self.append_line(template, line))
         errors = self.append_line(template, "Перевод на коммите `cb502e1d`.")
