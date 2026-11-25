@@ -4,8 +4,8 @@
 
 | Источник | Репозиторий | Пин |
 |---|---|---|
-| Перевод | `https://github.com/ilkruglov/ai-infra-book`, ветка `main`, каталог `book-ru/book` | `c9f4ec00ac658416c29857b1632a9ddbfe2ace3c` |
-| Оригинал и калькуляторы автора | `https://github.com/bojieli/ai-infra-book` | `3bdcb4fcab73010eeaccf31cc10a8242a895d82e` |
+| Перевод | `https://github.com/ilkruglov/ai-infra-book`, ветка `main`, каталог `book-ru/book` | `8900251f731bc179e0a5bf8b71e4704e8e07de36` |
+| Оригинал и калькуляторы автора | `https://github.com/bojieli/ai-infra-book` | `006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6` |
 | Снимок ускорителей `data/hardware.json` | `calculations/configs/hardware.json` оригинала на том же пине | sha256 `9c4639ec65ca3b808923a7f332114f800c7930635b6fdac08f49686cddbf0ba2` |
 
 Пины, sha256 снимка и каждого файла книги записаны в `SOURCE.json`; валидатор их сверяет. Лицензия всех источников — Apache-2.0.
@@ -48,11 +48,11 @@
 | Состав ускорителя, площадь, энергия, корпус | `references/source-book/chapter4.md:71`, `references/source-book/chapter4.md:106` | `references/chapters/ch04-accelerators.md` |
 | Матричные и векторные блоки, конвейер QK → Softmax → PV, низкая точность | `references/source-book/chapter4.md:233`, `references/source-book/chapter4.md:269`, `references/source-book/chapter4.md:295`, `references/source-book/chapter4.md:337` | `references/chapters/ch04-accelerators.md` |
 | Иерархия памяти: HBM, унифицированная память, кэши | `references/source-book/chapter4.md:379`, `references/source-book/chapter4.md:419`, `references/source-book/chapter4.md:443` | `references/chapters/ch04-accelerators.md` |
-| Перемещение данных, передача матрица → вектор, межсоединения внутри и вне корпуса | `references/source-book/chapter4.md:523`, `references/source-book/chapter4.md:586`, `references/source-book/chapter4.md:680`, `references/source-book/chapter4.md:701` | `references/chapters/ch04-accelerators.md` |
-| Эволюция NVIDIA, Ascend (img2col, AIC/AIV, путь CV), Apple | `references/source-book/chapter4.md:741`, `references/source-book/chapter4.md:795`, `references/source-book/chapter4.md:848` | `references/chapters/ch04-accelerators.md` |
-| Специализированные архитектуры: TPU, Groq, Graphcore, Cerebras, программные затраты специализации, фиксированные веса | `references/source-book/chapter4.md:882`, `references/source-book/chapter4.md:894`, `references/source-book/chapter4.md:908` | `references/chapters/ch04-accelerators.md` |
-| Roofline, выбор ускорителя на одной модели, программная адаптация | `references/source-book/chapter4.md:964`, `references/source-book/chapter4.md:972`, `references/source-book/chapter4.md:1025` | `references/chapters/ch04-accelerators.md` |
-| Прогноз против измерения; ёмкость, скорость, энергия, стоимость | `references/source-book/chapter4.md:1054`, `references/source-book/chapter4.md:1107` | `references/chapters/ch04-accelerators.md` |
+| Перемещение данных, передача матрица → вектор, межсоединения внутри и вне корпуса | `references/source-book/chapter4.md:523`, `references/source-book/chapter4.md:586`, `references/source-book/chapter4.md:679`, `references/source-book/chapter4.md:700` | `references/chapters/ch04-accelerators.md` |
+| Эволюция NVIDIA, Ascend (img2col, AIC/AIV, путь CV), Apple | `references/source-book/chapter4.md:740`, `references/source-book/chapter4.md:794`, `references/source-book/chapter4.md:847` | `references/chapters/ch04-accelerators.md` |
+| Специализированные архитектуры: TPU, Groq, Graphcore, Cerebras, программные затраты специализации, фиксированные веса | `references/source-book/chapter4.md:881`, `references/source-book/chapter4.md:893`, `references/source-book/chapter4.md:907` | `references/chapters/ch04-accelerators.md` |
+| Roofline, выбор ускорителя на одной модели, программная адаптация | `references/source-book/chapter4.md:963`, `references/source-book/chapter4.md:971`, `references/source-book/chapter4.md:1024` | `references/chapters/ch04-accelerators.md` |
+| Прогноз против измерения; ёмкость, скорость, энергия, стоимость | `references/source-book/chapter4.md:1053`, `references/source-book/chapter4.md:1106` | `references/chapters/ch04-accelerators.md` |
 | Kernel launch, копирование, stream и event | `references/source-book/chapter5.md:27`, `references/source-book/chapter5.md:39`, `references/source-book/chapter5.md:71` | `references/chapters/ch05-operators-runtime.md` |
 | Время отправки и готовности; выполнение kernel на SM | `references/source-book/chapter5.md:98`, `references/source-book/chapter5.md:114` | `references/chapters/ch05-operators-runtime.md` |
 | Тайлинг, повторное чтение, bank shared memory | `references/source-book/chapter5.md:184`, `references/source-book/chapter5.md:227`, `references/source-book/chapter5.md:285` | `references/chapters/ch05-operators-runtime.md` |
@@ -126,10 +126,10 @@
 Главы оригинала лежат в подкаталоге `manuscripts` его репозитория, поэтому `../` означает корень репозитория оригинала. Путь разрешается приписыванием префикса:
 
 ```text
-https://github.com/bojieli/ai-infra-book/tree/3bdcb4fcab73010eeaccf31cc10a8242a895d82e/
+https://github.com/bojieli/ai-infra-book/tree/006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6/
 ```
 
-Например, `../calculations/results/decode-budget-base.md` из сноски главы 1 — это `https://github.com/bojieli/ai-infra-book/tree/3bdcb4fcab73010eeaccf31cc10a8242a895d82e/calculations/results/decode-budget-base.md` (для файла GitHub откроет ту же ревизию через `/blob/`). Берите именно этот коммит: на других коммитах результаты и эксперименты могут отличаться или отсутствовать.
+Например, `../calculations/results/decode-budget-base.md` из сноски главы 1 — это `https://github.com/bojieli/ai-infra-book/tree/006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6/calculations/results/decode-budget-base.md` (для файла GitHub откроет ту же ревизию через `/blob/`). Берите именно этот коммит: на других коммитах результаты и эксперименты могут отличаться или отсутствовать.
 
 | Путь в сноске | Что там |
 |---|---|
@@ -146,7 +146,7 @@ https://github.com/bojieli/ai-infra-book/tree/3bdcb4fcab73010eeaccf31cc10a8242a8
 
 ## Drift gate
 
-Книга и снимок железа зафиксированы на дату книги: текст — релиз оригинала 2026-10-01, `data/hardware.json` — снимок оригинала на коммите `3bdcb4fc` от 2026-10-01, содержимое файла последний раз менялось 2026-09-11 (151 запись, у каждого числа `source_id` и `locator`). Не используйте их как подтверждение текущего состояния рынка. Перед утверждением о любом из пунктов ниже:
+Книга и снимок железа зафиксированы на дату книги: текст — релиз оригинала v1.1 от 2026-11-22, `data/hardware.json` — снимок оригинала на коммите `006d75a7` от 2026-11-22, содержимое файла последний раз менялось 2026-09-11 (151 запись, у каждого числа `source_id` и `locator`). Не используйте их как подтверждение текущего состояния рынка. Перед утверждением о любом из пунктов ниже:
 
 | Что | Что проверить | Где |
 |---|---|---|

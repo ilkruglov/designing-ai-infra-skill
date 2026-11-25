@@ -1094,7 +1094,7 @@ HEADING_ANCHOR = "references/source-book/chapter1.md:271"
 PARAGRAPH_ANCHOR = "references/source-book/chapter1.md:273"
 SAMPLE_CALL = "\n\ndef test_sample() -> None:\n    sample.public_fn()\n"
 AUTHOR_RESULTS = Path(".tmp") / "upcalc" / "calculations" / "results"
-PIN = "3bdcb4fcab73010eeaccf31cc10a8242a895d82e"
+PIN = "006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6"
 AUTHOR_RESULT_NAME = re.compile(r"calculations/results/([\w.-]+\.json)#sha256=")
 
 
@@ -1315,7 +1315,7 @@ class CalculatorCoverageTests(unittest.TestCase):
         )
 
     def test_rejects_local_clone_off_the_pin(self) -> None:
-        # хеши сверяются с клоном на пине 3bdcb4fc; клон на другом коммите — ошибка
+        # хеши сверяются с клоном на пине 006d75a7; клон на другом коммите — ошибка
         with repository_copy() as copied_root:
             digest, complete = self.add_author_result(copied_root, b'{"value": 1}\n')
             anchor = f"calculations/results/sample.json#sha256={digest}"
@@ -1328,7 +1328,7 @@ class CalculatorCoverageTests(unittest.TestCase):
             on_pin = run_validator(copied_root)
 
         self.assertNotEqual(0, off_pin.returncode)
-        self.assertIn("local author clone is not at pin 3bdcb4fc", off_pin.stdout)
+        self.assertIn("local author clone is not at pin 006d75a7", off_pin.stdout)
         self.assert_accepted(on_pin, complete)
 
     def test_resolves_branch_head_of_local_clone(self) -> None:
@@ -1371,7 +1371,7 @@ class CalculatorCoverageTests(unittest.TestCase):
                     self.assert_accepted(result, complete)
                 else:
                     self.assertIn(
-                        "local author clone is not at pin 3bdcb4fc", result.stdout
+                        "local author clone is not at pin 006d75a7", result.stdout
                     )
                     self.assertIn(sha, result.stdout)
 
@@ -1529,8 +1529,8 @@ class PinTests(unittest.TestCase):
     """Пины оригинала и перевода записаны в нескольких местах; источник истины —
     константы scripts/build_source_lock.py, остальные записи с ними сверяются."""
 
-    UPSTREAM = "3bdcb4fcab73010eeaccf31cc10a8242a895d82e"
-    TRANSLATION = "c9f4ec00ac658416c29857b1632a9ddbfe2ace3c"
+    UPSTREAM = "006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6"
+    TRANSLATION = "8900251f731bc179e0a5bf8b71e4704e8e07de36"
     OTHER = "0123456789abcdef0123456789abcdef01234567"
 
     def mutate(self, relative: Path, old: str, new: str) -> list[str]:
@@ -1561,7 +1561,7 @@ class PinTests(unittest.TestCase):
     def test_rejects_short_upstream_pin_mismatch(self) -> None:
         errors = self.mutate(
             SKILL_DIRECTORY / "SKILL.md",
-            "ai-infra-book@3bdcb4fc",
+            "ai-infra-book@006d75a7",
             "ai-infra-book@deadbeef",
         )
         self.assertEqual(1, len(errors), errors)
@@ -1581,7 +1581,7 @@ class PinTests(unittest.TestCase):
             with self.subTest(document=relative.as_posix()):
                 errors = self.mutate(
                     relative,
-                    "bojieli/ai-infra-book@3bdcb4fc",
+                    "bojieli/ai-infra-book@006d75a7",
                     "bojieli/ai-infra-book@56ecb426",
                 )
                 self.assertEqual(1, len(errors), errors)
@@ -1617,30 +1617,30 @@ class PinTests(unittest.TestCase):
             [],
             self.append_line(
                 template,
-                "ilkruglov/ai-infra-book@c9f4ec00 и bojieli/ai-infra-book@3bdcb4fcab73",
+                "ilkruglov/ai-infra-book@8900251f и bojieli/ai-infra-book@006d75a73f73",
             ),
         )
 
     def test_rejects_bare_short_pin_mismatch(self) -> None:
-        # короткий sha без имени репозитория: «на `3bdcb4fc`», «на коммите `3bdcb4fc`»
+        # короткий sha без имени репозитория: «на `006d75a7`», «на коммите `006d75a7`»
         references = SKILL_DIRECTORY / "references"
         cases = (
             (
                 references / "chapters" / "ch00-preface.md",
-                "Снимок `hardware.json` взят из репозитория оригинала на `3bdcb4fc`",
+                "Снимок `hardware.json` взят из репозитория оригинала на `006d75a7`",
             ),
             (
                 references / "source-map.md",
-                "снимок оригинала на коммите `3bdcb4fc`",
+                "снимок оригинала на коммите `006d75a7`",
             ),
             (
                 references / "playbooks" / "compare-model-architectures.md",
-                "в репозитории оригинала на коммите `3bdcb4fc`",
+                "в репозитории оригинала на коммите `006d75a7`",
             ),
         )
         for relative, old in cases:
             with self.subTest(document=relative.as_posix()):
-                errors = self.mutate(relative, old, old.replace("3bdcb4fc", "56ecb426"))
+                errors = self.mutate(relative, old, old.replace("006d75a7", "56ecb426"))
                 self.assertEqual(1, len(errors), errors)
                 self.assertIn("pin mismatch", errors[0])
                 self.assertIn(relative.as_posix(), errors[0])
@@ -1653,7 +1653,7 @@ class PinTests(unittest.TestCase):
         line = (
             "Чтение на 16345e6 байт, пин 1.0195e12 B/s, blob 0123abcd0123abcd, "
             "sha256 `0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`; "
-            "оригинал на коммите `3bdcb4fcab7`, перевод на `c9f4ec00`, commit c9f4ec0."
+            "оригинал на коммите `006d75a73f7`, перевод на `8900251f`, commit 8900251f."
         )
         self.assertEqual([], self.append_line(template, line))
         errors = self.append_line(template, "Перевод на коммите `cb502e1d`.")

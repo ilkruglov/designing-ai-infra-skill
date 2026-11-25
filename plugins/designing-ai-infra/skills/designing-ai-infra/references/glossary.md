@@ -24,9 +24,9 @@
 
 **Арифметическая интенсивность** — FLOP на прочитанный байт, `I = F/R`. Если I меньше `Π/β`, дольше чтение; если больше — вычисления. `calc.py roofline` печатает `arithmetic_intensity`. `references/source-book/chapter1.md:271`.
 
-**Roofline** — модель «линия крыши»: достижимая производительность `≤ min(P, R·I)` (обозначения главы 4: P — пик, R — пропускная способность памяти, I — FLOP на байт; в главе 1 те же величины — Π и β); наклонная часть — предел памяти, горизонтальная — предел матричного блока. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:972`.
+**Roofline** — модель «линия крыши»: достижимая производительность `≤ min(P, R·I)` (обозначения главы 4: P — пик, R — пропускная способность памяти, I — FLOP на байт; в главе 1 те же величины — Π и β); наклонная часть — предел памяти, горизонтальная — предел матричного блока. `references/chapters/ch04-accelerators.md`, `references/source-book/chapter4.md:971`.
 
-**Ridge point (точка пересечения)** — интенсивность `I* = P/R` (в обозначениях главы 1 — `Π/β`), где пересекаются две линии Roofline; выше неё узкое место — вычисления. Калькулятор печатает `ridge_point` в FLOP/B; в книге и конспектах это «точка пересечения». `references/source-book/chapter4.md:972`.
+**Ridge point (точка пересечения)** — интенсивность `I* = P/R` (в обозначениях главы 1 — `Π/β`), где пересекаются две линии Roofline; выше неё узкое место — вычисления. Калькулятор печатает `ridge_point` в FLOP/B; в книге и конспектах это «точка пересечения». `references/source-book/chapter4.md:971`.
 
 **B\* (точка перехода по batch)** — размер batch, при котором время вычислений догоняет время чтения весов: `B* = b_W·Π/(2β)`, для H100 и 1 байта на параметр ≈ 147,7. Не учитывает KV: с длинным контекстом чтение KV догоняет веса раньше (`b_KV`). Оба порога с KV — `calc.py batch-threshold`. `references/chapters/ch01-ai-infra-basics.md`, `references/chapters/ch08-inference-optimization.md`, `references/source-book/chapter1.md:271`, `references/source-book/chapter8.md:104`.
 

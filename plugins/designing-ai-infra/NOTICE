@@ -3,10 +3,10 @@ Copyright 2026 ilkruglov
 
 Скилл основан на книге Bojie Li «AI Infra in Depth: Quantitative Analysis and
 System Design» (https://github.com/bojieli, https://github.com/bojieli/ai-infra-book),
-коммит оригинала 3bdcb4fcab73010eeaccf31cc10a8242a895d82e, и на русском переводе
+коммит оригинала 006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6, и на русском переводе
 community edition (https://github.com/ilkruglov/ai-infra-book, ветка
 main, каталог book-ru/book), коммит
-c9f4ec00ac658416c29857b1632a9ddbfe2ace3c.
+8900251f731bc179e0a5bf8b71e4704e8e07de36.
 
 Атрибуция из NOTICE перевода (Apache License 2.0, §4(d)). Строки приведены
 дословно; строки о PDF, инструментах сборки и шрифтах опущены — PDF, инструменты
@@ -14,7 +14,7 @@ c9f4ec00ac658416c29857b1632a9ddbfe2ace3c.
 AI Infra in Depth: Quantitative Analysis and System Design
 Copyright 2026 Bojie Li. Licensed under Apache License 2.0.
 Original: https://github.com/bojieli/ai-infra-book
-Pinned source: 3bdcb4fcab73010eeaccf31cc10a8242a895d82e
+Pinned source: 006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6
 
 Русский перевод: community edition. Неофициальное издание сообщества.
 Издание содержит редакционные уточнения; отступления от оригинала явно помечены и сопровождаются обоснованием.

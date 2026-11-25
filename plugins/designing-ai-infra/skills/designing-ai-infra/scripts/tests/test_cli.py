@@ -155,7 +155,7 @@ class RooflineCommandTest(unittest.TestCase):
         # chapter1.md:276: «\frac{140\ \mathrm{GFLOPs}}{989400\ \mathrm{GFLOP/s}}\approx0{,}1415\ \mathrm{ms}»
         self.assertEqual(round(v["compute_seconds"]["value"] * 1e3, 4), 0.1415)
         self.assertEqual(v["step_lower_bound_seconds"]["bound"], "lower")
-        self.assertIn("3bdcb4fc", data["hardware_snapshot"])
+        self.assertIn("006d75a7", data["hardware_snapshot"])
 
     def test_format_before_command(self) -> None:
         code, out = call(
@@ -183,7 +183,7 @@ class RooflineCommandTest(unittest.TestCase):
         )
         self.assertEqual(code, 0)
         self.assertIn("(нижняя граница)", out)
-        self.assertIn("3bdcb4fc (2026-10-01)", out)
+        self.assertIn("006d75a7 (2026-11-22)", out)
         self.assertIn("references/source-book/chapter1.md:271", out)
         # входы — в том же виде, что и значения, а не 140000000000.0
         self.assertIn("flops=1.4e+11", out)
@@ -975,7 +975,7 @@ class ExpertUnionCommandTest(unittest.TestCase):
 
     def test_explicit_union_matches_author(self) -> None:
         # calc.py forward --model qwen3-30b-a3b --batch 4 --history 8191 --tokens 1 --routing balanced
-        # (код автора на 3bdcb4fc): expert_union_per_layer 32, weight_read_once_per_operator_bytes
+        # (код автора на 006d75a7): expert_union_per_layer 32, weight_read_once_per_operator_bytes
         # 16 955 387 904, из них 4 × 2048 × 2 байта — строки эмбеддингов
         v = values(
             "model", "--config", self.QWEN3_30B, "--batch", "4",

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "book": {
-    "upstream_commit": "3bdcb4fcab73010eeaccf31cc10a8242a895d82e",
-    "translation_commit": "c9f4ec00ac658416c29857b1632a9ddbfe2ace3c"
+    "upstream_commit": "006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6",
+    "translation_commit": "8900251f731bc179e0a5bf8b71e4704e8e07de36"
   },
   "anchors": {
     "chapter1.md:109": {
@@ -710,12 +710,12 @@
       "line_text": "## Итоги главы",
       "kind": "heading"
     },
-    "chapter4.md:1025": {
+    "chapter4.md:1024": {
       "line_sha256": "96b1a5a7c409adbc405d4c3fd1c8851d1b98c0a7ca845592a9effa509e8f5398",
       "line_text": "### 4.8.2 Сравнение ускорителей на одной и той же модели",
       "kind": "heading"
     },
-    "chapter4.md:1054": {
+    "chapter4.md:1053": {
       "line_sha256": "eebd6641c901c8b38c054c555d7cf5d145410efba902781e4eb1207dd46da5f9",
       "line_text": "### 4.8.3 Почему прогнозы расходятся с измерениями",
       "kind": "heading"
@@ -725,7 +725,7 @@
       "line_text": "### 4.1.3 Ограничения площади чипа, энергопотребления и корпуса",
       "kind": "heading"
     },
-    "chapter4.md:1107": {
+    "chapter4.md:1106": {
       "line_sha256": "314f9d8a45e6a4c10fafa08a426a5e3f5df55f383f01ee7013b8b81639efccff",
       "line_text": "### 4.8.4 Выбор между ёмкостью, скоростью, энергопотреблением и стоимостью",
       "kind": "heading"
@@ -785,22 +785,22 @@
       "line_text": "### 4.4.3 Передача данных между вычислительными блоками",
       "kind": "heading"
     },
-    "chapter4.md:630": {
+    "chapter4.md:629": {
       "line_sha256": "d19d41480a1e293971fece23734dd62e605e93e3fe9f62c1b340b87096e52c48",
       "line_text": "### 4.4.4 Передача между SM: fence и уровни синхронизации",
       "kind": "heading"
     },
-    "chapter4.md:658": {
+    "chapter4.md:657": {
       "line_sha256": "2c7838ef35c2fdb2f757119a4e7841715f90a5085192ee9740f1c1e2d9e9d99c",
       "line_text": "### 4.5.1 Вычислительные кристаллы, память и соединения внутри корпуса",
       "kind": "heading"
     },
-    "chapter4.md:680": {
+    "chapter4.md:679": {
       "line_sha256": "81b09dd8646ae0537663ecf833162b93188d366cd5d5c326dcf03f5c962ef08b",
       "line_text": "### 4.5.2 Доступ к данным между CPU и ускорителем",
       "kind": "heading"
     },
-    "chapter4.md:701": {
+    "chapter4.md:700": {
       "line_sha256": "ecc45882399bc0b063ecc1dbc2091a8d71b3ae7c665ee110d6a530e1e9358b65",
       "line_text": "### 4.5.3 Обмен данными между ускорителями",
       "kind": "heading"
@@ -810,12 +810,12 @@
       "line_text": "### 4.1.2 Состав ускорителя и распределение функций",
       "kind": "heading"
     },
-    "chapter4.md:741": {
+    "chapter4.md:740": {
       "line_sha256": "72fc0f88d2327b899f77421acd8b6d592b27f7eb3570462724bbbb6cb08be7cb",
       "line_text": "### 4.6.1 NVIDIA: какой выигрыш по отдельности дают матрицы, точность и тракт данных",
       "kind": "heading"
     },
-    "chapter4.md:795": {
+    "chapter4.md:794": {
       "line_sha256": "d5d4369c22cf29752ac180035cd6dd03d70bbd9672109c180faeb020e6e4aef0",
       "line_text": "### 4.6.2 Ascend: от развёртки свёрток CNN к взаимодействию матриц и векторов Transformer",
       "kind": "heading"
@@ -825,32 +825,32 @@
       "line_text": "#### Как GPU и DaVinci распределяют работу по перемещению и синхронизации",
       "kind": "heading"
     },
-    "chapter4.md:848": {
+    "chapter4.md:847": {
       "line_sha256": "b3930d608dbe90822b210b6e4a68f3aacefaeb98d0c554109443519b4bed3e14",
       "line_text": "### 4.6.3 Apple: как преобразовать большую ёмкость унифицированной памяти в возможности запуска моделей",
       "kind": "heading"
     },
-    "chapter4.md:882": {
+    "chapter4.md:881": {
       "line_sha256": "5f630436d37221c012ed903cb69a3e01cff2390a5402a633c6ee80d089c50b3b",
       "line_text": "### 4.7.1 TPU",
       "kind": "heading"
     },
-    "chapter4.md:894": {
+    "chapter4.md:893": {
       "line_sha256": "f174bc58b63005f335a915cf2d09be1b3a1919a4ba89d267b13dad13730f30aa",
       "line_text": "### 4.7.2 Groq, Graphcore и Cerebras",
       "kind": "heading"
     },
-    "chapter4.md:908": {
+    "chapter4.md:907": {
       "line_sha256": "faaae564a9a07daa45f1c0928498aac2f346e13fed1a546912e0bc2f27e85629",
       "line_text": "### 4.7.3 Программные затраты специализированных потоков данных и фиксированные веса",
       "kind": "heading"
     },
-    "chapter4.md:964": {
+    "chapter4.md:963": {
       "line_sha256": "c0e1bfe471eddaf89e3c848de292b37c87385c49a59ed4c46fe55720667e56ce",
       "line_text": "## 4.8 Анализ производительности и выбор ускорителя на основе архитектуры",
       "kind": "heading"
     },
-    "chapter4.md:972": {
+    "chapter4.md:971": {
       "line_sha256": "41770f0ba67a2c1ef9cc23a2a5c38c84b5da5b1993e3ea2d6e1bcd6cc90bd7ec",
       "line_text": "### 4.8.1 Построение модели времени выполнения на основе бюджета ресурсов",
       "kind": "heading"

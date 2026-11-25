@@ -16,7 +16,7 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
    - **unknown** — что не измерено и каким замером это закрыть.
 3. Начинай с решения: помещается или нет, какой член доминирует, какой рычаг, при каком пороге решение меняется. Вместо «A всегда лучше B» давай порог.
 4. Review и диагностика — read-only: не меняй конфиги, не перезапускай сервисы и не запускай нагрузочные тесты, пока пользователь явно не попросит. Предлагай замер, а не выполняй его на чужой системе.
-5. Числа книги верны на дату книги (релиз оригинала 2026-10-01) и в условиях её примеров. `data/hardware.json` — снимок оригинала `bojieli/ai-infra-book@3bdcb4fc` от 2026-10-01; содержимое файла последний раз менялось 2026-09-11. Текущие спецификации ускорителей, цены, тарифы, версии моделей и движков проверяй по первичным источникам и называй дату источника; не можешь проверить — это unknown. Порядок сверки — раздел «Drift gate» в [source-map.md](references/source-map.md).
+5. Числа книги верны на дату книги (релиз оригинала v1.1 от 2026-11-22) и в условиях её примеров. `data/hardware.json` — снимок оригинала `bojieli/ai-infra-book@006d75a7` от 2026-11-22; содержимое файла последний раз менялось 2026-09-11. Текущие спецификации ускорителей, цены, тарифы, версии моделей и движков проверяй по первичным источникам и называй дату источника; не можешь проверить — это unknown. Порядок сверки — раздел «Drift gate» в [source-map.md](references/source-map.md).
 6. Встроенных конфигов моделей нет. Возьми официальный `config.json` модели с Hugging Face. Незнакомую архитектуру не считай как плотную: калькулятор откажется и перечислит неподдержанные поля, а ты назови это unknown.
 7. Единицы — явно: GB (10⁹) или GiB (2³⁰), бит или байт, пик какой точности. Стоимость сравнивай на принятый результат или выполненную задачу, а не во FLOPS на доллар и не в токенах в секунду.
 8. По умолчанию укладывай ответ в 1000 слов без учёта вывода калькулятора и заполненного шаблона; из вывода цитируй поля, на которых стоит решение. Длиннее — по явной просьбе.
@@ -86,8 +86,8 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
 - `max(F/Π, R/β)` — при полном перекрытии чтения и вычислений; без перекрытия времена складываются (`references/source-book/chapter1.md:271`).
 - Decode при малом batch упирается в чтение весов и KV: рост пика FLOP/s его не ускоряет; помогают полоса, меньше байт и повторное использование (`references/source-book/chapter1.md:271`, `references/source-book/chapter1.md:446`).
 - Точка перехода `B* = b_W·Π/(2β)` учитывает только веса. С KV каждого запроса `T ≈ max(B·F₁/Π, (R_W + B·R_state)/β)`, и чем длиннее контекст, тем раньше кончается выигрыш batch (`references/source-book/chapter1.md:333`, `references/source-book/chapter2.md:236`).
-- Пик зависит от точности входа и накопления; выбор пика может поменять доминирующий член. Выше точки пересечения оценивают MFU, ниже — MBU (`references/source-book/chapter4.md:972`).
-- Разрыв с замером: сначала поправить область учёта, затем устранять накладные расходы — нужны оба шага (`references/source-book/chapter4.md:1054`).
+- Пик зависит от точности входа и накопления; выбор пика может поменять доминирующий член. Выше точки пересечения оценивают MFU, ниже — MBU (`references/source-book/chapter4.md:971`).
+- Разрыв с замером: сначала поправить область учёта, затем устранять накладные расходы — нужны оба шага (`references/source-book/chapter4.md:1053`).
 - Если ускоритель ждёт отправки kernel с хоста, быстрый ускоритель не поможет; CUDA Graph снимает повторяющуюся работу хоста, узлы графа выполняются по-прежнему (`references/source-book/chapter5.md:796`, `references/source-book/chapter5.md:820`). Выигрыш оператора переводи в выигрыш запроса по закону Амдала (`references/source-book/chapter5.md:934`) и критическому пути: ускоренная ветвь может уступить место другой (`references/source-book/chapter5.md:946`).
 - Порядок выполнения и форма тайла задают, сколько раз данные проходят через интерфейс памяти (`references/source-book/chapter5.md:184`); большой блок читает меньше, но может получить меньшую пропускную способность (`references/source-book/chapter5.md:227`). Слияние поэлементных операторов убирает запись и чтение промежуточного тензора; ёмкость промежуточных тензоров и объём обращений к ним — разные величины (`references/source-book/chapter5.md:345`).
 
@@ -186,7 +186,7 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
 
 ## Сноски книги
 
-Сноски книги указывают на `../calculations/`, `../experiments/`, `../references/` и `../research/` (а также `../case-studies/`, `../archive/`). Это пути в репозитории оригинала `https://github.com/bojieli/ai-infra-book` на коммите `3bdcb4fcab73010eeaccf31cc10a8242a895d82e`, а не локальные файлы скилла; `../references/` оригинала — не `references/` скилла. Как разрешать такие пути — раздел «Ссылки сносок книги» в [source-map.md](references/source-map.md).
+Сноски книги указывают на `../calculations/`, `../experiments/`, `../references/` и `../research/` (а также `../case-studies/`, `../archive/`). Это пути в репозитории оригинала `https://github.com/bojieli/ai-infra-book` на коммите `006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6`, а не локальные файлы скилла; `../references/` оригинала — не `references/` скилла. Как разрешать такие пути — раздел «Ссылки сносок книги» в [source-map.md](references/source-map.md).
 
 ## Все материалы
 
@@ -198,6 +198,6 @@ description: Use when sizing, designing, reviewing, or debugging AI infrastructu
 
 **Артефакты:** [sizing-sheet](references/templates/sizing-sheet.md) · [bottleneck-diagnosis](references/templates/bottleneck-diagnosis.md) · [deployment-decision](references/templates/deployment-decision.md) · [training-plan](references/templates/training-plan.md) · [resource-pool-plan](references/templates/resource-pool-plan.md)
 
-**Полный текст книги:** `references/source-book/` — `preface.md` и `chapter1.md`…`chapter12.md`, побайтно из `book-ru/book` перевода на пине `c9f4ec00ac658416c29857b1632a9ddbfe2ace3c`; рисунков нет, подписи и таблицы остались. К главе обращайся за дословной формулировкой и условиями примера.
+**Полный текст книги:** `references/source-book/` — `preface.md` и `chapter1.md`…`chapter12.md`, побайтно из `book-ru/book` перевода на пине `8900251f731bc179e0a5bf8b71e4704e8e07de36`; рисунков нет, подписи и таблицы остались. К главе обращайся за дословной формулировкой и условиями примера.
 
 **Калькулятор и данные:** `scripts/calc.py` — CLI над пакетом `scripts/infra_calc/` (команды `model`, `roofline`, `batch-threshold`, `serving`, `training`, `training-state`, `pipeline`, `checkpoint`, `speculative`, `ring`, `allreduce`, `cost`, `edge`, `device`, `units`, `queueing`; справка — `python3 scripts/calc.py --help`) · `data/hardware.json` — снимок ускорителей оригинала: 151 запись, у каждого числа источник и локатор.

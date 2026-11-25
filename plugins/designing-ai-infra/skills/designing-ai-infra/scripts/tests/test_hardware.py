@@ -88,7 +88,7 @@ class HardwareTest(unittest.TestCase):
             hardware.peak_flops(h100, "FP4")
         message = str(caught.exception)
         self.assertIn("BF16/FP32/tensor/dense", message)
-        self.assertIn("3bdcb4fc", message)
+        self.assertIn("006d75a7", message)
         self.assertNotIn("INT8", message)
 
     def test_missing_bandwidth_asks_for_argument(self) -> None:
@@ -101,7 +101,7 @@ class HardwareTest(unittest.TestCase):
         with self.assertRaises(ValueError) as caught:
             hardware.bandwidth(missing[0])
         self.assertIn("--bandwidth", str(caught.exception))
-        self.assertIn("3bdcb4fc", str(caught.exception))
+        self.assertIn("006d75a7", str(caught.exception))
 
     def test_unknown_device_suggests_ids(self) -> None:
         with self.assertRaises(KeyError) as caught:
@@ -109,11 +109,11 @@ class HardwareTest(unittest.TestCase):
         self.assertIn("h100-sxm", str(caught.exception))
 
     def test_snapshot_is_named(self) -> None:
-        self.assertIn("3bdcb4fc", hardware.SNAPSHOT)
+        self.assertIn("006d75a7", hardware.SNAPSHOT)
 
     def test_snapshot_is_dated(self) -> None:
-        # дата коммита 3bdcb4fc: git -C .tmp/upcalc log -1 --format=%cs 3bdcb4fc
-        self.assertIn("2026-10-01", hardware.SNAPSHOT)
+        # дата коммита 006d75a7: git -C .tmp/upcalc log -1 --format=%cs 006d75a7
+        self.assertIn("2026-11-22", hardware.SNAPSHOT)
 
 
 class ScopeTest(unittest.TestCase):

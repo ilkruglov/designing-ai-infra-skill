@@ -24,8 +24,8 @@ from source_anchors import (
     iter_skill_documents,
 )
 
-UPSTREAM_COMMIT = "3bdcb4fcab73010eeaccf31cc10a8242a895d82e"
-TRANSLATION_COMMIT = "c9f4ec00ac658416c29857b1632a9ddbfe2ace3c"
+UPSTREAM_COMMIT = "006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6"
+TRANSLATION_COMMIT = "8900251f731bc179e0a5bf8b71e4704e8e07de36"
 LINE_TEXT_LIMIT = 200
 
 

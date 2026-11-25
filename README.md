@@ -188,10 +188,10 @@ claude plugin validate . --strict
 
 - Автор книги: [Bojie Li](https://github.com/bojieli).
 - Оригинал и калькуляторы автора: [bojieli/ai-infra-book](https://github.com/bojieli/ai-infra-book),
-  коммит `3bdcb4fcab73010eeaccf31cc10a8242a895d82e`.
+  коммит `006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6`.
 - Русский перевод: [ilkruglov/ai-infra-book](https://github.com/ilkruglov/ai-infra-book),
   ветка `main`, каталог `book-ru/book`, коммит
-  `c9f4ec00ac658416c29857b1632a9ddbfe2ace3c`,
+  `8900251f731bc179e0a5bf8b71e4704e8e07de36`,
   «Русский перевод: community edition».
 
 Русское издание явно помечает свои редакционные уточнения и отступления от

@@ -5,12 +5,12 @@
   "book": "AI Infra in Depth: Quantitative Analysis and System Design",
   "upstream": {
     "repository": "https://github.com/bojieli/ai-infra-book",
-    "commit": "3bdcb4fcab73010eeaccf31cc10a8242a895d82e"
+    "commit": "006d75a73f73f59dbb8c53f69cbee9af2ae9f1e6"
   },
   "translation": {
     "repository": "https://github.com/ilkruglov/ai-infra-book",
     "branch": "main",
-    "commit": "c9f4ec00ac658416c29857b1632a9ddbfe2ace3c",
+    "commit": "8900251f731bc179e0a5bf8b71e4704e8e07de36",
     "path": "book-ru/book"
   },
   "bundled_sources": {
@@ -19,14 +19,14 @@
     "sha256": {
       "preface.md": "2f7d62041b5dcff8032af164ab98ba5716b86ff8c681dc7d7bbab26e1ba3e45a",
       "chapter1.md": "5fd2b187301b1f61ae409f281820b7befa865e94a8986a2c5e92f5325b176ae4",
-      "chapter2.md": "5ef148c48e826efb21a72822ccb53633a9c69f490d76452cb8b26e28352eb407",
-      "chapter3.md": "6dc1e6ac666f0b311d340f27088e551345cc6cb70f2bbd9d8c1071cc87ed2955",
-      "chapter4.md": "8d1bb9c62f7bbf4883a5f7eaa9201fd567db97493921e79f456d6e896e352d27",
+      "chapter2.md": "f6f7bed2656df621424dd7bb69e1b6bbe5abaaae415b9679a4ba87dd10853da3",
+      "chapter3.md": "428cfba66fa7c82e6bcc48c6574f7a38f5d88544357aaa0786e6b0e12f62ebfc",
+      "chapter4.md": "e5e2987b3e76d85aaa3e0c15c079edaa329c028cc92c2d20cb9729a07aca8386",
       "chapter5.md": "04b2655585fa8ef4e22e186be8d8fd705a2ab2574f8545a84818d2f66db74457",
       "chapter6.md": "b3665e4f5e97e38ac3d2ba5418dcc45ea472d91bf72415744fb674f9e3dc3341",
       "chapter7.md": "078b8369cb71854927e692fbcc461c1eb081306274fa2cf72f5063cf3080ee14",
-      "chapter8.md": "86f65a3aef97c3ddf9b516a8e82bee784a7bd0345503ec98c32266f5e9055906",
-      "chapter9.md": "24ed1341cabeeb42d569b1193200f6fc86e99d5591441c3c67a450d8573dfa20",
+      "chapter8.md": "aa9616b217dec0e7d4e1ac5d3d3c744076880ae816a4c94b859b4097c67f2967",
+      "chapter9.md": "b5d8a96d59a2dbc2084733c42f27407fed0a238a9235abbdd5018a5aee6d6c51",
       "chapter10.md": "8c6f94721e9d2db0b9d27934eedb8edc1aed15ee563410f97bfc38480d5b66dc",
       "chapter11.md": "6ef70920b274dfea8a5769618a23dc357d3dc6a29e480d01ec0897f2d1217dfc",
       "chapter12.md": "ad77c3f5bc8d3f489eacdeff3c112f628aac0a20e42770e8dff086427c6f0958"

@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Any
 
 AUTHOR_COMMANDS = {
-    "deepseek_v4": "Используйте `python3 calculations/calc.py v4-forward` в репозитории оригинала на коммите 3bdcb4fc.",
-    "kimi_linear": "Используйте `python3 calculations/calc.py k3-forward` в репозитории оригинала на коммите 3bdcb4fc.",
+    "deepseek_v4": "Используйте `python3 calculations/calc.py v4-forward` в репозитории оригинала на коммите 006d75a7.",
+    "kimi_linear": "Используйте `python3 calculations/calc.py k3-forward` в репозитории оригинала на коммите 006d75a7.",
 }
 # Поля архитектуры, которые читают адаптеры поддержанных семейств.
 KNOWN_KEYS = {

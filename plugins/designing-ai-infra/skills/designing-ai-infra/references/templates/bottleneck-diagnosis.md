@@ -146,7 +146,7 @@ python3 scripts/calc.py device --device rtx-pro6000-blackwell-ws | grep -E '^(С
 ```
 
 ```text
-Снимок железа: bojieli/ai-infra-book@3bdcb4fc (2026-10-01), calculations/configs/hardware.json
+Снимок железа: bojieli/ai-infra-book@006d75a7 (2026-11-22), calculations/configs/hardware.json
 **bandwidth**: 1.792e+12 B/s
 **peak_flops**: 5.038e+14 FLOP/s
 ```
@@ -251,5 +251,5 @@ python3 scripts/calc.py model --config scripts/tests/fixtures/configs/qwen3-8b.j
 - Порядок диагностики и таблица компонентов: `references/playbooks/diagnose-serving.md`; оператор и хост — `references/playbooks/optimize-operators-runtime.md`.
 - Проверка оценки измерением и две причины разрыва: `references/source-book/chapter1.md:333`, `references/source-book/chapter1.md:365`.
 - Эксперимент 8-1, калибровка MBU и MFU: `references/source-book/chapter8.md:642`; запрос 6,95 s и вставка prefill: `references/source-book/chapter8.md:24`.
-- Почему прогноз расходится с измерением (8K, 25,83 ms): `references/source-book/chapter4.md:1054`.
+- Почему прогноз расходится с измерением (8K, 25,83 ms): `references/source-book/chapter4.md:1053`.
 - CUDA Graph и копирование входа, закон Амдала на запросе: `references/source-book/chapter5.md:820`, `references/source-book/chapter5.md:974`.
